@@ -120,6 +120,7 @@ input, textarea, select { font-family: inherit; }
 .panel { min-height: 84px; padding: 0 16px; display: flex; flex-direction: column; justify-content: center; gap: 8px; }
 .panel-hint { color: var(--ink-faint); font-weight: 600; font-size: 12.5px; margin: 6px 0 0; }
 .sticker-btn { width: 48px; height: 48px; border-radius: 14px; background: var(--petal); display: grid; place-items: center; font-size: 26px; border: none; flex: none; }
+.frame-btn { width: 64px; height: 64px; border-radius: 14px; background: var(--petal); display: grid; place-items: center; border: none; flex: none; padding: 4px; }
 .step-btn { width: 40px; height: 40px; border-radius: 20px; background: var(--blush); border: none; display: grid; place-items: center; font-weight: 800; color: var(--pink-dark); flex: none; }
 .color-dot { width: 30px; height: 30px; border-radius: 15px; border: 2px solid var(--line); flex: none; }
 .color-dot.active { border-color: var(--pink); border-width: 3px; }

@@ -1,5 +1,6 @@
 import { CANVAS_BASE, MODELS, sizeForModel } from '../lib/types';
 import type { CaseBackground, Layer, PhoneModel } from '../lib/types';
+import { FRAME_DEFS } from '../lib/frames';
 
 export function CasePreview({
   background,
@@ -83,6 +84,44 @@ export function LayerView({ layer, scale }: { layer: Layer; scale: number }) {
         alt=""
         style={{ ...base, width: layer.width * scale, height: layer.height * scale, borderRadius: (layer.radius ?? 0) * scale, objectFit: 'cover' }}
       />
+    );
+  }
+  if (layer.kind === 'frame') {
+    const def = FRAME_DEFS[layer.frameId];
+    if (!def) return null;
+    const w = def.width * scale;
+    const h = def.height * scale;
+    const { hole } = def;
+    const FrameSvg = def.Svg;
+    return (
+      <div style={{ ...base, width: w, height: h }}>
+        <div
+          style={{
+            position: 'absolute',
+            left: `${hole.xPct}%`,
+            top: `${hole.yPct}%`,
+            width: `${hole.wPct}%`,
+            height: `${hole.hPct}%`,
+            borderRadius: '50%',
+            overflow: 'hidden',
+            background: layer.photoUri ? undefined : '#f0e6ea',
+          }}
+        >
+          {layer.photoUri && (
+            <img
+              src={layer.photoUri}
+              alt=""
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+                transform: `translate(${layer.photoTx}px, ${layer.photoTy}px) scale(${layer.photoScale})`,
+              }}
+            />
+          )}
+        </div>
+        <FrameSvg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} />
+      </div>
     );
   }
   return (

@@ -8,8 +8,16 @@ export type TextLayer = LayerBase & {
   kind: 'text'; text: string; color: string; fontSize: number;
   fontWeight: '400' | '600' | '700' | '800' | '900'; align: 'left' | 'center' | 'right';
 };
+// A fruit/character illustration with a face-shaped cutout; the customer's
+// photo shows through the hole. Geometry (size, hole position) is looked up
+// by frameId from FRAME_DEFS at render time, not copied onto the layer —
+// same pattern as PhoneModel geometry being looked up via modelId.
+export type FrameLayer = LayerBase & {
+  kind: 'frame'; frameId: string; photoUri: string | null;
+  photoTx: number; photoTy: number; photoScale: number;
+};
 
-export type Layer = ImageLayer | StickerLayer | TextLayer;
+export type Layer = ImageLayer | StickerLayer | TextLayer | FrameLayer;
 export type DistributiveOmit<T, K extends keyof any> = T extends any ? Omit<T, K> : never;
 export type LayerSpec = DistributiveOmit<Layer, 'id'>;
 

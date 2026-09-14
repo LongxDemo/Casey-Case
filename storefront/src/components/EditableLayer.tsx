@@ -1,11 +1,20 @@
 import React from 'react';
 import type { Layer } from '../lib/types';
+import { FRAME_DEFS } from '../lib/frames';
 
 export function layerBaseSize(l: Layer): { w: number; h: number } {
   if (l.kind === 'sticker') return { w: l.size, h: l.size };
   if (l.kind === 'image') return { w: l.width, h: l.height };
+  if (l.kind === 'frame') {
+    const def = FRAME_DEFS[l.frameId];
+    return def ? { w: def.width, h: def.height } : { w: 200, h: 220 };
+  }
   return { w: 220, h: l.fontSize * 1.4 };
 }
+
+// A tap (pointerdown+up with barely any movement) on an empty frame's hole
+// requests a photo upload; a real drag still just moves the whole layer.
+const TAP_THRESHOLD_PX = 6;
 
 export function EditableLayer({
   layer,
@@ -14,6 +23,8 @@ export function EditableLayer({
   canvasRef,
   onSelect,
   onChange,
+  adjustMode = false,
+  onRequestPhoto,
 }: {
   layer: Layer;
   selected: boolean;
@@ -21,6 +32,9 @@ export function EditableLayer({
   canvasRef: React.RefObject<HTMLDivElement | null>;
   onSelect: (id: string) => void;
   onChange: (id: string, patch: Partial<Layer>) => void;
+  /** True while this specific frame layer's photo is being repositioned/zoomed. */
+  adjustMode?: boolean;
+  onRequestPhoto?: (id: string) => void;
 }) {
   const base = layerBaseSize(layer);
   const dw = base.w * scale;
@@ -28,23 +42,39 @@ export function EditableLayer({
   const halfDiag = Math.sqrt((dw / 2) ** 2 + (dh / 2) ** 2);
   const cornerAngle = Math.atan2(dh, dw);
 
-  const dragState = React.useRef<{ startTx: number; startTy: number; startX: number; startY: number } | null>(null);
+  const dragState = React.useRef<{ startTx: number; startTy: number; startX: number; startY: number; moved: boolean } | null>(null);
   const handleState = React.useRef<{ startScale: number; startRotation: number } | null>(null);
 
   const onBodyPointerDown = (e: React.PointerEvent) => {
     e.stopPropagation();
     onSelect(layer.id);
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
-    dragState.current = { startTx: layer.tx, startTy: layer.ty, startX: e.clientX, startY: e.clientY };
+    const useAdjust = adjustMode && layer.kind === 'frame';
+    const startTx = useAdjust ? layer.photoTx : layer.tx;
+    const startTy = useAdjust ? layer.photoTy : layer.ty;
+    dragState.current = { startTx, startTy, startX: e.clientX, startY: e.clientY, moved: false };
   };
   const onBodyPointerMove = (e: React.PointerEvent) => {
     if (!dragState.current) return;
     const { startTx, startTy, startX, startY } = dragState.current;
-    onChange(layer.id, { tx: startTx + (e.clientX - startX) / scale, ty: startTy + (e.clientY - startY) / scale });
+    const dx = e.clientX - startX;
+    const dy = e.clientY - startY;
+    if (Math.abs(dx) > TAP_THRESHOLD_PX || Math.abs(dy) > TAP_THRESHOLD_PX) dragState.current.moved = true;
+    if (adjustMode && layer.kind === 'frame') {
+      // photoTx/Ty live inside a box that's already scaled by both the
+      // canvas scale and this layer's own scale, so undo both to keep the
+      // drag tracking the pointer 1:1.
+      const divisor = scale * layer.scale;
+      onChange(layer.id, { photoTx: startTx + dx / divisor, photoTy: startTy + dy / divisor });
+    } else {
+      onChange(layer.id, { tx: startTx + dx / scale, ty: startTy + dy / scale });
+    }
   };
   const onBodyPointerUp = (e: React.PointerEvent) => {
+    const wasTap = dragState.current && !dragState.current.moved;
     dragState.current = null;
     (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+    if (wasTap && layer.kind === 'frame' && !layer.photoUri && !adjustMode) onRequestPhoto?.(layer.id);
   };
 
   const onHandlePointerDown = (e: React.PointerEvent) => {
@@ -94,7 +124,7 @@ export function EditableLayer({
         borderRadius: 6,
       }}
     >
-      <div style={{ width: '100%', height: '100%', pointerEvents: 'none' }}>
+      <div style={{ width: '100%', height: '100%', pointerEvents: 'none', position: 'relative' }}>
         {layer.kind === 'sticker' &&
           (layer.uri ? (
             <img src={layer.uri} alt="" style={{ width: dw, height: dh, objectFit: 'contain' }} />
@@ -104,6 +134,46 @@ export function EditableLayer({
         {layer.kind === 'image' && (
           <img src={layer.uri} alt="" style={{ width: dw, height: dh, borderRadius: (layer.radius ?? 0) * scale, objectFit: 'cover' }} />
         )}
+        {layer.kind === 'frame' && (() => {
+          const def = FRAME_DEFS[layer.frameId];
+          if (!def) return null;
+          const { hole } = def;
+          const FrameSvg = def.Svg;
+          return (
+            <>
+              <div
+                style={{
+                  position: 'absolute',
+                  left: `${hole.xPct}%`,
+                  top: `${hole.yPct}%`,
+                  width: `${hole.wPct}%`,
+                  height: `${hole.hPct}%`,
+                  borderRadius: '50%',
+                  overflow: 'hidden',
+                  background: layer.photoUri ? undefined : '#f0e6ea',
+                }}
+              >
+                {layer.photoUri ? (
+                  <img
+                    src={layer.photoUri}
+                    alt=""
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover',
+                      transform: `translate(${layer.photoTx}px, ${layer.photoTy}px) scale(${layer.photoScale})`,
+                    }}
+                  />
+                ) : (
+                  <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: dw * 0.14 }}>
+                    📷
+                  </div>
+                )}
+              </div>
+              <FrameSvg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} />
+            </>
+          );
+        })()}
         {layer.kind === 'text' && (
           <div
             style={{
@@ -121,7 +191,7 @@ export function EditableLayer({
         )}
       </div>
 
-      {selected && (
+      {selected && !adjustMode && (
         <div
           onPointerDown={onHandlePointerDown}
           onPointerMove={onHandlePointerMove}

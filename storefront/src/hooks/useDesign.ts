@@ -23,18 +23,29 @@ const nextZ = (layers: Layer[]) => (layers.length ? Math.max(...layers.map((l) =
 export function useDesign(initialModelId: string) {
   const [design, setDesign] = useState<Design>(() => blankDesign(initialModelId));
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  // Transient UI state, deliberately not a field on the layer itself — a
+  // saved/duplicated/templated design should never come back "stuck" in
+  // adjust mode.
+  const [adjustFrameId, setAdjustFrameId] = useState<string | null>(null);
 
   const startBlank = (modelId?: string) => {
     setDesign(blankDesign(modelId ?? design.modelId));
     setSelectedId(null);
+    setAdjustFrameId(null);
   };
   const startFromTemplate = (t: Template, modelId?: string) => {
     setDesign(fromTemplate(t, modelId ?? design.modelId));
     setSelectedId(null);
+    setAdjustFrameId(null);
   };
   const setModel = (modelId: string) => setDesign((d) => ({ ...d, modelId }));
   const setBackground = (bg: CaseBackground) => setDesign((d) => ({ ...d, background: bg }));
-  const select = (id: string | null) => setSelectedId(id);
+  const select = (id: string | null) => {
+    setSelectedId(id);
+    setAdjustFrameId((a) => (a === id ? a : null));
+  };
+  const enterAdjustMode = (id: string) => setAdjustFrameId(id);
+  const exitAdjustMode = () => setAdjustFrameId(null);
 
   const addSticker = (emoji: string) => {
     const layer: Layer = { id: uid(), kind: 'sticker', emoji, size: 64, tx: 0, ty: 0, scale: 1, rotation: 0, z: nextZ(design.layers) };
@@ -54,11 +65,25 @@ export function useDesign(initialModelId: string) {
     setDesign((d) => ({ ...d, layers: [...d.layers, layer] }));
     setSelectedId(layer.id);
   };
+  const addFrame = (frameId: string) => {
+    const layer: Layer = {
+      id: uid(), kind: 'frame', frameId, photoUri: null, photoTx: 0, photoTy: 0, photoScale: 1,
+      tx: 0, ty: 0, scale: 1, rotation: 0, z: nextZ(design.layers),
+    };
+    setDesign((d) => ({ ...d, layers: [...d.layers, layer] }));
+    setSelectedId(layer.id);
+  };
+  const setFramePhoto = (id: string, uri: string) =>
+    setDesign((d) => ({
+      ...d,
+      layers: d.layers.map((l) => (l.id === id && l.kind === 'frame' ? { ...l, photoUri: uri, photoTx: 0, photoTy: 0, photoScale: 1 } : l)),
+    }));
   const updateLayer = (id: string, patch: Partial<Layer>) =>
     setDesign((d) => ({ ...d, layers: d.layers.map((l) => (l.id === id ? ({ ...l, ...patch } as Layer) : l)) }));
   const removeLayer = (id: string) => {
     setDesign((d) => ({ ...d, layers: d.layers.filter((l) => l.id !== id) }));
     setSelectedId((s) => (s === id ? null : s));
+    setAdjustFrameId((a) => (a === id ? null : a));
   };
   const duplicateLayer = (id: string) => {
     const src = design.layers.find((l) => l.id === id);
@@ -71,7 +96,8 @@ export function useDesign(initialModelId: string) {
     setDesign((d) => ({ ...d, layers: d.layers.map((l) => (l.id === id ? { ...l, z: nextZ(d.layers) } : l)) }));
 
   return {
-    design, selectedId, startBlank, startFromTemplate, setModel, setBackground, select,
-    addSticker, addText, addImage, updateLayer, removeLayer, duplicateLayer, bringToFront,
+    design, selectedId, adjustFrameId, startBlank, startFromTemplate, setModel, setBackground, select,
+    enterAdjustMode, exitAdjustMode,
+    addSticker, addText, addImage, addFrame, setFramePhoto, updateLayer, removeLayer, duplicateLayer, bringToFront,
   };
 }

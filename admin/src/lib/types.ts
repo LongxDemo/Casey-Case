@@ -3,7 +3,10 @@ export type CaseBackground = { id: string; name: string; colors: string[] };
 export type Layer =
   | { id: string; kind: 'image'; uri: string; width: number; height: number; radius?: number; tx: number; ty: number; scale: number; rotation: number; z: number }
   | { id: string; kind: 'sticker'; emoji?: string; uri?: string; size: number; tx: number; ty: number; scale: number; rotation: number; z: number }
-  | { id: string; kind: 'text'; text: string; color: string; fontSize: number; fontWeight: string; align: 'left' | 'center' | 'right'; tx: number; ty: number; scale: number; rotation: number; z: number };
+  | { id: string; kind: 'text'; text: string; color: string; fontSize: number; fontWeight: string; align: 'left' | 'center' | 'right'; tx: number; ty: number; scale: number; rotation: number; z: number }
+  // Fruit/character frame with a face-hole; geometry looked up by frameId
+  // from FRAME_DEFS at render time (mirrors storefront's lib/frames.ts).
+  | { id: string; kind: 'frame'; frameId: string; photoUri: string | null; photoTx: number; photoTy: number; photoScale: number; tx: number; ty: number; scale: number; rotation: number; z: number };
 
 export type DesignRow = {
   id: string;

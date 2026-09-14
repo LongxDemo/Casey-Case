@@ -6,6 +6,7 @@ import { useDesign } from './hooks/useDesign';
 import { backgrounds, stickerPacks, templates as staticTemplates, BASE_PRICE_CENTS } from './mock';
 import { CANVAS_BASE, MODELS, phoneModels, platformOf, sizeForModel } from './lib/types';
 import type { FrontPage, Layer, Platform, Template, TextLayer } from './lib/types';
+import { FRAME_DEFS, frameOrder } from './lib/frames';
 import { supabase } from './lib/supabase';
 
 const money = (c: number) => `$${(c / 100).toFixed(2)}`;
@@ -196,14 +197,21 @@ function Home({
 
 /* ───────────────────────── Editor ───────────────────────── */
 
-type Tool = 'photo' | 'text' | 'stickers' | 'color' | 'model';
+type Tool = 'photo' | 'text' | 'stickers' | 'frames' | 'color' | 'model';
 const TEXT_COLORS = ['#FFFFFF', '#141018', '#FF3E9A', '#D6006E', '#FFD400', '#7B61FF', '#3EC8A0', '#FF5470'];
 
 function Editor({ design, onBack }: { design: ReturnType<typeof useDesign>; onBack: () => void }) {
-  const { design: d, selectedId, select, setBackground, setModel, addSticker, addText, addImage, updateLayer, removeLayer, duplicateLayer, bringToFront } = design;
+  const {
+    design: d, selectedId, adjustFrameId, select, setBackground, setModel,
+    enterAdjustMode, exitAdjustMode,
+    addSticker, addText, addImage, addFrame, setFramePhoto, updateLayer, removeLayer, duplicateLayer, bringToFront,
+  } = design;
   const model = MODELS[d.modelId] ?? phoneModels[0];
   const canvasRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // When set, the next file picked goes to that frame layer's photo instead
+  // of creating a new standalone image layer.
+  const uploadTargetFrameId = useRef<string | null>(null);
 
   const [tool, setTool] = useState<Tool>('stickers');
   const [activePack, setActivePack] = useState(stickerPacks[0].id);
@@ -217,14 +225,23 @@ function Editor({ design, onBack }: { design: ReturnType<typeof useDesign>; onBa
   const selected = d.layers.find((l) => l.id === selectedId) ?? null;
   const ordered = [...d.layers].sort((a, b) => a.z - b.z);
 
-  const pickImage = () => fileInputRef.current?.click();
+  const pickImage = (frameId?: string) => {
+    uploadTargetFrameId.current = frameId ?? null;
+    fileInputRef.current?.click();
+  };
   const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    const targetFrameId = uploadTargetFrameId.current;
+    uploadTargetFrameId.current = null;
     e.target.value = '';
     if (!file) return;
     const reader = new FileReader();
     reader.onload = () => {
       const uri = reader.result as string;
+      if (targetFrameId) {
+        setFramePhoto(targetFrameId, uri);
+        return;
+      }
       const img = new Image();
       img.onload = () => addImage(uri, img.naturalWidth || 1000, img.naturalHeight || 1000);
       img.src = uri;
@@ -265,7 +282,17 @@ function Editor({ design, onBack }: { design: ReturnType<typeof useDesign>; onBa
             }}
           />
           {ordered.map((l) => (
-            <EditableLayer key={l.id} layer={l} selected={l.id === selectedId} scale={scale} canvasRef={canvasRef} onSelect={select} onChange={updateLayer} />
+            <EditableLayer
+              key={l.id}
+              layer={l}
+              selected={l.id === selectedId}
+              scale={scale}
+              canvasRef={canvasRef}
+              onSelect={select}
+              onChange={updateLayer}
+              adjustMode={l.id === adjustFrameId}
+              onRequestPhoto={pickImage}
+            />
           ))}
           <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
             <CameraModule style={camStyleFor(model)} width={canvasW} height={canvasH} tint={d.background.colors[0]} />
@@ -280,9 +307,25 @@ function Editor({ design, onBack }: { design: ReturnType<typeof useDesign>; onBa
         {d.layers.length === 0 && <p className="panel-hint" style={{ position: 'absolute', bottom: 8 }}>Add stickers, text or a photo 👇</p>}
       </div>
 
-      {selected && (
+      {selected && selected.kind === 'frame' && adjustFrameId === selected.id && (
+        <div className="actions-row">
+          <button className="action-btn" onClick={() => updateLayer(selected.id, { photoScale: Math.max(0.5, selected.photoScale / 1.15) })}>➖ Zoom out</button>
+          <button className="action-btn" onClick={() => updateLayer(selected.id, { photoScale: Math.min(4, selected.photoScale * 1.15) })}>➕ Zoom in</button>
+          <button className="action-btn" onClick={exitAdjustMode}>✓ Done</button>
+        </div>
+      )}
+      {selected && !(selected.kind === 'frame' && adjustFrameId === selected.id) && (
         <div className="actions-row">
           {selected.kind === 'text' && <button className="action-btn" onClick={openTextEditor}>✏️ Edit</button>}
+          {selected.kind === 'frame' && !selected.photoUri && (
+            <button className="action-btn" onClick={() => pickImage(selected.id)}>📷 Add Photo</button>
+          )}
+          {selected.kind === 'frame' && selected.photoUri && (
+            <>
+              <button className="action-btn" onClick={() => enterAdjustMode(selected.id)}>🎯 Adjust Face</button>
+              <button className="action-btn" onClick={() => pickImage(selected.id)}>🔁 Replace Photo</button>
+            </>
+          )}
           <button className="action-btn" onClick={() => updateLayer(selected.id, { scale: Math.max(0.3, selected.scale / 1.15) })}>➖ Smaller</button>
           <button className="action-btn" onClick={() => updateLayer(selected.id, { scale: Math.min(6, selected.scale * 1.15) })}>➕ Bigger</button>
           <button className="action-btn" onClick={() => updateLayer(selected.id, { rotation: selected.rotation + Math.PI / 12 })}>🔄 Rotate</button>
@@ -292,11 +335,14 @@ function Editor({ design, onBack }: { design: ReturnType<typeof useDesign>; onBa
         </div>
       )}
 
+      {/* Always mounted (not just on the Photo tab) — Frames' "Add Photo"/
+          "Replace Photo" and tap-to-upload can fire pickImage() from any tab. */}
+      <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={onFileChange} />
+
       <div className="panel-wrap">
         {tool === 'photo' && (
           <div className="panel">
-            <button className="btn" onClick={pickImage}>☁️ Upload a photo</button>
-            <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={onFileChange} />
+            <button className="btn" onClick={() => pickImage()}>☁️ Upload a photo</button>
             <p className="panel-hint">Add your bias, selfies or any pic. Drag the corner handle to resize & rotate.</p>
           </div>
         )}
@@ -353,11 +399,28 @@ function Editor({ design, onBack }: { design: ReturnType<typeof useDesign>; onBa
             </div>
           </div>
         )}
+        {tool === 'frames' && (
+          <div className="panel">
+            <div className="hscroll">
+              {frameOrder.map((id) => {
+                const def = FRAME_DEFS[id];
+                const FrameSvg = def.Svg;
+                return (
+                  <button key={id} className="frame-btn" onClick={() => addFrame(id)} title={def.name}>
+                    <FrameSvg style={{ width: 56, height: 56 * (def.height / def.width) }} />
+                  </button>
+                );
+              })}
+            </div>
+            <p className="panel-hint">Tap a frame to add it, then tap the hole (or "Add Photo") to place a face inside.</p>
+          </div>
+        )}
 
         <div className="tabbar">
           <TabBtn icon="🖼️" label="Photo" active={tool === 'photo'} onClick={() => setTool('photo')} />
           <TabBtn icon="🔤" label="Text" active={tool === 'text'} onClick={() => setTool('text')} />
           <TabBtn icon="😊" label="Stickers" active={tool === 'stickers'} onClick={() => setTool('stickers')} />
+          <TabBtn icon="🍓" label="Frames" active={tool === 'frames'} onClick={() => setTool('frames')} />
           <TabBtn icon="🎨" label="Color" active={tool === 'color'} onClick={() => setTool('color')} />
           <TabBtn icon="📱" label="Model" active={tool === 'model'} onClick={() => setTool('model')} />
         </div>
@@ -427,21 +490,27 @@ function ModelPicker({ modelId, onSetModel }: { modelId: string; onSetModel: (id
 
 /** Move any base64 photo layers into Supabase Storage and swap the data URL
  *  for the public URL, so the designs row stays small. */
+async function uploadDataUri(uri: string): Promise<string> {
+  const blob = await (await fetch(uri)).blob();
+  const ext = (blob.type.split('/')[1] || 'png').replace('jpeg', 'jpg');
+  const path = `${crypto.randomUUID()}.${ext}`;
+  const { error } = await supabase!.storage.from('design-photos').upload(path, blob, { contentType: blob.type });
+  if (error) throw new Error(`photo upload — ${error.message}`);
+  const { data } = supabase!.storage.from('design-photos').getPublicUrl(path);
+  return data.publicUrl;
+}
+
 async function uploadPhotoLayers(layers: Layer[]): Promise<Layer[]> {
   if (!supabase) return layers;
   const out: Layer[] = [];
   for (const l of layers) {
-    if (l.kind !== 'image' || !l.uri.startsWith('data:')) {
+    if (l.kind === 'image' && l.uri.startsWith('data:')) {
+      out.push({ ...l, uri: await uploadDataUri(l.uri) });
+    } else if (l.kind === 'frame' && l.photoUri?.startsWith('data:')) {
+      out.push({ ...l, photoUri: await uploadDataUri(l.photoUri) });
+    } else {
       out.push(l);
-      continue;
     }
-    const blob = await (await fetch(l.uri)).blob();
-    const ext = (blob.type.split('/')[1] || 'png').replace('jpeg', 'jpg');
-    const path = `${crypto.randomUUID()}.${ext}`;
-    const { error } = await supabase.storage.from('design-photos').upload(path, blob, { contentType: blob.type });
-    if (error) throw new Error(`photo upload — ${error.message}`);
-    const { data } = supabase.storage.from('design-photos').getPublicUrl(path);
-    out.push({ ...l, uri: data.publicUrl });
   }
   return out;
 }
@@ -490,6 +559,9 @@ function SendModal({
       for (const l of design.layers) {
         if (l.kind === 'image' && l.uri.startsWith('data:')) {
           form.append(`photo_${n}`, await (await fetch(l.uri)).blob(), `photo-${n + 1}.png`);
+          n++;
+        } else if (l.kind === 'frame' && l.photoUri?.startsWith('data:')) {
+          form.append(`photo_${n}`, await (await fetch(l.photoUri)).blob(), `photo-${n + 1}.png`);
           n++;
         }
       }
