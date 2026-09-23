@@ -68,7 +68,14 @@ export const MODELS: Record<string, PhoneModel> = {
   ip16p: { id: 'ip16p', brand: 'iPhone', name: '16 Pro', heightMm: 149.6, widthMm: 71.5 },
   ip16: { id: 'ip16', brand: 'iPhone', name: '16 / 16 Plus', heightMm: 154.25, widthMm: 74.7 }, // avg 147.6x71.6, 160.9x77.8
   ip15pm: { id: 'ip15pm', brand: 'iPhone', name: '15 Pro Max', heightMm: 159.9, widthMm: 76.7 },
-  ip15: { id: 'ip15', brand: 'iPhone', name: '15 / 15 Pro', heightMm: 147.1, widthMm: 71.1 }, // avg 147.6x71.6, 146.6x70.6
+  // 15 and 15 Pro used to be one averaged-size catalog entry, but they have
+  // different real cameras (15: diagonal dual lens; 15 Pro: square triple
+  // lens) — camStyleFor() picks the style off the name, so a combined
+  // "15 / 15 Pro" name always matched the "Pro" square-module style even
+  // when the customer picked the base 15. Kept as two entries like the Pro
+  // Max above, not grouped like 16/16 Plus (which really do share a camera).
+  ip15p: { id: 'ip15p', brand: 'iPhone', name: '15 Pro', heightMm: 146.6, widthMm: 70.6 },
+  ip15: { id: 'ip15', brand: 'iPhone', name: '15', heightMm: 147.6, widthMm: 71.6 },
   ip14: { id: 'ip14', brand: 'iPhone', name: '14 / 13', heightMm: 146.7, widthMm: 71.5 },
   ip12: { id: 'ip12', brand: 'iPhone', name: '12 / 11', heightMm: 148.8, widthMm: 73.6 }, // avg 146.7x71.5, 150.9x75.7
   ipse: { id: 'ipse', brand: 'iPhone', name: 'SE (2022)', heightMm: 138.4, widthMm: 67.3 }, // iPhone 8 body

@@ -204,7 +204,7 @@ function Editor({ design, onBack }: { design: ReturnType<typeof useDesign>; onBa
   const {
     design: d, selectedId, adjustFrameId, select, setBackground, setModel,
     enterAdjustMode, exitAdjustMode,
-    addSticker, addText, addImage, addFrame, setFramePhoto, updateLayer, removeLayer, duplicateLayer, bringToFront,
+    addSticker, addText, addImage, fitImageToCase, addFrame, setFramePhoto, updateLayer, removeLayer, duplicateLayer, bringToFront,
   } = design;
   const model = MODELS[d.modelId] ?? phoneModels[0];
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -325,6 +325,9 @@ function Editor({ design, onBack }: { design: ReturnType<typeof useDesign>; onBa
               <button className="action-btn" onClick={() => enterAdjustMode(selected.id)}>🎯 Adjust Face</button>
               <button className="action-btn" onClick={() => pickImage(selected.id)}>🔁 Replace Photo</button>
             </>
+          )}
+          {selected.kind === 'image' && (
+            <button className="action-btn" onClick={() => fitImageToCase(selected.id)}>🖼️ Fit to Case</button>
           )}
           <button className="action-btn" onClick={() => updateLayer(selected.id, { scale: Math.max(0.3, selected.scale / 1.15) })}>➖ Smaller</button>
           <button className="action-btn" onClick={() => updateLayer(selected.id, { scale: Math.min(6, selected.scale * 1.15) })}>➕ Bigger</button>
@@ -549,12 +552,19 @@ function SendModal({
       form.append('note', note.trim());
       form.append('model', modelLabel);
 
-      // Snapshot of the finished design, straight off the editor canvas.
+      // Print-ready snapshot straight off the editor canvas — the ONLY file
+      // in this submission with the camera cutout actually masked out (the
+      // raw photos below are unmasked originals). At pixelRatio 6 this is
+      // print-resolution (~300dpi) for every model in the catalog, so this
+      // file, not the raw photos, is what should go to the printer.
       if (canvasRef.current) {
-        const preview = await toBlob(canvasRef.current, { pixelRatio: 3 });
-        if (preview) form.append('preview', preview, 'design.png');
+        const preview = await toBlob(canvasRef.current, { pixelRatio: 6 });
+        if (preview) form.append('preview', preview, 'design-print-ready.png');
       }
-      // Customer's uploaded photos at original quality, for printing.
+      // Customer's uploaded photos at original quality, for reference/re-
+      // editing only — NOT masked, so printing these directly instead of
+      // design-print-ready.png above will bleed image content into the
+      // camera cutout area.
       let n = 0;
       for (const l of design.layers) {
         if (l.kind === 'image' && l.uri.startsWith('data:')) {

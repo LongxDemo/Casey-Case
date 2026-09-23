@@ -199,6 +199,12 @@ function plateGradient(tint: string) {
   return `linear-gradient(160deg, color-mix(in srgb, ${tint} 92%, white), color-mix(in srgb, ${tint} 88%, black))`;
 }
 
+// The die-cut hole is an actual opening in the case, not printed/molded
+// case material — you see straight through it to the phone's own camera
+// glass/housing underneath, so it can never take on the customer's chosen
+// case color. Render it as the phone's own dark hardware tone instead.
+const EXPOSED_METAL_TINT = '#2c2c31';
+
 function Plate({ l, t, w, h, r, tint }: { l: number; t: number; w: number; h: number; r: number | string; tint: string }) {
   return (
     <div
@@ -212,10 +218,12 @@ function Plate({ l, t, w, h, r, tint }: { l: number; t: number; w: number; h: nu
         // Soft top light over near-flat matte metal.
         background: `linear-gradient(180deg, rgba(255,255,255,0.16), rgba(255,255,255,0) 34%), ${plateGradient(tint)}`,
         // Crisp thin seam + soft contact shadow reads as a precise molded
-        // edge instead of a raised sticker with fat highlight strokes.
+        // edge instead of a raised sticker with fat highlight strokes, plus
+        // a clear white outline ring so the cutout reads as a deliberate
+        // marked boundary against any photo/background behind it.
         boxShadow: [
           `0 ${Math.max(1, h * 0.03)}px ${Math.max(2, h * 0.08)}px rgba(10,8,18,0.22)`,
-          'inset 0 0 0 1px rgba(0,0,0,0.1)',
+          `inset 0 0 0 ${Math.max(5, h * 0.12)}px rgba(255,255,255,0.95)`,
           'inset 0 1px 0.5px rgba(255,255,255,0.25)',
           `inset 0 -${Math.max(1, h * 0.02)}px ${Math.max(1.5, h * 0.04)}px rgba(10,8,18,0.12)`,
         ].join(', '),
@@ -224,51 +232,52 @@ function Plate({ l, t, w, h, r, tint }: { l: number; t: number; w: number; h: nu
   );
 }
 
-export function CameraModule({ style, width: W, height: H, tint }: { style: CamStyle; width: number; height: number; tint: string }) {
+export function CameraModule({ style, width: W, height: H }: { style: CamStyle; width: number; height: number; tint: string }) {
   if (style === 'ip17-plateau') {
     // Inset from the phone's edges with a case-material border on all
     // four sides, all four corners rounded — verified against a real
     // printed 17 Pro case.
     const mx = W * 0.045, my = H * 0.045;
     const pw = W - mx * 2, bh = W * 0.5;
-    return <Plate l={mx} t={my} w={pw} h={bh} r={bh * 0.22} tint={tint} />;
+    return <Plate l={mx} t={my} w={pw} h={bh} r={bh * 0.22} tint={EXPOSED_METAL_TINT} />;
   }
   if (style === 'ip17-air') {
     // Same inset-with-border treatment as the Pro plateau — full width
     // minus a case-material margin, rounded on all four corners.
     const mx = W * 0.045, my = H * 0.045;
     const pw = W - mx * 2, ph = W * 0.27;
-    return <Plate l={mx} t={my} w={pw} h={ph} r={ph * 0.32} tint={tint} />;
+    return <Plate l={mx} t={my} w={pw} h={ph} r={ph * 0.32} tint={EXPOSED_METAL_TINT} />;
   }
   if (style === 'ip-vert') {
     // Spec table: ~30x55mm pill on a 71.6mm-wide body -> width 0.42,
     // elongated 1.83x (55/30).
     const s = W * 0.42, px = W * 0.05, py = H * 0.045, sh = s * 1.83;
-    return <Plate l={px} t={py} w={s} h={sh} r={s * 0.5} tint={tint} />;
+    return <Plate l={px} t={py} w={s} h={sh} r={s * 0.5} tint={EXPOSED_METAL_TINT} />;
   }
   if (style === 'ip-square') {
     // Spec table bump figures for 15 Pro/16 Pro/16 Pro Max average ~0.50 of
-    // body width (38-40mm on 70.6-77.6mm bodies).
-    const s = W * 0.5, px = W * 0.06, py = H * 0.045;
-    return <Plate l={px} t={py} w={s} h={s} r={s * 0.28} tint={tint} />;
+    // body width (38-40mm on 70.6-77.6mm bodies). Flush against the case's
+    // own top-left corner, not inset from it.
+    const s = W * 0.5, px = 0, py = 0;
+    return <Plate l={px} t={py} w={s} h={s} r={s * 0.28} tint={EXPOSED_METAL_TINT} />;
   }
   if (style === 'ip-dual') {
     // Spec table bump figures for 11/12/13/14 average ~0.45 of body width
     // (30-35mm on 71.5-75.7mm bodies). Measured against a real 13/14 case
     // photo: the module is nearly SQUARE (~1.04x taller than wide).
     const s = W * 0.45, px = W * 0.05, py = H * 0.04, sh = s * 1.04;
-    return <Plate l={px} t={py} w={s} h={sh} r={s * 0.32} tint={tint} />;
+    return <Plate l={px} t={py} w={s} h={sh} r={s * 0.32} tint={EXPOSED_METAL_TINT} />;
   }
   if (style === 'ip-dual-vert') {
     // 11/12: square-ish module, both lenses stacked vertically on the left.
     const s = W * 0.45, px = W * 0.05, py = H * 0.04, sh = s * 1.15;
-    return <Plate l={px} t={py} w={s} h={sh} r={s * 0.32} tint={tint} />;
+    return <Plate l={px} t={py} w={s} h={sh} r={s * 0.32} tint={EXPOSED_METAL_TINT} />;
   }
   if (style === 'ip-single') {
     // SE / iPhone 8 body: a small bare-lens housing top-left. Real housing
     // is small (~15mm on a 67mm body), not a Pro-sized lens.
     const ld = W * 0.22;
-    return <Plate l={W * 0.06 - ld * 0.15} t={H * 0.045 - ld * 0.15} w={ld * 1.6} h={ld * 1.3} r={ld * 0.4} tint={tint} />;
+    return <Plate l={W * 0.06 - ld * 0.15} t={H * 0.045 - ld * 0.15} w={ld * 1.6} h={ld * 1.3} r={ld * 0.4} tint={EXPOSED_METAL_TINT} />;
   }
   if (style === 'samsung' || style === 'samsung-ultra') {
     // S/A-series and the Fold's rear: a tall blank channel clearing the
@@ -276,7 +285,7 @@ export function CameraModule({ style, width: W, height: H, tint }: { style: CamS
     // column on the right).
     const ld = W * 0.145, lx = W * 0.07, ty = H * 0.045, gap = ld * 1.24;
     const w = style === 'samsung-ultra' ? ld * 2.5 : ld * 1.3;
-    return <Plate l={lx - ld * 0.12} t={ty - ld * 0.12} w={w} h={gap * 2 + ld * 1.25} r={ld * 0.35} tint={tint} />;
+    return <Plate l={lx - ld * 0.12} t={ty - ld * 0.12} w={w} h={gap * 2 + ld * 1.25} r={ld * 0.35} tint={EXPOSED_METAL_TINT} />;
   }
   if (style === 'zflip') {
     // Closed Flip: the big cover-screen glass dominates the face — real
@@ -299,24 +308,24 @@ export function CameraModule({ style, width: W, height: H, tint }: { style: CamS
             background: 'linear-gradient(115deg, rgba(255,255,255,0) 42%, rgba(255,255,255,0.09) 50%, rgba(255,255,255,0) 58%)',
           }}
         />
-        <Plate l={W * 0.52 - ld * 0.12} t={cy - ld * 0.12} w={ld * 2.9} h={ld * 1.3} r={ld * 0.4} tint={tint} />
+        <Plate l={W * 0.52 - ld * 0.12} t={cy - ld * 0.12} w={ld * 2.9} h={ld * 1.3} r={ld * 0.4} tint={EXPOSED_METAL_TINT} />
       </>
     );
   }
   if (style === 'pixel' || style === 'pixel-pro') {
     // Pixel 7/8 visor: an edge-to-edge blank bar.
     const by = H * 0.065, bh = W * 0.17;
-    return <Plate l={0} t={by} w={W} h={bh} r={0} tint={tint} />;
+    return <Plate l={0} t={by} w={W} h={bh} r={0} tint={EXPOSED_METAL_TINT} />;
   }
   if (style === 'pixel-island') {
     // Pixel 9: the visor became a floating pill island with clear margins.
     const iw = W * 0.86, ih = W * 0.22, ix = (W - iw) / 2, iy = H * 0.055;
-    return <Plate l={ix} t={iy} w={iw} h={ih} r={ih / 2} tint={tint} />;
+    return <Plate l={ix} t={iy} w={iw} h={ih} r={ih / 2} tint={EXPOSED_METAL_TINT} />;
   }
   if (style === 'xiaomi') {
     // Xiaomi 14 / Redmi Note: rounded-square island.
     const s = W * 0.44, px = W * 0.06, py = H * 0.045;
-    return <Plate l={px} t={py} w={s} h={s} r={s * 0.28} tint={tint} />;
+    return <Plate l={px} t={py} w={s} h={s} r={s * 0.28} tint={EXPOSED_METAL_TINT} />;
   }
   if (style === 'oneplus') {
     // OnePlus 12: the signature big circular module joined to the left
@@ -324,16 +333,16 @@ export function CameraModule({ style, width: W, height: H, tint }: { style: CamS
     const d = W * 0.46, cx = W * 0.1, cy = H * 0.045;
     return (
       <>
-        <div style={{ position: 'absolute', left: 0, top: cy + d * 0.36, width: cx + d * 0.3, height: d * 0.28, background: plateGradient(tint), boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.08)' }} />
-        <Plate l={cx} t={cy} w={d} h={d} r="50%" tint={tint} />
+        <div style={{ position: 'absolute', left: 0, top: cy + d * 0.36, width: cx + d * 0.3, height: d * 0.28, background: plateGradient(EXPOSED_METAL_TINT), boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.08)' }} />
+        <Plate l={cx} t={cy} w={d} h={d} r="50%" tint={EXPOSED_METAL_TINT} />
       </>
     );
   }
   if (style === 'oppo') {
     // Reno 11: tall oval island.
     const ow = W * 0.34, oh = ow * 1.72, px = W * 0.06, py = H * 0.04;
-    return <Plate l={px} t={py} w={ow} h={oh} r={ow / 2} tint={tint} />;
+    return <Plate l={px} t={py} w={ow} h={oh} r={ow / 2} tint={EXPOSED_METAL_TINT} />;
   }
   const s = W * 0.3, px = W * 0.06, py = H * 0.04;
-  return <Plate l={px} t={py} w={s} h={s} r={s * 0.3} tint={tint} />;
+  return <Plate l={px} t={py} w={s} h={s} r={s * 0.3} tint={EXPOSED_METAL_TINT} />;
 }

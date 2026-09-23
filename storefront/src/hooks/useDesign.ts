@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { backgrounds } from '../mock';
+import { aspectOf, CANVAS_BASE, MODELS } from '../lib/types';
 import type { CaseBackground, Design, Layer, Template } from '../lib/types';
 
 let counter = 0;
@@ -65,6 +66,15 @@ export function useDesign(initialModelId: string) {
     setDesign((d) => ({ ...d, layers: [...d.layers, layer] }));
     setSelectedId(layer.id);
   };
+  // On-demand "Fit to Case" action (button-triggered, not automatic on
+  // upload) — resizes+recenters the layer to cover the full case edge to
+  // edge. LayerView renders images with objectFit: 'cover', so this center-
+  // crops rather than stretching/distorting the original photo.
+  const fitImageToCase = (id: string) => {
+    const model = MODELS[design.modelId] ?? Object.values(MODELS)[0];
+    const canvasH = CANVAS_BASE / aspectOf(model);
+    updateLayer(id, { width: CANVAS_BASE, height: canvasH, radius: 0, tx: 0, ty: 0, scale: 1, rotation: 0 });
+  };
   const addFrame = (frameId: string) => {
     const layer: Layer = {
       id: uid(), kind: 'frame', frameId, photoUri: null, photoTx: 0, photoTy: 0, photoScale: 1,
@@ -98,6 +108,6 @@ export function useDesign(initialModelId: string) {
   return {
     design, selectedId, adjustFrameId, startBlank, startFromTemplate, setModel, setBackground, select,
     enterAdjustMode, exitAdjustMode,
-    addSticker, addText, addImage, addFrame, setFramePhoto, updateLayer, removeLayer, duplicateLayer, bringToFront,
+    addSticker, addText, addImage, fitImageToCase, addFrame, setFramePhoto, updateLayer, removeLayer, duplicateLayer, bringToFront,
   };
 }

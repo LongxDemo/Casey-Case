@@ -69,6 +69,16 @@ export default {
         tg.append('caption', caption);
         tg.append('photo', preview, 'design.png');
         await telegram(env, 'sendPhoto', tg);
+
+        // sendPhoto above compresses/resizes for the chat thumbnail, which
+        // blurs exactly the camera-cutout edge Casey needs to see precisely
+        // — this is the ONLY file in the submission with that cutout masked
+        // out, so also send it as an uncompressed document.
+        const tgDoc = new FormData();
+        tgDoc.append('chat_id', env.TELEGRAM_CHAT_ID);
+        tgDoc.append('document', preview, 'design-print-ready.png');
+        tgDoc.append('caption', 'Full-quality design with camera cutout masked — use this to see exactly where it goes, not the compressed photo above.');
+        await telegram(env, 'sendDocument', tgDoc);
       } else {
         const tg = new FormData();
         tg.append('chat_id', env.TELEGRAM_CHAT_ID);
@@ -76,7 +86,9 @@ export default {
         await telegram(env, 'sendMessage', tg);
       }
 
-      // Customer's original photos at full quality, for printing.
+      // Customer's original photos at full quality, for printing — NOT
+      // masked, so the camera cutout must be re-applied by hand against
+      // design-print-ready.png above before these go to the machine.
       for (const [key, value] of form.entries()) {
         if (key.startsWith('photo_') && value instanceof File && value.size > 0) {
           const tg = new FormData();
