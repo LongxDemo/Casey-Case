@@ -281,8 +281,12 @@ export function cameraZoneRect(style: CamStyle, W: number, H: number): { left: n
     case 'ip17-air': {
       // Module position/aspect match the real cropped photo (584x215)
       // exactly — do not touch mx/my/bh when adjusting the cutoff line, only
-      // the zone's own pad below is tunable, same rule as ip17-plateau.
-      const mx = W * 0.15, my = H * 0.035, pw = W - mx * 2, bh = pw * (215 / 584);
+      // the zone's own pad below is tunable, same rule as ip17-plateau. Width
+      // measured directly off a real full-body product photo (shadow line +
+      // bar's own outline both run to within ~5% of the case edge on each
+      // side) — ~90% width, not the ~70% an earlier pass wrongly shrank it
+      // to while also fixing the oversized black zone.
+      const mx = W * 0.05, my = H * 0.035, pw = W - mx * 2, bh = pw * (215 / 584);
       return { left: 0, top: 0, width: W, height: my + bh + pad * 0.3 };
     }
     case 'ip-vert': {
@@ -534,8 +538,11 @@ export function CameraModule({ style, width: W, height: H, tint }: { style: CamS
     // so this gives a clean, exact-geometry cut with zero speckle, unlike
     // the noisier pixel-threshold approach. Sized to the image's own aspect
     // ratio (584x215) so nothing stretches — same pattern as the 17 Pro
-    // plateau above.
-    const mx = W * 0.15, my = H * 0.035;
+    // plateau above. Width measured directly off a real full-body product
+    // photo (shadow line + bar's own outline both run to within ~5% of the
+    // case edge on each side) — ~90% width, not the ~70% an earlier pass
+    // wrongly shrank it to while also fixing the oversized black zone.
+    const mx = W * 0.05, my = H * 0.035;
     const pw = W - mx * 2, bh = pw * (215 / 584);
     return <img src="/camera/i17air-skyblue.png" alt="" style={{ position: 'absolute', left: mx, top: my, width: pw, height: bh }} />;
   }
