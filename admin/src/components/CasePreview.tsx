@@ -286,15 +286,16 @@ export function cameraZoneRect(style: CamStyle, W: number, H: number): { left: n
       // Real photo, inset a bit from the true corner (not flush) so the
       // black margin frames the module evenly on left/top/right — a flush
       // 0,0 position left zero margin on two sides and all the margin on
-      // the other two, which read as visibly off-center. Bottom keeps the
-      // larger print-safety pad; width unverified against a real finished
-      // case yet (no machine measurement for this model).
+      // the other two, which read as visibly off-center. Bottom cutoff
+      // pulled up (pad*0.3, same treatment as ip17-plateau) — the full
+      // pad read as an oversized black bar below the module. Width
+      // unverified against a real finished case yet for this model.
       const s = W * 0.5, inset = W * 0.04, framePad = W * 0.025;
       return {
         left: Math.max(0, inset - framePad),
         top: Math.max(0, inset - framePad),
         width: inset + s + framePad - Math.max(0, inset - framePad),
-        height: inset + s * (145 / 140) + pad - Math.max(0, inset - framePad),
+        height: inset + s * (145 / 140) + pad * 0.3 - Math.max(0, inset - framePad),
       };
     }
     case 'ip-square': return { left: 0, top: 0, width: W * 0.5 + pad, height: W * 0.5 + pad };
