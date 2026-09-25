@@ -266,8 +266,12 @@ export function cameraZoneRect(style: CamStyle, W: number, H: number): { left: n
   const pad = H * 0.04;
   switch (style) {
     case 'ip17-plateau': {
+      // Module width/position (mx, my, pw, bh) match the actual rendered
+      // image exactly — do not touch when adjusting the cutoff line. Only
+      // the zone's own safety-margin padding is tuned here to nudge where
+      // the print starts, independent of the module's real size.
       const mx = W * 0.06, my = W * 0.03, pw = W - mx * 2, bh = pw * (141 / 222);
-      return { left: 0, width: W - mx + pad, height: my + bh + pad };
+      return { left: 0, width: W - mx + pad, height: my + bh + pad * 0.3 };
     }
     case 'ip17-air': return { left: 0, width: W, height: H * 0.045 + W * 0.27 + pad };
     case 'ip-vert': {
