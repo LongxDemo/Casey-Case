@@ -438,19 +438,17 @@ export function CameraModule({ style, width: W, height: H, tint }: { style: CamS
     // body width (38-40mm on 70.6-77.6mm bodies). Flush against the case's
     // own top-left corner, not inset from it.
     const s = W * 0.5, px = 0, py = 0;
-    const ld = s * 0.4;
+    const ld = s * 0.36;
     return (
       <>
         <Plate l={px} t={py} w={s} h={s} r={s * 0.28} tint={EXPOSED_METAL_TINT} caseTint={tint} />
         <Lens size={ld} left={px + s * 0.08} top={py + s * 0.08} />
         <Lens size={ld} left={px + s * 0.08} top={py + s * 0.5} />
         <Lens size={ld} left={px + s * 0.44} top={py + s * 0.29} />
-        {/* Right column, top to bottom: flash, mic, LiDAR — pulled in from
-            the rounded corners so they sit fully on the metal plate,
-            clear of both the case-material ring and the third lens. */}
-        <Flash size={ld * 0.36} left={px + s * 0.72} top={py + s * 0.12} />
-        <Dot size={ld * 0.16} left={px + s * 0.82} top={py + s * 0.47} />
-        <Dot size={ld * 0.3} left={px + s * 0.72} top={py + s * 0.72} />
+        {/* Flash top-right, LiDAR bottom-right — checked against a real
+            photo: there's no third small mic dot between them. */}
+        <Flash size={ld * 0.4} left={px + s * 0.72} top={py + s * 0.12} />
+        <Dot size={ld * 0.34} left={px + s * 0.72} top={py + s * 0.7} />
       </>
     );
   }

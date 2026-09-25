@@ -92,6 +92,16 @@ export const MODELS: Record<string, PhoneModel> = {
   ip15p: { id: 'ip15p', brand: 'iPhone', name: '15 Pro', heightMm: 146.6, widthMm: 70.6 },
   ip15: { id: 'ip15', brand: 'iPhone', name: '15', heightMm: 147.6, widthMm: 71.6 },
   ip14: { id: 'ip14', brand: 'iPhone', name: '14 / 13', heightMm: 146.7, widthMm: 71.5 },
+  // 12 Pro/12 Pro Max and 11 Pro/11 Pro Max were missing entirely — only the
+  // base non-Pro "12 / 11" entry below existed. Same reasoning as the 15/15
+  // Pro split above: the Pro models have a real triple-lens square camera,
+  // not the base model's dual lens, so they need their own catalog entries
+  // (and camStyleFor() below routes them to the square triple-lens style).
+  // Dimensions from Apple's published specs.
+  ip12pm: { id: 'ip12pm', brand: 'iPhone', name: '12 Pro Max', heightMm: 160.8, widthMm: 78.1 },
+  ip12p: { id: 'ip12p', brand: 'iPhone', name: '12 Pro', heightMm: 146.7, widthMm: 71.5 },
+  ip11pm: { id: 'ip11pm', brand: 'iPhone', name: '11 Pro Max', heightMm: 158.0, widthMm: 77.8 },
+  ip11p: { id: 'ip11p', brand: 'iPhone', name: '11 Pro', heightMm: 144.0, widthMm: 71.4 },
   ip12: { id: 'ip12', brand: 'iPhone', name: '12 / 11', heightMm: 148.8, widthMm: 73.6 }, // avg 146.7x71.5, 150.9x75.7
   ipse: { id: 'ipse', brand: 'iPhone', name: 'SE (2022)', heightMm: 138.4, widthMm: 67.3 }, // iPhone 8 body
 
