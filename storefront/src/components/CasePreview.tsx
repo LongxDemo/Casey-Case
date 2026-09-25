@@ -316,7 +316,7 @@ export function cameraZoneRect(style: CamStyle, W: number, H: number): { left: n
     }
     case 'ip-dual-vert': {
       const s = W * 0.45, px = W * 0.05;
-      return { left: 0, top: 0, width: px + s + pad, height: H * 0.04 + s * 1.15 + pad };
+      return { left: 0, top: 0, width: px + s + pad, height: H * 0.04 + s * 1.02 + pad };
     }
     case 'ip-single': {
       const ld = W * 0.22, bx = W * 0.06 - ld * 0.15, bw = ld * 1.6;
@@ -609,18 +609,21 @@ export function CameraModule({ style, width: W, height: H, tint }: { style: CamS
     );
   }
   if (style === 'ip-dual-vert') {
-    // Base 11/12 (not Pro): square-ish module, both lenses stacked
-    // vertically on the left, flash to the right vertically centered
-    // between them — checked against a real product photo. No extra dot.
-    const s = W * 0.45, px = W * 0.05, py = H * 0.04, sh = s * 1.15;
-    const ld = s * 0.42;
-    const flashSize = s * 0.2;
+    // Base 11/12 (not Pro): re-measured against a confirmed real iPhone 11
+    // product photo (pixel-sampled, not eyeballed) — the plate is almost
+    // perfectly square (not 15% taller than wide), the lenses sit a bit more
+    // toward the plate's center than flush-left, and there IS a small mic
+    // dot above the flash that an earlier pass missed entirely.
+    const s = W * 0.45, px = W * 0.05, py = H * 0.04, sh = s * 1.02;
+    const ld = s * 0.44;
+    const flashSize = s * 0.19, micSize = s * 0.06;
     return (
       <>
         <Plate l={px} t={py} w={s} h={sh} r={s * 0.32} tint={EXPOSED_METAL_TINT} caseTint={tint} />
-        <Lens size={ld} left={px + s * 0.09} top={py + sh * 0.08} />
-        <Lens size={ld} left={px + s * 0.09} top={py + sh - ld - sh * 0.08} />
-        <Flash size={flashSize} left={px + s * 0.58} top={py + sh * 0.5 - flashSize / 2} />
+        <Lens size={ld} left={px + s * 0.161} top={py + sh * 0.06} />
+        <Lens size={ld} left={px + s * 0.161} top={py + sh - ld - sh * 0.06} />
+        <Flash size={flashSize} left={px + s * 0.677} top={py + sh * 0.493 - flashSize / 2} />
+        <Dot size={micSize} left={px + s * 0.779 - micSize / 2} top={py + sh * 0.208 - micSize / 2} />
       </>
     );
   }
