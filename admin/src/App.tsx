@@ -348,10 +348,10 @@ function Gallery() {
     <>
       <h1 className="page-title">Casey Case Gallery</h1>
       <p className="page-sub">
-        Styles customers browse on the home screen — published from the mobile editor or promoted from a customer design. {templates.length} total.
+        Styles customers browse on the home screen — promoted from a customer design in the Designs tab. {templates.length} total.
       </p>
       {sorted.length === 0 ? (
-        <div className="empty">No gallery styles yet 🐰 — publish one from the mobile editor, or add one from Designs.</div>
+        <div className="empty">No gallery styles yet 🐰 — promote one from the Designs tab.</div>
       ) : (
         <div className="tpl-grid">
           {sorted.map((t) => (
