@@ -290,10 +290,11 @@ export function cameraZoneRect(style: CamStyle, W: number, H: number): { left: n
       return { left: 0, top: 0, width: W, height: my + bh + pad * 0.3 };
     }
     case 'ip-vert': {
-      // Zone must reach the flash too — it sits outside the plate now (see
-      // CameraModule below), not tucked inside it.
-      const s = W * 0.42, px = W * 0.05;
-      return { left: 0, top: 0, width: px + s * 1.28 + pad, height: H * 0.045 + s * 1.36 + pad };
+      // Matches the real photo's own footprint (245x280) — see
+      // CameraModule below, do not touch mx/my/bh here without updating it
+      // to match, only the zone's own pad is tunable.
+      const mx = W * 0.05, my = H * 0.045, pw = W - mx * 2, bh = pw * (280 / 245);
+      return { left: 0, top: 0, width: W, height: my + bh + pad };
     }
     case 'ip15-square': {
       // Real photo, inset a bit from the true corner (not flush) so the
@@ -549,27 +550,18 @@ export function CameraModule({ style, width: W, height: H, tint }: { style: CamS
     return <img src="/camera/i17air-skyblue.png" alt="" style={{ position: 'absolute', left: mx, top: my, width: pw, height: bh }} />;
   }
   if (style === 'ip-vert') {
-    // Re-measured against Apple's own flat "finish-select" product photo
-    // (the real color-picker asset, near-orthographic — much more reliable
-    // than the angled hero/lineup shots used previously). That corrected an
-    // earlier mistake: the plate IS a true full stadium/pill (fully rounded
-    // top and bottom, not a rounded square), and the flash sits OUTSIDE the
-    // plate as its own separate housing, not tucked inside it. What that
-    // earlier pass got right: there IS a small mic dot, positioned in the
-    // gap between the lenses. Ratios below (aspect, lens size, flash
-    // position) are pixel-measured off that photo, not eyeballed.
-    const s = W * 0.42, px = W * 0.05, py = H * 0.045, sh = s * 1.36;
-    const ld = s * 0.58;
-    const flashSize = s * 0.23;
-    return (
-      <>
-        <Plate l={px} t={py} w={s} h={sh} r={s * 0.5} tint={EXPOSED_METAL_TINT} caseTint={tint} />
-        <Lens size={ld} left={px + (s - ld) / 2} top={py + sh * 0.015} />
-        <Lens size={ld} left={px + (s - ld) / 2} top={py + sh - ld - sh * 0.015} />
-        <Flash size={flashSize} left={px + s * 1.052} top={py + sh * 0.504 - flashSize / 2} />
-        <Dot size={s * 0.05} left={px + s * 0.72} top={py + sh * 0.46} />
-      </>
-    );
+    // Real photo of the actual iPhone 17/16 camera (plate + separate flash
+    // housing), cropped from Apple's own flat "finish-select" product photo
+    // — a real product shot instead of a CSS recreation, same reasoning as
+    // the 17 Pro plateau above (flat CSS with no lens-glass reflections or
+    // metal shading read as an obviously fake flat cutout). Background was
+    // a smooth lavender gradient too close in hue to the metal ring for a
+    // color-distance mask, so cropped to the plate+flash bounds (pixel-
+    // measured) and masked with true stadium + circle shapes instead.
+    // Sized to the image's own aspect ratio (245x280) so nothing stretches.
+    const mx = W * 0.05, my = H * 0.045;
+    const pw = W - mx * 2, bh = pw * (280 / 245);
+    return <img src="/camera/ip17-lavender.png" alt="" style={{ position: 'absolute', left: mx, top: my, width: pw, height: bh }} />;
   }
   if (style === 'ip15-square') {
     // Real photo of the 15 Pro/Pro Max camera module — pixel-exact instead
