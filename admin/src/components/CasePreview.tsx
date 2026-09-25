@@ -235,7 +235,11 @@ function plateGradient(tint: string) {
 // case color. Render it as the phone's own dark hardware tone instead.
 const EXPOSED_METAL_TINT = '#2c2c31';
 
-function Plate({ l, t, w, h, r, tint }: { l: number; t: number; w: number; h: number; r: number | string; tint: string }) {
+function Plate({ l, t, w, h, r, tint, caseTint }: { l: number; t: number; w: number; h: number; r: number | string; tint: string; caseTint: string }) {
+  // The ring framing the die-cut hole IS real case material — it must be
+  // the customer's actual case color, not a fixed white (checked against a
+  // real black case: the ring around the camera is black, not white).
+  const ringColor = `color-mix(in srgb, ${caseTint} 88%, white)`;
   return (
     <div
       style={{
@@ -248,12 +252,11 @@ function Plate({ l, t, w, h, r, tint }: { l: number; t: number; w: number; h: nu
         // Soft top light over near-flat matte metal.
         background: `linear-gradient(180deg, rgba(255,255,255,0.16), rgba(255,255,255,0) 34%), ${plateGradient(tint)}`,
         // Crisp thin seam + soft contact shadow reads as a precise molded
-        // edge instead of a raised sticker with fat highlight strokes, plus
-        // a clear white outline ring so the cutout reads as a deliberate
-        // marked boundary against any photo/background behind it.
+        // edge, plus a case-colored ring so the cutout boundary reads as
+        // real material framing it, not a printed sticker outline.
         boxShadow: [
           `0 ${Math.max(1, h * 0.03)}px ${Math.max(2, h * 0.08)}px rgba(10,8,18,0.22)`,
-          `inset 0 0 0 ${Math.max(5, h * 0.12)}px rgba(255,255,255,0.95)`,
+          `inset 0 0 0 ${Math.max(5, h * 0.12)}px ${ringColor}`,
           'inset 0 1px 0.5px rgba(255,255,255,0.25)',
           `inset 0 -${Math.max(1, h * 0.02)}px ${Math.max(1.5, h * 0.04)}px rgba(10,8,18,0.12)`,
         ].join(', '),
@@ -377,7 +380,7 @@ function Dot({ size, left, top }: { size: number; left: number; top: number }) {
   );
 }
 
-export function CameraModule({ style, width: W, height: H }: { style: CamStyle; width: number; height: number; tint: string }) {
+export function CameraModule({ style, width: W, height: H, tint }: { style: CamStyle; width: number; height: number; tint: string }) {
   if (style === 'ip17-plateau') {
     // Inset from the phone's edges with a case-material border on all
     // four sides, all four corners rounded — verified against a real
@@ -389,7 +392,7 @@ export function CameraModule({ style, width: W, height: H }: { style: CamStyle; 
     const ld = bh * 0.43, pad = bh * 0.065, clx = mx + W * 0.055;
     return (
       <>
-        <Plate l={mx} t={my} w={pw} h={bh} r={bh * 0.22} tint={EXPOSED_METAL_TINT} />
+        <Plate l={mx} t={my} w={pw} h={bh} r={bh * 0.22} tint={EXPOSED_METAL_TINT} caseTint={tint} />
         <Lens size={ld} left={clx} top={my + pad} />
         <Lens size={ld} left={clx} top={my + bh - ld - pad} />
         <Lens size={ld} left={clx + ld * 0.95} top={my + (bh - ld) / 2} />
@@ -407,7 +410,7 @@ export function CameraModule({ style, width: W, height: H }: { style: CamStyle; 
     const ld = ph * 0.7;
     return (
       <>
-        <Plate l={mx} t={my} w={pw} h={ph} r={ph * 0.32} tint={EXPOSED_METAL_TINT} />
+        <Plate l={mx} t={my} w={pw} h={ph} r={ph * 0.32} tint={EXPOSED_METAL_TINT} caseTint={tint} />
         <Lens size={ld} left={mx + pw * 0.07} top={my + (ph - ld) / 2} />
         {/* Flash + mic sit right beside the lens, not far out on the empty side. */}
         <Flash size={ph * 0.22} left={mx + pw * 0.33} top={my + ph * 0.3} />
@@ -422,7 +425,7 @@ export function CameraModule({ style, width: W, height: H }: { style: CamStyle; 
     const ld = s * 0.76;
     return (
       <>
-        <Plate l={px} t={py} w={s} h={sh} r={s * 0.5} tint={EXPOSED_METAL_TINT} />
+        <Plate l={px} t={py} w={s} h={sh} r={s * 0.5} tint={EXPOSED_METAL_TINT} caseTint={tint} />
         <Lens size={ld} left={px + (s - ld) / 2} top={py + sh * 0.08} />
         <Lens size={ld} left={px + (s - ld) / 2} top={py + sh - ld - sh * 0.08} />
         <Flash size={s * 0.2} left={px + s * 1.06} top={py + sh * 0.08 + ld * 0.18} />
@@ -437,7 +440,7 @@ export function CameraModule({ style, width: W, height: H }: { style: CamStyle; 
     const ld = s * 0.4;
     return (
       <>
-        <Plate l={px} t={py} w={s} h={s} r={s * 0.28} tint={EXPOSED_METAL_TINT} />
+        <Plate l={px} t={py} w={s} h={s} r={s * 0.28} tint={EXPOSED_METAL_TINT} caseTint={tint} />
         <Lens size={ld} left={px + s * 0.08} top={py + s * 0.08} />
         <Lens size={ld} left={px + s * 0.08} top={py + s * 0.5} />
         <Lens size={ld} left={px + s * 0.44} top={py + s * 0.29} />
@@ -457,7 +460,7 @@ export function CameraModule({ style, width: W, height: H }: { style: CamStyle; 
     const ld = s * 0.42;
     return (
       <>
-        <Plate l={px} t={py} w={s} h={sh} r={s * 0.32} tint={EXPOSED_METAL_TINT} />
+        <Plate l={px} t={py} w={s} h={sh} r={s * 0.32} tint={EXPOSED_METAL_TINT} caseTint={tint} />
         <Lens size={ld} left={px + s * 0.06} top={py + s * 0.06} />
         <Lens size={ld} left={px + s - ld - s * 0.06} top={py + sh - ld - s * 0.06} />
         <Flash size={s * 0.18} left={px + s * 0.68} top={py + s * 0.12} />
@@ -471,7 +474,7 @@ export function CameraModule({ style, width: W, height: H }: { style: CamStyle; 
     const ld = s * 0.42;
     return (
       <>
-        <Plate l={px} t={py} w={s} h={sh} r={s * 0.32} tint={EXPOSED_METAL_TINT} />
+        <Plate l={px} t={py} w={s} h={sh} r={s * 0.32} tint={EXPOSED_METAL_TINT} caseTint={tint} />
         <Lens size={ld} left={px + s * 0.09} top={py + sh * 0.08} />
         <Lens size={ld} left={px + s * 0.09} top={py + sh - ld - sh * 0.08} />
         <Flash size={s * 0.18} left={px + s * 0.66} top={py + sh * 0.12} />
@@ -488,7 +491,7 @@ export function CameraModule({ style, width: W, height: H }: { style: CamStyle; 
     const lensD = ld * 0.85;
     return (
       <>
-        <Plate l={bx} t={by} w={bw} h={bh} r={ld * 0.4} tint={EXPOSED_METAL_TINT} />
+        <Plate l={bx} t={by} w={bw} h={bh} r={ld * 0.4} tint={EXPOSED_METAL_TINT} caseTint={tint} />
         <Lens size={lensD} left={bx + (bw - lensD) / 2} top={by + (bh - lensD) / 2} />
         <Flash size={ld * 0.24} left={W * 0.06 + ld * 1.08} top={H * 0.045 + ld * 0.14} />
       </>
@@ -502,7 +505,7 @@ export function CameraModule({ style, width: W, height: H }: { style: CamStyle; 
     const w = style === 'samsung-ultra' ? ld * 2.5 : ld * 1.3;
     return (
       <>
-        <Plate l={lx - ld * 0.12} t={ty - ld * 0.12} w={w} h={gap * 2 + ld * 1.25} r={ld * 0.35} tint={EXPOSED_METAL_TINT} />
+        <Plate l={lx - ld * 0.12} t={ty - ld * 0.12} w={w} h={gap * 2 + ld * 1.25} r={ld * 0.35} tint={EXPOSED_METAL_TINT} caseTint={tint} />
         <Lens size={ld} left={lx} top={ty} />
         <Lens size={ld} left={lx} top={ty + gap} />
         <Lens size={ld} left={lx} top={ty + gap * 2} />
@@ -534,7 +537,7 @@ export function CameraModule({ style, width: W, height: H }: { style: CamStyle; 
             background: 'linear-gradient(115deg, rgba(255,255,255,0) 42%, rgba(255,255,255,0.09) 50%, rgba(255,255,255,0) 58%)',
           }}
         />
-        <Plate l={W * 0.52 - ld * 0.12} t={cy - ld * 0.12} w={ld * 2.9} h={ld * 1.3} r={ld * 0.4} tint={EXPOSED_METAL_TINT} />
+        <Plate l={W * 0.52 - ld * 0.12} t={cy - ld * 0.12} w={ld * 2.9} h={ld * 1.3} r={ld * 0.4} tint={EXPOSED_METAL_TINT} caseTint={tint} />
         <Lens size={lensD} left={W * 0.52 + ld * 0.08} top={cy + (ld * 1.3 - lensD) / 2 - ld * 0.12} />
         <Lens size={lensD} left={W * 0.52 + ld * 1.23} top={cy + (ld * 1.3 - lensD) / 2 - ld * 0.12} />
         <Flash size={ld * 0.28} left={W * 0.52 + ld * 2.5} top={cy + ld * 0.36} />
@@ -547,7 +550,7 @@ export function CameraModule({ style, width: W, height: H }: { style: CamStyle; 
     const ld = bh * 0.52;
     return (
       <>
-        <Plate l={0} t={by} w={W} h={bh} r={0} tint={EXPOSED_METAL_TINT} />
+        <Plate l={0} t={by} w={W} h={bh} r={0} tint={EXPOSED_METAL_TINT} caseTint={tint} />
         <Lens size={ld} left={W * 0.15} top={by + (bh - ld) / 2} />
         <Lens size={ld} left={W * 0.15 + ld * 1.3} top={by + (bh - ld) / 2} />
         <Flash size={bh * 0.22} left={W * 0.88} top={by + bh * 0.39} />
@@ -560,7 +563,7 @@ export function CameraModule({ style, width: W, height: H }: { style: CamStyle; 
     const ld = ih * 0.53;
     return (
       <>
-        <Plate l={ix} t={iy} w={iw} h={ih} r={ih / 2} tint={EXPOSED_METAL_TINT} />
+        <Plate l={ix} t={iy} w={iw} h={ih} r={ih / 2} tint={EXPOSED_METAL_TINT} caseTint={tint} />
         {[0.2, 0.5, 0.8].map((f, i) => (
           <Lens key={i} size={ld} left={ix + iw * f - ld / 2} top={iy + (ih - ld) / 2} />
         ))}
@@ -575,7 +578,7 @@ export function CameraModule({ style, width: W, height: H }: { style: CamStyle; 
     const ld = s * 0.36;
     return (
       <>
-        <Plate l={px} t={py} w={s} h={s} r={s * 0.28} tint={EXPOSED_METAL_TINT} />
+        <Plate l={px} t={py} w={s} h={s} r={s * 0.28} tint={EXPOSED_METAL_TINT} caseTint={tint} />
         <Lens size={ld} left={px + s * 0.1} top={py + s * 0.1} />
         <Lens size={ld} left={px + s * 0.54} top={py + s * 0.1} />
         <Lens size={ld} left={px + s * 0.1} top={py + s * 0.54} />
@@ -591,7 +594,7 @@ export function CameraModule({ style, width: W, height: H }: { style: CamStyle; 
     return (
       <>
         <div style={{ position: 'absolute', left: 0, top: cy + d * 0.36, width: cx + d * 0.3, height: d * 0.28, background: plateGradient(EXPOSED_METAL_TINT), boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.08)' }} />
-        <Plate l={cx} t={cy} w={d} h={d} r="50%" tint={EXPOSED_METAL_TINT} />
+        <Plate l={cx} t={cy} w={d} h={d} r="50%" tint={EXPOSED_METAL_TINT} caseTint={tint} />
         <Lens size={ld} left={cx + d * 0.14} top={cy + d * 0.14} />
         <Lens size={ld} left={cx + d * 0.54} top={cy + d * 0.14} />
         <Lens size={ld} left={cx + d * 0.14} top={cy + d * 0.54} />
@@ -607,7 +610,7 @@ export function CameraModule({ style, width: W, height: H }: { style: CamStyle; 
     const l1 = ow * 0.74, l2 = ow * 0.56;
     return (
       <>
-        <Plate l={px} t={py} w={ow} h={oh} r={ow / 2} tint={EXPOSED_METAL_TINT} />
+        <Plate l={px} t={py} w={ow} h={oh} r={ow / 2} tint={EXPOSED_METAL_TINT} caseTint={tint} />
         <Lens size={l1} left={px + (ow - l1) / 2} top={py + ow * 0.16} />
         <Lens size={l2} left={px + (ow - l2) / 2} top={py + oh - l2 - ow * 0.34} />
         <Dot size={ow * 0.1} left={px + ow * 0.45} top={py + oh - ow * 0.18} />
@@ -619,7 +622,7 @@ export function CameraModule({ style, width: W, height: H }: { style: CamStyle; 
   const ld = s * 0.4;
   return (
     <>
-      <Plate l={px} t={py} w={s} h={s} r={s * 0.3} tint={EXPOSED_METAL_TINT} />
+      <Plate l={px} t={py} w={s} h={s} r={s * 0.3} tint={EXPOSED_METAL_TINT} caseTint={tint} />
       <Lens size={ld} left={px + s * 0.12} top={py + s * 0.12} />
       <Lens size={ld} left={px + s * 0.5} top={py + s * 0.12} />
       <Lens size={ld} left={px + s * 0.12} top={py + s * 0.5} />
