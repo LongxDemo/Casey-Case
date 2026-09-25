@@ -187,7 +187,6 @@ function FrontPageEditor() {
           <div><label>Hero title</label><textarea className="f" rows={2} value={fp.hero_title} onChange={(e) => set({ hero_title: e.target.value })} /></div>
           <div><label>Hero subtitle</label><input className="f" value={fp.hero_subtitle} onChange={(e) => set({ hero_subtitle: e.target.value })} /></div>
           <div><label>CTA button text</label><input className="f" value={fp.hero_cta} onChange={(e) => set({ hero_cta: e.target.value })} /></div>
-          <div><label>Promo banner (optional)</label><input className="f" value={fp.banner_text ?? ''} onChange={(e) => set({ banner_text: e.target.value })} /></div>
           <div>
             <label>Featured templates</label>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>

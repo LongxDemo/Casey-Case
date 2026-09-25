@@ -97,8 +97,6 @@ function Home({
         </div>
       </div>
 
-      {fp.banner_text && <div className="notice" style={{ margin: '0 16px 10px' }}>📣 {fp.banner_text}</div>}
-
       <div className="hero">
         <div className="hero-blob" />
         <span className="hero-pill">DIY PHONE CASE</span>

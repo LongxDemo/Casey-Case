@@ -248,6 +248,27 @@ function Plate({ l, t, w, h, r, tint }: { l: number; t: number; w: number; h: nu
   );
 }
 
+// A visible lens circle sitting in the die-cut hole — dark glass with a
+// small specular highlight, not a flat silhouette.
+function Lens({ size, left, top }: { size: number; left: number; top: number }) {
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        left,
+        top,
+        width: size,
+        height: size,
+        borderRadius: '50%',
+        background: 'radial-gradient(circle at 35% 30%, #52525c 0%, #1c1c22 55%, #000 100%)',
+        boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.1), 0 1px 2px rgba(0,0,0,0.45)',
+      }}
+    >
+      <div style={{ position: 'absolute', left: '30%', top: '26%', width: '20%', height: '20%', borderRadius: '50%', background: 'rgba(255,255,255,0.5)' }} />
+    </div>
+  );
+}
+
 export function CameraModule({ style, width: W, height: H }: { style: CamStyle; width: number; height: number; tint: string }) {
   if (style === 'ip17-plateau') {
     // Inset from the phone's edges with a case-material border on all
@@ -255,45 +276,98 @@ export function CameraModule({ style, width: W, height: H }: { style: CamStyle; 
     // printed 17 Pro case.
     const mx = W * 0.045, my = H * 0.045;
     const pw = W - mx * 2, bh = W * 0.5;
-    return <Plate l={mx} t={my} w={pw} h={bh} r={bh * 0.22} tint={EXPOSED_METAL_TINT} />;
+    // Real triple-camera cluster sits on the LEFT side of the plateau, not
+    // spread edge-to-edge — two lenses stacked, a third tucked to their right.
+    const ld = bh * 0.43, pad = bh * 0.065, clx = mx + W * 0.055;
+    return (
+      <>
+        <Plate l={mx} t={my} w={pw} h={bh} r={bh * 0.22} tint={EXPOSED_METAL_TINT} />
+        <Lens size={ld} left={clx} top={my + pad} />
+        <Lens size={ld} left={clx} top={my + bh - ld - pad} />
+        <Lens size={ld} left={clx + ld * 0.95} top={my + (bh - ld) / 2} />
+      </>
+    );
   }
   if (style === 'ip17-air') {
     // Same inset-with-border treatment as the Pro plateau — full width
     // minus a case-material margin, rounded on all four corners.
     const mx = W * 0.045, my = H * 0.045;
     const pw = W - mx * 2, ph = W * 0.27;
-    return <Plate l={mx} t={my} w={pw} h={ph} r={ph * 0.32} tint={EXPOSED_METAL_TINT} />;
+    const ld = ph * 0.7;
+    return (
+      <>
+        <Plate l={mx} t={my} w={pw} h={ph} r={ph * 0.32} tint={EXPOSED_METAL_TINT} />
+        <Lens size={ld} left={mx + pw * 0.07} top={my + (ph - ld) / 2} />
+      </>
+    );
   }
   if (style === 'ip-vert') {
     // Spec table: ~30x55mm pill on a 71.6mm-wide body -> width 0.42,
     // elongated 1.83x (55/30).
     const s = W * 0.42, px = W * 0.05, py = H * 0.045, sh = s * 1.83;
-    return <Plate l={px} t={py} w={s} h={sh} r={s * 0.5} tint={EXPOSED_METAL_TINT} />;
+    const ld = s * 0.76;
+    return (
+      <>
+        <Plate l={px} t={py} w={s} h={sh} r={s * 0.5} tint={EXPOSED_METAL_TINT} />
+        <Lens size={ld} left={px + (s - ld) / 2} top={py + sh * 0.08} />
+        <Lens size={ld} left={px + (s - ld) / 2} top={py + sh - ld - sh * 0.08} />
+      </>
+    );
   }
   if (style === 'ip-square') {
     // Spec table bump figures for 15 Pro/16 Pro/16 Pro Max average ~0.50 of
     // body width (38-40mm on 70.6-77.6mm bodies). Flush against the case's
     // own top-left corner, not inset from it.
     const s = W * 0.5, px = 0, py = 0;
-    return <Plate l={px} t={py} w={s} h={s} r={s * 0.28} tint={EXPOSED_METAL_TINT} />;
+    const ld = s * 0.4;
+    return (
+      <>
+        <Plate l={px} t={py} w={s} h={s} r={s * 0.28} tint={EXPOSED_METAL_TINT} />
+        <Lens size={ld} left={px + s * 0.08} top={py + s * 0.08} />
+        <Lens size={ld} left={px + s * 0.08} top={py + s * 0.5} />
+        <Lens size={ld} left={px + s * 0.44} top={py + s * 0.29} />
+      </>
+    );
   }
   if (style === 'ip-dual') {
     // Spec table bump figures for 11/12/13/14 average ~0.45 of body width
     // (30-35mm on 71.5-75.7mm bodies). Measured against a real 13/14 case
     // photo: the module is nearly SQUARE (~1.04x taller than wide).
     const s = W * 0.45, px = W * 0.05, py = H * 0.04, sh = s * 1.04;
-    return <Plate l={px} t={py} w={s} h={sh} r={s * 0.32} tint={EXPOSED_METAL_TINT} />;
+    const ld = s * 0.42;
+    return (
+      <>
+        <Plate l={px} t={py} w={s} h={sh} r={s * 0.32} tint={EXPOSED_METAL_TINT} />
+        <Lens size={ld} left={px + s * 0.06} top={py + s * 0.06} />
+        <Lens size={ld} left={px + s - ld - s * 0.06} top={py + sh - ld - s * 0.06} />
+      </>
+    );
   }
   if (style === 'ip-dual-vert') {
     // 11/12: square-ish module, both lenses stacked vertically on the left.
     const s = W * 0.45, px = W * 0.05, py = H * 0.04, sh = s * 1.15;
-    return <Plate l={px} t={py} w={s} h={sh} r={s * 0.32} tint={EXPOSED_METAL_TINT} />;
+    const ld = s * 0.42;
+    return (
+      <>
+        <Plate l={px} t={py} w={s} h={sh} r={s * 0.32} tint={EXPOSED_METAL_TINT} />
+        <Lens size={ld} left={px + s * 0.09} top={py + sh * 0.08} />
+        <Lens size={ld} left={px + s * 0.09} top={py + sh - ld - sh * 0.08} />
+      </>
+    );
   }
   if (style === 'ip-single') {
     // SE / iPhone 8 body: a small bare-lens housing top-left. Real housing
     // is small (~15mm on a 67mm body), not a Pro-sized lens.
     const ld = W * 0.22;
-    return <Plate l={W * 0.06 - ld * 0.15} t={H * 0.045 - ld * 0.15} w={ld * 1.6} h={ld * 1.3} r={ld * 0.4} tint={EXPOSED_METAL_TINT} />;
+    const bx = W * 0.06 - ld * 0.15, by = H * 0.045 - ld * 0.15;
+    const bw = ld * 1.6, bh = ld * 1.3;
+    const lensD = ld * 0.85;
+    return (
+      <>
+        <Plate l={bx} t={by} w={bw} h={bh} r={ld * 0.4} tint={EXPOSED_METAL_TINT} />
+        <Lens size={lensD} left={bx + (bw - lensD) / 2} top={by + (bh - lensD) / 2} />
+      </>
+    );
   }
   if (style === 'samsung' || style === 'samsung-ultra') {
     // S/A-series and the Fold's rear: a tall blank channel clearing the
@@ -301,7 +375,15 @@ export function CameraModule({ style, width: W, height: H }: { style: CamStyle; 
     // column on the right).
     const ld = W * 0.145, lx = W * 0.07, ty = H * 0.045, gap = ld * 1.24;
     const w = style === 'samsung-ultra' ? ld * 2.5 : ld * 1.3;
-    return <Plate l={lx - ld * 0.12} t={ty - ld * 0.12} w={w} h={gap * 2 + ld * 1.25} r={ld * 0.35} tint={EXPOSED_METAL_TINT} />;
+    return (
+      <>
+        <Plate l={lx - ld * 0.12} t={ty - ld * 0.12} w={w} h={gap * 2 + ld * 1.25} r={ld * 0.35} tint={EXPOSED_METAL_TINT} />
+        <Lens size={ld} left={lx} top={ty} />
+        <Lens size={ld} left={lx} top={ty + gap} />
+        <Lens size={ld} left={lx} top={ty + gap * 2} />
+        {style === 'samsung-ultra' && <Lens size={ld * 0.78} left={lx + ld * 1.5} top={ty + gap * 1.45} />}
+      </>
+    );
   }
   if (style === 'zflip') {
     // Closed Flip: the big cover-screen glass dominates the face — real
@@ -309,6 +391,7 @@ export function CameraModule({ style, width: W, height: H }: { style: CamStyle; 
     // with a small blank channel for the dual camera at bottom right.
     const m = W * 0.045, sh = H * 0.66, ld = W * 0.15;
     const cy = sh + (H * 0.82 - sh - ld) / 2 + H * 0.03;
+    const lensD = ld * 0.9;
     return (
       <>
         <div
@@ -325,40 +408,85 @@ export function CameraModule({ style, width: W, height: H }: { style: CamStyle; 
           }}
         />
         <Plate l={W * 0.52 - ld * 0.12} t={cy - ld * 0.12} w={ld * 2.9} h={ld * 1.3} r={ld * 0.4} tint={EXPOSED_METAL_TINT} />
+        <Lens size={lensD} left={W * 0.52 + ld * 0.08} top={cy + (ld * 1.3 - lensD) / 2 - ld * 0.12} />
+        <Lens size={lensD} left={W * 0.52 + ld * 1.23} top={cy + (ld * 1.3 - lensD) / 2 - ld * 0.12} />
       </>
     );
   }
   if (style === 'pixel' || style === 'pixel-pro') {
     // Pixel 7/8 visor: an edge-to-edge blank bar.
     const by = H * 0.065, bh = W * 0.17;
-    return <Plate l={0} t={by} w={W} h={bh} r={0} tint={EXPOSED_METAL_TINT} />;
+    const ld = bh * 0.52;
+    return (
+      <>
+        <Plate l={0} t={by} w={W} h={bh} r={0} tint={EXPOSED_METAL_TINT} />
+        <Lens size={ld} left={W * 0.15} top={by + (bh - ld) / 2} />
+        <Lens size={ld} left={W * 0.15 + ld * 1.3} top={by + (bh - ld) / 2} />
+      </>
+    );
   }
   if (style === 'pixel-island') {
     // Pixel 9: the visor became a floating pill island with clear margins.
     const iw = W * 0.86, ih = W * 0.22, ix = (W - iw) / 2, iy = H * 0.055;
-    return <Plate l={ix} t={iy} w={iw} h={ih} r={ih / 2} tint={EXPOSED_METAL_TINT} />;
+    const ld = ih * 0.53;
+    return (
+      <>
+        <Plate l={ix} t={iy} w={iw} h={ih} r={ih / 2} tint={EXPOSED_METAL_TINT} />
+        {[0.2, 0.5, 0.8].map((f, i) => (
+          <Lens key={i} size={ld} left={ix + iw * f - ld / 2} top={iy + (ih - ld) / 2} />
+        ))}
+      </>
+    );
   }
   if (style === 'xiaomi') {
     // Xiaomi 14 / Redmi Note: rounded-square island.
     const s = W * 0.44, px = W * 0.06, py = H * 0.045;
-    return <Plate l={px} t={py} w={s} h={s} r={s * 0.28} tint={EXPOSED_METAL_TINT} />;
+    const ld = s * 0.36;
+    return (
+      <>
+        <Plate l={px} t={py} w={s} h={s} r={s * 0.28} tint={EXPOSED_METAL_TINT} />
+        <Lens size={ld} left={px + s * 0.1} top={py + s * 0.1} />
+        <Lens size={ld} left={px + s * 0.54} top={py + s * 0.1} />
+        <Lens size={ld} left={px + s * 0.1} top={py + s * 0.54} />
+      </>
+    );
   }
   if (style === 'oneplus') {
     // OnePlus 12: the signature big circular module joined to the left
     // edge by a short wing, both blank.
     const d = W * 0.46, cx = W * 0.1, cy = H * 0.045;
+    const ld = d * 0.32;
     return (
       <>
         <div style={{ position: 'absolute', left: 0, top: cy + d * 0.36, width: cx + d * 0.3, height: d * 0.28, background: plateGradient(EXPOSED_METAL_TINT), boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.08)' }} />
         <Plate l={cx} t={cy} w={d} h={d} r="50%" tint={EXPOSED_METAL_TINT} />
+        <Lens size={ld} left={cx + d * 0.14} top={cy + d * 0.14} />
+        <Lens size={ld} left={cx + d * 0.54} top={cy + d * 0.14} />
+        <Lens size={ld} left={cx + d * 0.14} top={cy + d * 0.54} />
       </>
     );
   }
   if (style === 'oppo') {
-    // Reno 11: tall oval island.
+    // Reno 11: tall oval island — one big main lens, one medium secondary,
+    // asymmetric like the real dual-camera (not two equal circles).
     const ow = W * 0.34, oh = ow * 1.72, px = W * 0.06, py = H * 0.04;
-    return <Plate l={px} t={py} w={ow} h={oh} r={ow / 2} tint={EXPOSED_METAL_TINT} />;
+    const l1 = ow * 0.74, l2 = ow * 0.56;
+    return (
+      <>
+        <Plate l={px} t={py} w={ow} h={oh} r={ow / 2} tint={EXPOSED_METAL_TINT} />
+        <Lens size={l1} left={px + (ow - l1) / 2} top={py + ow * 0.16} />
+        <Lens size={l2} left={px + (ow - l2) / 2} top={py + oh - l2 - ow * 0.34} />
+      </>
+    );
   }
   const s = W * 0.3, px = W * 0.06, py = H * 0.04;
-  return <Plate l={px} t={py} w={s} h={s} r={s * 0.3} tint={EXPOSED_METAL_TINT} />;
+  const ld = s * 0.4;
+  return (
+    <>
+      <Plate l={px} t={py} w={s} h={s} r={s * 0.3} tint={EXPOSED_METAL_TINT} />
+      <Lens size={ld} left={px + s * 0.12} top={py + s * 0.12} />
+      <Lens size={ld} left={px + s * 0.5} top={py + s * 0.12} />
+      <Lens size={ld} left={px + s * 0.12} top={py + s * 0.5} />
+    </>
+  );
 }
