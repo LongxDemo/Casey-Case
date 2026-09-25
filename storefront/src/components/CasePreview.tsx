@@ -290,11 +290,11 @@ export function cameraZoneRect(style: CamStyle, W: number, H: number): { left: n
       return { left: 0, top: 0, width: W, height: my + bh + pad * 0.3 };
     }
     case 'ip-vert': {
-      // Matches the real photo's own footprint (245x280) — see
-      // CameraModule below, do not touch mx/my/bh here without updating it
-      // to match, only the zone's own pad is tunable.
-      const mx = W * 0.05, my = H * 0.045, pw = W - mx * 2, bh = pw * (280 / 245);
-      return { left: 0, top: 0, width: W, height: my + bh + pad };
+      // Matches the real photo's own footprint (245x280) at 50% width — see
+      // CameraModule below, do not touch mx/my/pw/bh here without updating
+      // it to match, only the zone's own pad is tunable.
+      const mx = W * 0.05, my = H * 0.045, pw = W * 0.5, bh = pw * (280 / 245);
+      return { left: 0, top: 0, width: mx + pw + pad, height: my + bh + pad * 0.3 };
     }
     case 'ip15-square': {
       // Real photo, inset a bit from the true corner (not flush) so the
@@ -559,8 +559,13 @@ export function CameraModule({ style, width: W, height: H, tint }: { style: CamS
     // color-distance mask, so cropped to the plate+flash bounds (pixel-
     // measured) and masked with true stadium + circle shapes instead.
     // Sized to the image's own aspect ratio (245x280) so nothing stretches.
+    // Width is NOT a near-full-case inset like the Air/17 Pro plateau above
+    // — this module sits in the top-left corner at real proportions (the
+    // pre-photo CSS had the plate at 42% width; treating this crop's width
+    // as "W minus a small margin" blew it up to 90%+ and swallowed most of
+    // the case in black).
     const mx = W * 0.05, my = H * 0.045;
-    const pw = W - mx * 2, bh = pw * (280 / 245);
+    const pw = W * 0.5, bh = pw * (280 / 245);
     return <img src="/camera/ip17-lavender.png" alt="" style={{ position: 'absolute', left: mx, top: my, width: pw, height: bh }} />;
   }
   if (style === 'ip15-square') {
