@@ -291,7 +291,7 @@ export function cameraZoneRect(style: CamStyle, W: number, H: number): { left: n
     }
     case 'ip-vert': {
       const s = W * 0.42, px = W * 0.05;
-      return { left: 0, top: 0, width: px + s + pad, height: H * 0.045 + s * 1.83 + pad };
+      return { left: 0, top: 0, width: px + s + pad, height: H * 0.045 + s * 1.9 + pad };
     }
     case 'ip15-square': {
       // Real photo, inset a bit from the true corner (not flush) so the
@@ -547,16 +547,21 @@ export function CameraModule({ style, width: W, height: H, tint }: { style: CamS
     return <img src="/camera/i17air-skyblue.png" alt="" style={{ position: 'absolute', left: mx, top: my, width: pw, height: bh }} />;
   }
   if (style === 'ip-vert') {
-    // Spec table: ~30x55mm pill on a 71.6mm-wide body -> width 0.42,
-    // elongated 1.83x (55/30).
-    const s = W * 0.42, px = W * 0.05, py = H * 0.045, sh = s * 1.83;
-    const ld = s * 0.76;
+    // Checked against Apple's own official iPhone 17 photos (both lenses
+    // same size, stacked vertically). Two things the previous CSS got wrong,
+    // now fixed: the plate is a rounded SQUARE (small corner radius), not a
+    // full stadium/pill — and the flash + mic sit INSIDE the plate, tucked
+    // in the gap between the two lenses near the right edge, not floating
+    // outside it.
+    const s = W * 0.42, px = W * 0.05, py = H * 0.045, sh = s * 1.9;
+    const ld = s * 0.74;
     return (
       <>
-        <Plate l={px} t={py} w={s} h={sh} r={s * 0.5} tint={EXPOSED_METAL_TINT} caseTint={tint} />
-        <Lens size={ld} left={px + (s - ld) / 2} top={py + sh * 0.08} />
-        <Lens size={ld} left={px + (s - ld) / 2} top={py + sh - ld - sh * 0.08} />
-        <Flash size={s * 0.2} left={px + s * 1.06} top={py + sh * 0.08 + ld * 0.18} />
+        <Plate l={px} t={py} w={s} h={sh} r={s * 0.22} tint={EXPOSED_METAL_TINT} caseTint={tint} />
+        <Lens size={ld} left={px + (s - ld) / 2} top={py + sh * 0.055} />
+        <Lens size={ld} left={px + (s - ld) / 2} top={py + sh - ld - sh * 0.055} />
+        <Flash size={s * 0.17} left={px + s * 0.68} top={py + sh * 0.5 - s * 0.085} />
+        <Dot size={s * 0.07} left={px + s * 0.52} top={py + sh * 0.5 - s * 0.155} />
       </>
     );
   }
