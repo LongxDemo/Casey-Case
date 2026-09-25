@@ -234,10 +234,11 @@ function camStyleFor(model: PhoneModel): CamStyle {
     // Base 17 kept the 16-style vertical dual pill — only Air and the Pros
     // moved to the full-width plateau.
     if (n === '17') return 'ip-vert';
-    // 15 Pro/Pro Max use a real photo (ip15-square) — other Pro models
-    // (16 Pro, 12 Pro, etc.) still use the generic CSS square until they
-    // get their own real photos too.
-    if (n === '15 Pro Max' || n === '15 Pro') return 'ip15-square';
+    // 15 Pro/Pro Max use a real photo (ip15-square) — Apple kept the exact
+    // same camera module design for 16 Pro/Pro Max, so it's reused there
+    // too. 12 Pro/Pro Max have a visibly different, older module design
+    // and still use the generic CSS square until they get their own photo.
+    if (n === '15 Pro Max' || n === '15 Pro' || n === '16 Pro Max' || n === '16 Pro') return 'ip15-square';
     if (n.includes('Pro')) return 'ip-square';
     if (n.startsWith('16')) return 'ip-vert';
     if (n.startsWith('SE')) return 'ip-single';
