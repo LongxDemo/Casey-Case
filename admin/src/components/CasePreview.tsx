@@ -77,13 +77,16 @@ export function CasePreview({
               width: zone.width,
               height: zone.height,
               borderRadius: radius,
-              background: colors[0],
+              background: '#0c0c0f',
               boxShadow: '0 1px 0 rgba(0,0,0,0.12)',
             }}
           />
         );
       })()}
-      <CameraModule style={camStyleFor(model)} width={renderWidth} height={height} tint={colors[0]} />
+      {/* Every real case photo we've checked is black plastic underneath —
+          the camera surround is always black, not tinted to whatever
+          decorative color the customer picked for their print. */}
+      <CameraModule style={camStyleFor(model)} width={renderWidth} height={height} tint="#0c0c0f" />
       {/* subtle printed-case sheen */}
       <div
         style={{

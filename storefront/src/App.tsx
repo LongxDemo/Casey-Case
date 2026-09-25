@@ -304,13 +304,16 @@ function Editor({ design, onBack }: { design: ReturnType<typeof useDesign>; onBa
                     width: zone.width,
                     height: zone.height,
                     borderRadius: radius,
-                    background: d.background.colors[0],
+                    background: '#0c0c0f',
                     boxShadow: '0 1px 0 rgba(0,0,0,0.12)',
                   }}
                 />
               );
             })()}
-            <CameraModule style={camStyleFor(model)} width={canvasW} height={canvasH} tint={d.background.colors[0]} />
+            {/* Every real case photo we've checked is black plastic
+                underneath — the camera surround is always black, not
+                tinted to whatever decorative color was picked. */}
+            <CameraModule style={camStyleFor(model)} width={canvasW} height={canvasH} tint="#0c0c0f" />
           </div>
           <div
             style={{
