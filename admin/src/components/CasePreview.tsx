@@ -257,7 +257,7 @@ function Plate({ l, t, w, h, r, tint, caseTint }: { l: number; t: number; w: num
         // real material framing it, not a printed sticker outline.
         boxShadow: [
           `0 ${Math.max(1, h * 0.03)}px ${Math.max(2, h * 0.08)}px rgba(10,8,18,0.22)`,
-          `inset 0 0 0 ${Math.max(5, h * 0.12)}px ${ringColor}`,
+          `inset 0 0 0 ${Math.max(4, h * 0.07)}px ${ringColor}`,
           'inset 0 1px 0.5px rgba(255,255,255,0.25)',
           `inset 0 -${Math.max(1, h * 0.02)}px ${Math.max(1.5, h * 0.04)}px rgba(10,8,18,0.12)`,
         ].join(', '),
@@ -445,11 +445,12 @@ export function CameraModule({ style, width: W, height: H, tint }: { style: CamS
         <Lens size={ld} left={px + s * 0.08} top={py + s * 0.08} />
         <Lens size={ld} left={px + s * 0.08} top={py + s * 0.5} />
         <Lens size={ld} left={px + s * 0.44} top={py + s * 0.29} />
-        {/* Right column, top to bottom: flash, mic, LiDAR, tucked into the
-            corners so they clear the third lens. */}
-        <Flash size={ld * 0.4} left={px + s * 0.76} top={py + s * 0.1} />
-        <Dot size={ld * 0.16} left={px + s * 0.88} top={py + s * 0.47} />
-        <Dot size={ld * 0.3} left={px + s * 0.76} top={py + s * 0.74} />
+        {/* Right column, top to bottom: flash, mic, LiDAR — pulled in from
+            the rounded corners so they sit fully on the metal plate,
+            clear of both the case-material ring and the third lens. */}
+        <Flash size={ld * 0.36} left={px + s * 0.72} top={py + s * 0.12} />
+        <Dot size={ld * 0.16} left={px + s * 0.82} top={py + s * 0.47} />
+        <Dot size={ld * 0.3} left={px + s * 0.72} top={py + s * 0.72} />
       </>
     );
   }
