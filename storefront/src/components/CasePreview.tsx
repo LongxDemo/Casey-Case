@@ -290,8 +290,10 @@ export function cameraZoneRect(style: CamStyle, W: number, H: number): { left: n
       return { left: 0, top: 0, width: W, height: my + bh + pad * 0.3 };
     }
     case 'ip-vert': {
+      // Zone must reach the flash too — it sits outside the plate now (see
+      // CameraModule below), not tucked inside it.
       const s = W * 0.42, px = W * 0.05;
-      return { left: 0, top: 0, width: px + s + pad, height: H * 0.045 + s * 1.9 + pad };
+      return { left: 0, top: 0, width: px + s * 1.28 + pad, height: H * 0.045 + s * 1.36 + pad };
     }
     case 'ip15-square': {
       // Real photo, inset a bit from the true corner (not flush) so the
@@ -547,21 +549,25 @@ export function CameraModule({ style, width: W, height: H, tint }: { style: CamS
     return <img src="/camera/i17air-skyblue.png" alt="" style={{ position: 'absolute', left: mx, top: my, width: pw, height: bh }} />;
   }
   if (style === 'ip-vert') {
-    // Checked against Apple's own official iPhone 17 photos (both lenses
-    // same size, stacked vertically). Two things the previous CSS got wrong,
-    // now fixed: the plate is a rounded SQUARE (small corner radius), not a
-    // full stadium/pill — and the flash + mic sit INSIDE the plate, tucked
-    // in the gap between the two lenses near the right edge, not floating
-    // outside it.
-    const s = W * 0.42, px = W * 0.05, py = H * 0.045, sh = s * 1.9;
-    const ld = s * 0.74;
+    // Re-measured against Apple's own flat "finish-select" product photo
+    // (the real color-picker asset, near-orthographic — much more reliable
+    // than the angled hero/lineup shots used previously). That corrected an
+    // earlier mistake: the plate IS a true full stadium/pill (fully rounded
+    // top and bottom, not a rounded square), and the flash sits OUTSIDE the
+    // plate as its own separate housing, not tucked inside it. What that
+    // earlier pass got right: there IS a small mic dot, positioned in the
+    // gap between the lenses. Ratios below (aspect, lens size, flash
+    // position) are pixel-measured off that photo, not eyeballed.
+    const s = W * 0.42, px = W * 0.05, py = H * 0.045, sh = s * 1.36;
+    const ld = s * 0.58;
+    const flashSize = s * 0.23;
     return (
       <>
-        <Plate l={px} t={py} w={s} h={sh} r={s * 0.22} tint={EXPOSED_METAL_TINT} caseTint={tint} />
-        <Lens size={ld} left={px + (s - ld) / 2} top={py + sh * 0.055} />
-        <Lens size={ld} left={px + (s - ld) / 2} top={py + sh - ld - sh * 0.055} />
-        <Flash size={s * 0.17} left={px + s * 0.68} top={py + sh * 0.5 - s * 0.085} />
-        <Dot size={s * 0.07} left={px + s * 0.52} top={py + sh * 0.5 - s * 0.155} />
+        <Plate l={px} t={py} w={s} h={sh} r={s * 0.5} tint={EXPOSED_METAL_TINT} caseTint={tint} />
+        <Lens size={ld} left={px + (s - ld) / 2} top={py + sh * 0.015} />
+        <Lens size={ld} left={px + (s - ld) / 2} top={py + sh - ld - sh * 0.015} />
+        <Flash size={flashSize} left={px + s * 1.052} top={py + sh * 0.504 - flashSize / 2} />
+        <Dot size={s * 0.05} left={px + s * 0.72} top={py + sh * 0.46} />
       </>
     );
   }
