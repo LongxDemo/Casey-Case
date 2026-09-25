@@ -263,7 +263,7 @@ export function cameraZoneRect(style: CamStyle, W: number, H: number): { left: n
   const pad = H * 0.04;
   switch (style) {
     case 'ip17-plateau': {
-      const mx = W * 0.035, my = W * 0.03, pw = W - mx * 2, bh = pw * (141 / 222);
+      const mx = W * 0.16, my = W * 0.054, pw = W - mx * 2, bh = pw * (141 / 222);
       return { left: 0, width: W - mx + pad, height: my + bh + pad };
     }
     case 'ip17-air': return { left: 0, width: W, height: H * 0.045 + W * 0.27 + pad };
@@ -480,14 +480,13 @@ export function CameraModule({ style, width: W, height: H, tint }: { style: CamS
   if (style === 'ip17-plateau') {
     // Real photo of the actual 17 Pro/Pro Max camera plateau (silver), not a
     // CSS recreation — pixel-exact instead of an approximation. Sized to the
-    // image's own aspect ratio so nothing stretches/distorts. A prior 78%
-    // width figure was measured from a photo whose model was never actually
-    // confirmed to be 17 Pro (likely an older Pro's smaller square bump) —
-    // corrected against authoritative sources specifically about the 17
-    // Pro's redesign (MacRumors, Apple's own spec page): the new plateau
-    // genuinely "spans almost the entire back / almost the full width",
-    // much closer to this ~93% than the earlier 78%.
-    const mx = W * 0.035, my = W * 0.03;
+    // image's own aspect ratio so nothing stretches/distorts. Width margin
+    // measured directly (pixel-sampled) off the user's own screenshot of the
+    // actual print/design machine — case outer edge to plateau edge — giving
+    // ~68% module width, ~5.4% top margin. This has changed twice before
+    // because different source photos weren't confirmed to be this exact
+    // model; this one is the design machine's own screenshot, so trust it.
+    const mx = W * 0.16, my = W * 0.054;
     const pw = W - mx * 2, bh = pw * (141 / 222);
     return <img src="/camera/i17pro-silver.png" alt="" style={{ position: 'absolute', left: mx, top: my, width: pw, height: bh }} />;
   }
