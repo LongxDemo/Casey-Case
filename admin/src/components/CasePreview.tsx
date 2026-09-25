@@ -60,6 +60,22 @@ export function CasePreview({
       {ordered.map((l) => (
         <LayerView key={l.id} layer={l} scale={scale} />
       ))}
+      {/* The camera bump area is its own unprinted panel on a real case —
+          the print doesn't run underneath it. Painted over the layers/photo
+          with a hard edge, in the case's own solid color, before the
+          module itself draws on top. */}
+      <div
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: renderWidth,
+          height: cameraZoneHeight(camStyleFor(model), renderWidth, height),
+          borderRadius: `${radius}px ${radius}px 0 0`,
+          background: colors[0],
+          boxShadow: '0 1px 0 rgba(0,0,0,0.12)',
+        }}
+      />
       <CameraModule style={camStyleFor(model)} width={renderWidth} height={height} tint={colors[0]} />
       {/* subtle printed-case sheen */}
       <div
@@ -217,6 +233,40 @@ function camStyleFor(model: PhoneModel): CamStyle {
     return 'ip-dual';
   }
   return 'generic';
+}
+
+// Real printed cases don't run the photo/print underneath the camera bump —
+// that whole top section is its own unprinted panel (bare case material),
+// with a hard edge where the print actually starts below it (confirmed
+// against real finished cases — the print doesn't blend under the module).
+// Mirrors each style's own module geometry in CameraModule() below, just
+// returning how far down the unprinted zone needs to reach.
+export function cameraZoneHeight(style: CamStyle, W: number, H: number): number {
+  const pad = H * 0.018;
+  switch (style) {
+    case 'ip17-plateau': return H * 0.045 + W * 0.5 + pad;
+    case 'ip17-air': return H * 0.045 + W * 0.27 + pad;
+    case 'ip-vert': return H * 0.045 + W * 0.42 * 1.83 + pad;
+    case 'ip-square': return W * 0.5 + pad;
+    case 'ip-dual': return H * 0.04 + W * 0.45 * 1.04 + pad;
+    case 'ip-dual-vert': return H * 0.04 + W * 0.45 * 1.15 + pad;
+    case 'ip-single': return H * 0.045 + W * 0.22 * 1.3 + pad;
+    case 'samsung': {
+      const ld = W * 0.145;
+      return H * 0.045 + ld * 1.24 * 2 + ld * 1.25 + pad;
+    }
+    case 'samsung-ultra': {
+      const ld = W * 0.145;
+      return H * 0.045 + ld * 1.24 * 2 + ld * 1.25 + pad;
+    }
+    case 'zflip': return 0; // the closed-flip screen already dominates the top
+    case 'pixel': case 'pixel-pro': return H * 0.065 + W * 0.17 + pad;
+    case 'pixel-island': return H * 0.055 + W * 0.22 + pad;
+    case 'xiaomi': return H * 0.045 + W * 0.44 + pad;
+    case 'oneplus': return H * 0.045 + W * 0.46 + pad;
+    case 'oppo': return H * 0.04 + W * 0.34 * 1.72 + pad;
+    default: return H * 0.04 + W * 0.3 + pad;
+  }
 }
 
 // On a real printed/molded case, the camera cutout is a blank die-cut
