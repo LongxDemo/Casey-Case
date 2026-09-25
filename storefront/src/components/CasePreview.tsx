@@ -61,21 +61,28 @@ export function CasePreview({
         <LayerView key={l.id} layer={l} scale={scale} />
       ))}
       {/* The camera bump area is its own unprinted panel on a real case —
-          the print doesn't run underneath it. Painted over the layers/photo
-          with a hard edge, in the case's own solid color, before the
-          module itself draws on top. */}
-      <div
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          width: renderWidth,
-          height: cameraZoneHeight(camStyleFor(model), renderWidth, height),
-          borderRadius: `${radius}px ${radius}px 0 0`,
-          background: colors[0],
-          boxShadow: '0 1px 0 rgba(0,0,0,0.12)',
-        }}
-      />
+          the print doesn't run underneath it, but DOES show through right
+          beside the module at the same height (checked against a real
+          case — this only hugs the module's own footprint, it's not a
+          full-width band). Painted over the layers/photo with a hard edge,
+          in the case's own solid color, before the module draws on top. */}
+      {(() => {
+        const zone = cameraZoneRect(camStyleFor(model), renderWidth, height);
+        return (
+          <div
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: zone.left,
+              width: zone.width,
+              height: zone.height,
+              borderRadius: radius,
+              background: colors[0],
+              boxShadow: '0 1px 0 rgba(0,0,0,0.12)',
+            }}
+          />
+        );
+      })()}
       <CameraModule style={camStyleFor(model)} width={renderWidth} height={height} tint={colors[0]} />
       {/* subtle printed-case sheen */}
       <div
@@ -241,31 +248,69 @@ export function camStyleFor(model: PhoneModel): CamStyle {
 // against real finished cases — the print doesn't blend under the module).
 // Mirrors each style's own module geometry in CameraModule() below, just
 // returning how far down the unprinted zone needs to reach.
-export function cameraZoneHeight(style: CamStyle, W: number, H: number): number {
-  const pad = H * 0.018;
+// Checked against two real finished cases: the unprinted zone HUGS the
+// module's own footprint — the print shows through right beside it at the
+// same height, not just below a full-width band (an earlier version of this
+// wrongly assumed full-width for every style). pixel/pixel-pro and
+// ip17-air are the real exception — Apple/Google actually build those as
+// genuine edge-to-edge bars, so full width is correct there.
+export function cameraZoneRect(style: CamStyle, W: number, H: number): { left: number; width: number; height: number } {
+  // A generous safety margin, not a tight fit — this zone becomes the actual
+  // print file's keep-out boundary for the vending machine. If it's cut too
+  // close to the real module size, a customer's design can bleed into the
+  // camera bump on the real printed case, which the machine/operator can't
+  // do anything sensible with. Better to block a bit more than necessary.
+  const pad = H * 0.04;
   switch (style) {
-    case 'ip17-plateau': return W * 0.055 + W * 0.78 * (141 / 222) + pad;
-    case 'ip17-air': return H * 0.045 + W * 0.27 + pad;
-    case 'ip-vert': return H * 0.045 + W * 0.42 * 1.83 + pad;
-    case 'ip-square': return W * 0.5 + pad;
-    case 'ip-dual': return H * 0.04 + W * 0.45 * 1.04 + pad;
-    case 'ip-dual-vert': return H * 0.04 + W * 0.45 * 1.15 + pad;
-    case 'ip-single': return H * 0.045 + W * 0.22 * 1.3 + pad;
-    case 'samsung': {
-      const ld = W * 0.145;
-      return H * 0.045 + ld * 1.24 * 2 + ld * 1.25 + pad;
+    case 'ip17-plateau': {
+      const mx = W * 0.11, my = W * 0.055, pw = W - mx * 2, bh = pw * (141 / 222);
+      return { left: 0, width: W - mx + pad, height: my + bh + pad };
     }
-    case 'samsung-ultra': {
-      const ld = W * 0.145;
-      return H * 0.045 + ld * 1.24 * 2 + ld * 1.25 + pad;
+    case 'ip17-air': return { left: 0, width: W, height: H * 0.045 + W * 0.27 + pad };
+    case 'ip-vert': {
+      const s = W * 0.42, px = W * 0.05;
+      return { left: 0, width: px + s + pad, height: H * 0.045 + s * 1.83 + pad };
     }
-    case 'zflip': return 0; // the closed-flip screen already dominates the top
-    case 'pixel': case 'pixel-pro': return H * 0.065 + W * 0.17 + pad;
-    case 'pixel-island': return H * 0.055 + W * 0.22 + pad;
-    case 'xiaomi': return H * 0.045 + W * 0.44 + pad;
-    case 'oneplus': return H * 0.045 + W * 0.46 + pad;
-    case 'oppo': return H * 0.04 + W * 0.34 * 1.72 + pad;
-    default: return H * 0.04 + W * 0.3 + pad;
+    case 'ip-square': return { left: 0, width: W * 0.5 + pad, height: W * 0.5 + pad };
+    case 'ip-dual': {
+      const s = W * 0.45, px = W * 0.05;
+      return { left: 0, width: px + s + pad, height: H * 0.04 + s * 1.04 + pad };
+    }
+    case 'ip-dual-vert': {
+      const s = W * 0.45, px = W * 0.05;
+      return { left: 0, width: px + s + pad, height: H * 0.04 + s * 1.15 + pad };
+    }
+    case 'ip-single': {
+      const ld = W * 0.22, bx = W * 0.06 - ld * 0.15, bw = ld * 1.6;
+      return { left: 0, width: bx + bw + pad, height: H * 0.045 + ld * 1.3 + pad };
+    }
+    case 'samsung': case 'samsung-ultra': {
+      const ld = W * 0.145, lx = W * 0.07;
+      const w = style === 'samsung-ultra' ? ld * 2.5 : ld * 1.3;
+      return { left: 0, width: lx - ld * 0.12 + w + pad, height: H * 0.045 + ld * 1.24 * 2 + ld * 1.25 + pad };
+    }
+    case 'zflip': return { left: 0, width: 0, height: 0 }; // the closed-flip screen already dominates the top
+    case 'pixel': case 'pixel-pro': return { left: 0, width: W, height: H * 0.065 + W * 0.17 + pad };
+    case 'pixel-island': {
+      const iw = W * 0.86, ix = (W - iw) / 2;
+      return { left: ix - pad, width: iw + pad * 2, height: H * 0.055 + W * 0.22 + pad };
+    }
+    case 'xiaomi': {
+      const s = W * 0.44, px = W * 0.06;
+      return { left: 0, width: px + s + pad, height: H * 0.045 + s + pad };
+    }
+    case 'oneplus': {
+      const d = W * 0.46, cx = W * 0.1;
+      return { left: 0, width: cx + d + pad, height: H * 0.045 + d + pad };
+    }
+    case 'oppo': {
+      const ow = W * 0.34, px = W * 0.06;
+      return { left: 0, width: px + ow + pad, height: H * 0.04 + ow * 1.72 + pad };
+    }
+    default: {
+      const s = W * 0.3, px = W * 0.06;
+      return { left: 0, width: px + s + pad, height: H * 0.04 + s + pad };
+    }
   }
 }
 
