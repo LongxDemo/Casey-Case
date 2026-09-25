@@ -72,7 +72,7 @@ export function CasePreview({
           <div
             style={{
               position: 'absolute',
-              top: 0,
+              top: zone.top,
               left: zone.left,
               width: zone.width,
               height: zone.height,
@@ -207,7 +207,7 @@ export function LayerView({ layer, scale }: { layer: Layer; scale: number }) {
 // 'ip17-air' (single lens). The base 17 kept the 16-style vertical pill, and
 // pre-17 iPhones keep the old cluster styles.
 export type CamStyle =
-  | 'ip17-plateau' | 'ip17-air' | 'ip-square' | 'ip-vert' | 'ip-dual' | 'ip-dual-vert' | 'ip-single'
+  | 'ip17-plateau' | 'ip17-air' | 'ip15-square' | 'ip-square' | 'ip-vert' | 'ip-dual' | 'ip-dual-vert' | 'ip-single'
   | 'samsung' | 'samsung-ultra' | 'zflip'
   | 'pixel' | 'pixel-pro' | 'pixel-island'
   | 'xiaomi' | 'oneplus' | 'oppo' | 'generic';
@@ -234,6 +234,10 @@ export function camStyleFor(model: PhoneModel): CamStyle {
     // Base 17 kept the 16-style vertical dual pill — only Air and the Pros
     // moved to the full-width plateau.
     if (n === '17') return 'ip-vert';
+    // 15 Pro/Pro Max use a real photo (ip15-square) — other Pro models
+    // (16 Pro, 12 Pro, etc.) still use the generic CSS square until they
+    // get their own real photos too.
+    if (n === '15 Pro Max' || n === '15 Pro') return 'ip15-square';
     if (n.includes('Pro')) return 'ip-square';
     if (n.startsWith('16')) return 'ip-vert';
     if (n.startsWith('SE')) return 'ip-single';
@@ -257,7 +261,7 @@ export function camStyleFor(model: PhoneModel): CamStyle {
 // wrongly assumed full-width for every style). pixel/pixel-pro and
 // ip17-air are the real exception — Apple/Google actually build those as
 // genuine edge-to-edge bars, so full width is correct there.
-export function cameraZoneRect(style: CamStyle, W: number, H: number): { left: number; width: number; height: number } {
+export function cameraZoneRect(style: CamStyle, W: number, H: number): { left: number; top: number; width: number; height: number } {
   // A generous safety margin, not a tight fit — this zone becomes the actual
   // print file's keep-out boundary for the vending machine. If it's cut too
   // close to the real module size, a customer's design can bleed into the
@@ -271,52 +275,67 @@ export function cameraZoneRect(style: CamStyle, W: number, H: number): { left: n
       // the zone's own safety-margin padding is tuned here to nudge where
       // the print starts, independent of the module's real size.
       const mx = W * 0.06, my = W * 0.03, pw = W - mx * 2, bh = pw * (141 / 222);
-      return { left: 0, width: W - mx + pad, height: my + bh + pad * 0.3 };
+      return { left: 0, top: 0, width: W - mx + pad, height: my + bh + pad * 0.3 };
     }
-    case 'ip17-air': return { left: 0, width: W, height: H * 0.045 + W * 0.27 + pad };
+    case 'ip17-air': return { left: 0, top: 0, width: W, height: H * 0.045 + W * 0.27 + pad };
     case 'ip-vert': {
       const s = W * 0.42, px = W * 0.05;
-      return { left: 0, width: px + s + pad, height: H * 0.045 + s * 1.83 + pad };
+      return { left: 0, top: 0, width: px + s + pad, height: H * 0.045 + s * 1.83 + pad };
     }
-    case 'ip-square': return { left: 0, width: W * 0.5 + pad, height: W * 0.5 + pad };
+    case 'ip15-square': {
+      // Real photo, inset a bit from the true corner (not flush) so the
+      // black margin frames the module evenly on left/top/right — a flush
+      // 0,0 position left zero margin on two sides and all the margin on
+      // the other two, which read as visibly off-center. Bottom keeps the
+      // larger print-safety pad; width unverified against a real finished
+      // case yet (no machine measurement for this model).
+      const s = W * 0.5, inset = W * 0.04, framePad = W * 0.025;
+      return {
+        left: Math.max(0, inset - framePad),
+        top: Math.max(0, inset - framePad),
+        width: inset + s + framePad - Math.max(0, inset - framePad),
+        height: inset + s * (145 / 140) + pad - Math.max(0, inset - framePad),
+      };
+    }
+    case 'ip-square': return { left: 0, top: 0, width: W * 0.5 + pad, height: W * 0.5 + pad };
     case 'ip-dual': {
       const s = W * 0.45, px = W * 0.05;
-      return { left: 0, width: px + s + pad, height: H * 0.04 + s * 1.04 + pad };
+      return { left: 0, top: 0, width: px + s + pad, height: H * 0.04 + s * 1.04 + pad };
     }
     case 'ip-dual-vert': {
       const s = W * 0.45, px = W * 0.05;
-      return { left: 0, width: px + s + pad, height: H * 0.04 + s * 1.15 + pad };
+      return { left: 0, top: 0, width: px + s + pad, height: H * 0.04 + s * 1.15 + pad };
     }
     case 'ip-single': {
       const ld = W * 0.22, bx = W * 0.06 - ld * 0.15, bw = ld * 1.6;
-      return { left: 0, width: bx + bw + pad, height: H * 0.045 + ld * 1.3 + pad };
+      return { left: 0, top: 0, width: bx + bw + pad, height: H * 0.045 + ld * 1.3 + pad };
     }
     case 'samsung': case 'samsung-ultra': {
       const ld = W * 0.145, lx = W * 0.07;
       const w = style === 'samsung-ultra' ? ld * 2.5 : ld * 1.3;
-      return { left: 0, width: lx - ld * 0.12 + w + pad, height: H * 0.045 + ld * 1.24 * 2 + ld * 1.25 + pad };
+      return { left: 0, top: 0, width: lx - ld * 0.12 + w + pad, height: H * 0.045 + ld * 1.24 * 2 + ld * 1.25 + pad };
     }
-    case 'zflip': return { left: 0, width: 0, height: 0 }; // the closed-flip screen already dominates the top
-    case 'pixel': case 'pixel-pro': return { left: 0, width: W, height: H * 0.065 + W * 0.17 + pad };
+    case 'zflip': return { left: 0, top: 0, width: 0, height: 0 }; // the closed-flip screen already dominates the top
+    case 'pixel': case 'pixel-pro': return { left: 0, top: 0, width: W, height: H * 0.065 + W * 0.17 + pad };
     case 'pixel-island': {
       const iw = W * 0.86, ix = (W - iw) / 2;
-      return { left: ix - pad, width: iw + pad * 2, height: H * 0.055 + W * 0.22 + pad };
+      return { left: ix - pad, top: 0, width: iw + pad * 2, height: H * 0.055 + W * 0.22 + pad };
     }
     case 'xiaomi': {
       const s = W * 0.44, px = W * 0.06;
-      return { left: 0, width: px + s + pad, height: H * 0.045 + s + pad };
+      return { left: 0, top: 0, width: px + s + pad, height: H * 0.045 + s + pad };
     }
     case 'oneplus': {
       const d = W * 0.46, cx = W * 0.1;
-      return { left: 0, width: cx + d + pad, height: H * 0.045 + d + pad };
+      return { left: 0, top: 0, width: cx + d + pad, height: H * 0.045 + d + pad };
     }
     case 'oppo': {
       const ow = W * 0.34, px = W * 0.06;
-      return { left: 0, width: px + ow + pad, height: H * 0.04 + ow * 1.72 + pad };
+      return { left: 0, top: 0, width: px + ow + pad, height: H * 0.04 + ow * 1.72 + pad };
     }
     default: {
       const s = W * 0.3, px = W * 0.06;
-      return { left: 0, width: px + s + pad, height: H * 0.04 + s + pad };
+      return { left: 0, top: 0, width: px + s + pad, height: H * 0.04 + s + pad };
     }
   }
 }
@@ -526,6 +545,14 @@ export function CameraModule({ style, width: W, height: H, tint }: { style: CamS
         <Flash size={s * 0.2} left={px + s * 1.06} top={py + sh * 0.08 + ld * 0.18} />
       </>
     );
+  }
+  if (style === 'ip15-square') {
+    // Real photo of the 15 Pro/Pro Max camera module — pixel-exact instead
+    // of a CSS approximation. Inset from the corner (matches cameraZoneRect
+    // above) so the black frames it evenly instead of sitting flush in the
+    // corner; width not yet verified against a real finished case.
+    const s = W * 0.5, inset = W * 0.04;
+    return <img src="/camera/i15promax-silver.png" alt="" style={{ position: 'absolute', left: inset, top: inset, width: s, height: s * (145 / 140) }} />;
   }
   if (style === 'ip-square') {
     // Spec table bump figures for 15 Pro/16 Pro/16 Pro Max average ~0.50 of

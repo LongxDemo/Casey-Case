@@ -299,7 +299,7 @@ function Editor({ design, onBack }: { design: ReturnType<typeof useDesign>; onBa
                 <div
                   style={{
                     position: 'absolute',
-                    top: 0,
+                    top: zone.top,
                     left: zone.left,
                     width: zone.width,
                     height: zone.height,
