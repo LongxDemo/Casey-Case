@@ -20,6 +20,22 @@ export function CasePreview({
   const radius = renderWidth * 0.14;
   const colors = background?.colors?.length ? background.colors : ['#FFF5FA', '#FFE9F4'];
   const ordered = [...(layers || [])].sort((a, b) => a.z - b.z);
+  const keyLight = 'radial-gradient(120% 90% at 26% 10%, rgba(255,255,255,0.25), rgba(255,255,255,0) 55%)';
+  const isGingham = background?.pattern === 'gingham';
+  // Woven picnic-check: two crossing sets of translucent stripes multiplied
+  // over a cream base — a generic textile pattern, not a copied image.
+  const cell = renderWidth * 0.09;
+  const backgroundLayers = isGingham
+    ? {
+        backgroundColor: colors[0],
+        backgroundImage: [
+          keyLight,
+          `repeating-linear-gradient(0deg, ${colors[1]}73 0px, ${colors[1]}73 ${cell}px, transparent ${cell}px, transparent ${cell * 2}px)`,
+          `repeating-linear-gradient(90deg, ${colors[1]}73 0px, ${colors[1]}73 ${cell}px, transparent ${cell}px, transparent ${cell * 2}px)`,
+        ].join(', '),
+        backgroundBlendMode: 'normal, multiply, multiply',
+      }
+    : { background: `${keyLight}, linear-gradient(155deg, ${colors[0]}, ${colors[colors.length - 1]})` };
 
   return (
     <div
@@ -29,8 +45,7 @@ export function CasePreview({
         borderRadius: radius,
         position: 'relative',
         overflow: 'hidden',
-        // Soft studio key-light from the top left over the case color.
-        background: `radial-gradient(120% 90% at 26% 10%, rgba(255,255,255,0.25), rgba(255,255,255,0) 55%), linear-gradient(155deg, ${colors[0]}, ${colors[colors.length - 1]})`,
+        ...backgroundLayers,
         // Grounded product-photo shadow + a crisp 1px seam and thin edge
         // catch-light instead of a thick colored outline (reads as a sticker).
         boxShadow: [

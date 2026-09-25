@@ -1,4 +1,6 @@
-export type CaseBackground = { id: string; name: string; colors: string[] };
+// Mirrors storefront's lib/types.ts — 'gingham' renders a checkered
+// picnic-cloth pattern from `colors` instead of a plain gradient.
+export type CaseBackground = { id: string; name: string; colors: string[]; pattern?: 'gingham' };
 
 export type Layer =
   | { id: string; kind: 'image'; uri: string; width: number; height: number; radius?: number; tx: number; ty: number; scale: number; rotation: number; z: number }

@@ -11,6 +11,7 @@ export const backgrounds: CaseBackground[] = [
   { id: 'cream', name: 'Cream', colors: ['#FFF5FA', '#FFE9F4'] },
   { id: 'lilac', name: 'Lilac Dream', colors: ['#E4C1F9', '#B892FF'] },
   { id: 'solidpink', name: 'Hot Pink', colors: ['#FF3E9A', '#FF3E9A'] },
+  { id: 'gingham-berry', name: 'Gingham Picnic', colors: ['#FCE9C6', '#E4574A'], pattern: 'gingham' },
 ];
 
 export const stickerPacks: StickerPack[] = [
@@ -70,6 +71,17 @@ export const templates: Template[] = [
     layers: [
       { kind: 'text', text: '♡ my bias ♡', color: '#FFFFFF', fontSize: 26, fontWeight: '800', align: 'center', tx: 0, ty: 150, scale: 1, rotation: 0, z: 3 },
       { kind: 'sticker', emoji: '📸', size: 50, tx: 80, ty: -150, scale: 1, rotation: 0, z: 2 },
+    ],
+  },
+  {
+    id: 't-berry-duo', name: 'Berry Duo', tag: 'Photo', accent: '#E4574A',
+    background: backgrounds[8],
+    layers: [
+      { kind: 'frame', frameId: 'strawberry', photoUri: null, photoTx: 0, photoTy: 0, photoScale: 1, tx: -72, ty: -35, scale: 0.62, rotation: -0.06, z: 2 },
+      { kind: 'frame', frameId: 'cherry', photoUri: null, photoTx: 0, photoTy: 0, photoScale: 1, tx: 72, ty: -35, scale: 0.62, rotation: 0.06, z: 2 },
+      { kind: 'text', text: 'besties', color: '#B23A2E', fontSize: 30, fontWeight: '800', align: 'center', tx: 0, ty: 155, scale: 1, rotation: 0, z: 3 },
+      { kind: 'sticker', emoji: '✨', size: 34, tx: -118, ty: -155, scale: 1, rotation: -0.2, z: 1 },
+      { kind: 'sticker', emoji: '✨', size: 34, tx: 118, ty: -155, scale: 1, rotation: 0.2, z: 1 },
     ],
   },
 ];

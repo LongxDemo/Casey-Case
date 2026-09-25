@@ -1,4 +1,7 @@
-export type CaseBackground = { id: string; name: string; colors: string[] };
+// `pattern` is optional — plain backgrounds render as a two-color gradient
+// from `colors`; 'gingham' renders a woven checkered picnic-cloth look
+// instead, still built from `colors` (base + check color), no raster image.
+export type CaseBackground = { id: string; name: string; colors: string[]; pattern?: 'gingham' };
 
 export type LayerBase = { id: string; tx: number; ty: number; scale: number; rotation: number; z: number };
 

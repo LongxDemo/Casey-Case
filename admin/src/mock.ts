@@ -87,6 +87,18 @@ export const mockTemplates: TemplateRow[] = [
       { id: 'b', kind: 'sticker', emoji: '📸', size: 50, tx: 80, ty: -150, scale: 1, rotation: 0, z: 2 },
     ],
   },
+  {
+    id: 't-berry-duo', name: 'Berry Duo', tag: 'Photo', accent: '#E4574A', active: true, featured: false, sort: 4, uses_count: 0,
+    created_at: new Date().toISOString(),
+    background: { id: 'gingham-berry', name: 'Gingham Picnic', colors: ['#FCE9C6', '#E4574A'], pattern: 'gingham' },
+    layers: [
+      { id: 'a', kind: 'frame', frameId: 'strawberry', photoUri: null, photoTx: 0, photoTy: 0, photoScale: 1, tx: -72, ty: -35, scale: 0.62, rotation: -0.06, z: 2 },
+      { id: 'b', kind: 'frame', frameId: 'cherry', photoUri: null, photoTx: 0, photoTy: 0, photoScale: 1, tx: 72, ty: -35, scale: 0.62, rotation: 0.06, z: 2 },
+      { id: 'c', kind: 'text', text: 'besties', color: '#B23A2E', fontSize: 30, fontWeight: '800', align: 'center', tx: 0, ty: 155, scale: 1, rotation: 0, z: 3 },
+      { id: 'd', kind: 'sticker', emoji: '✨', size: 34, tx: -118, ty: -155, scale: 1, rotation: -0.2, z: 1 },
+      { id: 'e', kind: 'sticker', emoji: '✨', size: 34, tx: 118, ty: -155, scale: 1, rotation: 0.2, z: 1 },
+    ],
+  },
 ];
 
 export const mockOrders: OrderRow[] = [
