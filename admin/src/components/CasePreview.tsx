@@ -107,12 +107,13 @@ function LayerView({ layer, scale }: { layer: Layer; scale: number }) {
     );
   }
   if (layer.kind === 'image') {
-    return (
-      <img
-        src={layer.uri}
-        alt=""
-        style={{ ...base, width: layer.width * scale, height: layer.height * scale, borderRadius: (layer.radius ?? 0) * scale, objectFit: 'cover' }}
-      />
+    const w = layer.width * scale, h = layer.height * scale, r = (layer.radius ?? 0) * scale;
+    return layer.uri ? (
+      <img src={layer.uri} alt="" style={{ ...base, width: w, height: h, borderRadius: r, objectFit: 'cover' }} />
+    ) : (
+      <div style={{ ...base, width: w, height: h, borderRadius: r, background: '#f0e6ea', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: Math.min(w, h) * 0.16 }}>
+        📷
+      </div>
     );
   }
   if (layer.kind === 'frame') {

@@ -75,6 +75,7 @@ export function EditableLayer({
     dragState.current = null;
     (e.target as HTMLElement).releasePointerCapture(e.pointerId);
     if (wasTap && layer.kind === 'frame' && !layer.photoUri && !adjustMode) onRequestPhoto?.(layer.id);
+    if (wasTap && layer.kind === 'image' && !layer.uri) onRequestPhoto?.(layer.id);
   };
 
   const onHandlePointerDown = (e: React.PointerEvent) => {
@@ -132,7 +133,13 @@ export function EditableLayer({
             <div style={{ fontSize: dw * 0.9, lineHeight: 1, textAlign: 'center' }}>{layer.emoji}</div>
           ))}
         {layer.kind === 'image' && (
-          <img src={layer.uri} alt="" style={{ width: dw, height: dh, borderRadius: (layer.radius ?? 0) * scale, objectFit: 'cover' }} />
+          layer.uri ? (
+            <img src={layer.uri} alt="" style={{ width: dw, height: dh, borderRadius: (layer.radius ?? 0) * scale, objectFit: 'cover' }} />
+          ) : (
+            <div style={{ width: dw, height: dh, borderRadius: (layer.radius ?? 0) * scale, background: '#f0e6ea', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: dw * 0.14 }}>
+              📷
+            </div>
+          )
         )}
         {layer.kind === 'frame' && (() => {
           const def = FRAME_DEFS[layer.frameId];

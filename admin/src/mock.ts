@@ -193,6 +193,15 @@ export const mockTemplates: TemplateRow[] = [
       { id: 'c', kind: 'sticker', emoji: '🎀', size: 38, tx: 100, ty: 150, scale: 1, rotation: 0.2, z: 1 },
     ],
   },
+  // Full-case photo wrap — mirrors storefront/src/mock.ts.
+  {
+    id: 't-full-photo', name: 'Your Photo, Full Case', tag: 'Real Print', accent: '#2c2c31', active: true, featured: false, sort: 14, uses_count: 0,
+    created_at: new Date().toISOString(),
+    background: { id: 'cream', name: 'Cream', colors: ['#FFF5FA', '#FFE9F4'] },
+    layers: [
+      { id: 'a', kind: 'image', uri: null, width: 320, height: 667, radius: 0, tx: 0, ty: 0, scale: 1, rotation: 0, z: 1 },
+    ],
+  },
 ];
 
 export const mockOrders: OrderRow[] = [

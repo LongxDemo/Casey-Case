@@ -88,6 +88,13 @@ export function useDesign(initialModelId: string) {
       ...d,
       layers: d.layers.map((l) => (l.id === id && l.kind === 'frame' ? { ...l, photoUri: uri, photoTx: 0, photoTy: 0, photoScale: 1 } : l)),
     }));
+  // Fills an empty "tap to add your photo" image-layer placeholder (full-
+  // case-wrap templates) — mirrors setFramePhoto's role for frame layers.
+  const setImageUri = (id: string, uri: string) =>
+    setDesign((d) => ({
+      ...d,
+      layers: d.layers.map((l) => (l.id === id && l.kind === 'image' ? { ...l, uri } : l)),
+    }));
   const updateLayer = (id: string, patch: Partial<Layer>) =>
     setDesign((d) => ({ ...d, layers: d.layers.map((l) => (l.id === id ? ({ ...l, ...patch } as Layer) : l)) }));
   const removeLayer = (id: string) => {
@@ -108,6 +115,6 @@ export function useDesign(initialModelId: string) {
   return {
     design, selectedId, adjustFrameId, startBlank, startFromTemplate, setModel, setBackground, select,
     enterAdjustMode, exitAdjustMode,
-    addSticker, addText, addImage, fitImageToCase, addFrame, setFramePhoto, updateLayer, removeLayer, duplicateLayer, bringToFront,
+    addSticker, addText, addImage, fitImageToCase, addFrame, setFramePhoto, setImageUri, updateLayer, removeLayer, duplicateLayer, bringToFront,
   };
 }

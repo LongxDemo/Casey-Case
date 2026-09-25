@@ -5,7 +5,10 @@ export type CaseBackground = { id: string; name: string; colors: string[]; patte
 
 export type LayerBase = { id: string; tx: number; ty: number; scale: number; rotation: number; z: number };
 
-export type ImageLayer = LayerBase & { kind: 'image'; uri: string; width: number; height: number; radius?: number };
+// uri is nullable so a template can ship an empty "tap to add your photo"
+// placeholder (same pattern as FrameLayer.photoUri) — used for full-case
+// photo-wrap templates where the customer's own photo covers the whole case.
+export type ImageLayer = LayerBase & { kind: 'image'; uri: string | null; width: number; height: number; radius?: number };
 export type StickerLayer = LayerBase & { kind: 'sticker'; emoji?: string; uri?: string; size: number };
 export type TextLayer = LayerBase & {
   kind: 'text'; text: string; color: string; fontSize: number;

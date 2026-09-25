@@ -178,4 +178,15 @@ export const templates: Template[] = [
       { kind: 'sticker', emoji: '🎀', size: 38, tx: 100, ty: 150, scale: 1, rotation: 0.2, z: 1 },
     ],
   },
+  // Full-case photo wrap — the customer's own photo covers the whole case
+  // edge to edge, matching a real printed unit fresh off the machine
+  // (empty "tap to add your photo" placeholder, sized to the reference
+  // phone's case; re-tap "Fit to Case" after switching models).
+  {
+    id: 't-full-photo', name: 'Your Photo, Full Case', tag: 'Real Print', accent: '#2c2c31',
+    background: backgrounds[5],
+    layers: [
+      { kind: 'image', uri: null, width: 320, height: 667, radius: 0, tx: 0, ty: 0, scale: 1, rotation: 0, z: 1 },
+    ],
+  },
 ];

@@ -193,7 +193,7 @@ function Editor({ design, onBack }: { design: ReturnType<typeof useDesign>; onBa
   const {
     design: d, selectedId, adjustFrameId, select, setBackground, setModel,
     enterAdjustMode, exitAdjustMode,
-    addSticker, addText, addImage, fitImageToCase, addFrame, setFramePhoto, updateLayer, removeLayer, duplicateLayer, bringToFront,
+    addSticker, addText, addImage, fitImageToCase, addFrame, setFramePhoto, setImageUri, updateLayer, removeLayer, duplicateLayer, bringToFront,
   } = design;
   const model = MODELS[d.modelId] ?? phoneModels[0];
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -228,7 +228,12 @@ function Editor({ design, onBack }: { design: ReturnType<typeof useDesign>; onBa
     reader.onload = () => {
       const uri = reader.result as string;
       if (targetFrameId) {
-        setFramePhoto(targetFrameId, uri);
+        const target = d.layers.find((l) => l.id === targetFrameId);
+        if (target?.kind === 'image') {
+          setImageUri(targetFrameId, uri);
+        } else {
+          setFramePhoto(targetFrameId, uri);
+        }
         return;
       }
       const img = new Image();
@@ -497,7 +502,7 @@ async function uploadPhotoLayers(layers: Layer[]): Promise<Layer[]> {
   if (!supabase) return layers;
   const out: Layer[] = [];
   for (const l of layers) {
-    if (l.kind === 'image' && l.uri.startsWith('data:')) {
+    if (l.kind === 'image' && l.uri?.startsWith('data:')) {
       out.push({ ...l, uri: await uploadDataUri(l.uri) });
     } else if (l.kind === 'frame' && l.photoUri?.startsWith('data:')) {
       out.push({ ...l, photoUri: await uploadDataUri(l.photoUri) });
@@ -557,7 +562,7 @@ function SendModal({
       // camera cutout area.
       let n = 0;
       for (const l of design.layers) {
-        if (l.kind === 'image' && l.uri.startsWith('data:')) {
+        if (l.kind === 'image' && l.uri?.startsWith('data:')) {
           form.append(`photo_${n}`, await (await fetch(l.uri)).blob(), `photo-${n + 1}.png`);
           n++;
         } else if (l.kind === 'frame' && l.photoUri?.startsWith('data:')) {

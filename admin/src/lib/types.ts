@@ -3,7 +3,9 @@
 export type CaseBackground = { id: string; name: string; colors: string[]; pattern?: 'gingham' };
 
 export type Layer =
-  | { id: string; kind: 'image'; uri: string; width: number; height: number; radius?: number; tx: number; ty: number; scale: number; rotation: number; z: number }
+  // uri is nullable — mirrors storefront's ImageLayer, for empty "tap to
+  // add your photo" full-case-wrap placeholders.
+  | { id: string; kind: 'image'; uri: string | null; width: number; height: number; radius?: number; tx: number; ty: number; scale: number; rotation: number; z: number }
   | { id: string; kind: 'sticker'; emoji?: string; uri?: string; size: number; tx: number; ty: number; scale: number; rotation: number; z: number }
   | { id: string; kind: 'text'; text: string; color: string; fontSize: number; fontWeight: string; align: 'left' | 'center' | 'right'; tx: number; ty: number; scale: number; rotation: number; z: number }
   // Fruit/character frame with a face-hole; geometry looked up by frameId
