@@ -263,7 +263,7 @@ export function cameraZoneRect(style: CamStyle, W: number, H: number): { left: n
   const pad = H * 0.04;
   switch (style) {
     case 'ip17-plateau': {
-      const mx = W * 0.16, my = W * 0.054, pw = W - mx * 2, bh = pw * (141 / 222);
+      const mx = W * 0.06, my = W * 0.045, pw = W - mx * 2, bh = pw * (141 / 222);
       return { left: 0, width: W - mx + pad, height: my + bh + pad };
     }
     case 'ip17-air': return { left: 0, width: W, height: H * 0.045 + W * 0.27 + pad };
@@ -486,7 +486,7 @@ export function CameraModule({ style, width: W, height: H, tint }: { style: CamS
     // ~68% module width, ~5.4% top margin. This has changed twice before
     // because different source photos weren't confirmed to be this exact
     // model; this one is the design machine's own screenshot, so trust it.
-    const mx = W * 0.16, my = W * 0.054;
+    const mx = W * 0.06, my = W * 0.045;
     const pw = W - mx * 2, bh = pw * (141 / 222);
     return <img src="/camera/i17pro-silver.png" alt="" style={{ position: 'absolute', left: mx, top: my, width: pw, height: bh }} />;
   }
