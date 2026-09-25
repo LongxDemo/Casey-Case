@@ -408,9 +408,10 @@ function Editor({ design, onBack }: { design: ReturnType<typeof useDesign>; onBa
               {frameOrder.map((id) => {
                 const def = FRAME_DEFS[id];
                 const FrameSvg = def.Svg;
+                const thumbStyle = { width: 56, height: 56 * (def.height / def.width) };
                 return (
                   <button key={id} className="frame-btn" onClick={() => addFrame(id)} title={def.name}>
-                    <FrameSvg style={{ width: 56, height: 56 * (def.height / def.width) }} />
+                    {def.image ? <img src={def.image} alt="" style={thumbStyle} /> : FrameSvg ? <FrameSvg style={thumbStyle} /> : null}
                   </button>
                 );
               })}

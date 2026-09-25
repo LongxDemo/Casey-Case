@@ -139,6 +139,7 @@ export function EditableLayer({
           if (!def) return null;
           const { hole } = def;
           const FrameSvg = def.Svg;
+          const overlayStyle: React.CSSProperties = { position: 'absolute', inset: 0, width: '100%', height: '100%' };
           return (
             <>
               <div
@@ -170,7 +171,7 @@ export function EditableLayer({
                   </div>
                 )}
               </div>
-              <FrameSvg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} />
+              {def.image ? <img src={def.image} alt="" style={overlayStyle} /> : FrameSvg ? <FrameSvg style={overlayStyle} /> : null}
             </>
           );
         })()}

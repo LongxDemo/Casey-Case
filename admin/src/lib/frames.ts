@@ -14,7 +14,11 @@ import { Cat } from '../components/frames/Cat';
 export type FrameDef = {
   id: string;
   name: string;
-  Svg: React.FC<{ style?: React.CSSProperties }>;
+  /** Hand-drawn vector frames use Svg; real photographic frames (shot/cut
+   *  from an actual product photo, transparent PNG) use `image` instead —
+   *  exactly one of the two is set. */
+  Svg?: React.FC<{ style?: React.CSSProperties }>;
+  image?: string;
   width: number;
   height: number;
   hole: { xPct: number; yPct: number; wPct: number; hPct: number };
@@ -100,5 +104,16 @@ export const FRAME_DEFS: Record<string, FrameDef> = {
     width: 200,
     height: 220,
     hole: { xPct: 16, yPct: 32.73, wPct: 68, hPct: 61.82 },
+  },
+  // Real photographic frame (cut from an actual strawberry-hood product
+  // photo the user supplied, transparent PNG with a true cut-out hole) —
+  // not hand-drawn SVG like the cartoon 'strawberry' above.
+  'strawberry-photo': {
+    id: 'strawberry-photo',
+    name: 'Strawberry (Real)',
+    image: '/frames/strawberry-photo.png',
+    width: 640,
+    height: 655,
+    hole: { xPct: 16.15, yPct: 33.48, wPct: 67.62, hPct: 66.09 },
   },
 };

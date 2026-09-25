@@ -99,6 +99,100 @@ export const mockTemplates: TemplateRow[] = [
       { id: 'e', kind: 'sticker', emoji: '✨', size: 34, tx: 118, ty: -155, scale: 1, rotation: 0.2, z: 1 },
     ],
   },
+  // One standalone gallery template per new face-frame shape (2026-09-25) —
+  // mirrors storefront/src/mock.ts.
+  {
+    id: 't-peach', name: 'Peachy Keen', tag: 'Frame', accent: '#E8720C', active: true, featured: false, sort: 5, uses_count: 0,
+    created_at: new Date().toISOString(),
+    background: { id: 'peachy', name: 'Peachy Keen', colors: ['#FFE3C6', '#FFB37B'] },
+    layers: [
+      { id: 'a', kind: 'frame', frameId: 'peach', photoUri: null, photoTx: 0, photoTy: 0, photoScale: 1, tx: 0, ty: -8, scale: 1.05, rotation: 0, z: 2 },
+      { id: 'b', kind: 'sticker', emoji: '✨', size: 36, tx: -100, ty: -150, scale: 1, rotation: -0.2, z: 1 },
+      { id: 'c', kind: 'sticker', emoji: '🎀', size: 40, tx: 96, ty: 150, scale: 1, rotation: 0.2, z: 1 },
+    ],
+  },
+  {
+    id: 't-watermelon', name: 'Melon Splash', tag: 'Frame', accent: '#2E9E5B', active: true, featured: false, sort: 6, uses_count: 0,
+    created_at: new Date().toISOString(),
+    background: { id: 'melon', name: 'Melon Splash', colors: ['#C8F5D6', '#5FC98A'] },
+    layers: [
+      { id: 'a', kind: 'frame', frameId: 'watermelon', photoUri: null, photoTx: 0, photoTy: 0, photoScale: 1, tx: 0, ty: -8, scale: 1.05, rotation: 0, z: 2 },
+      { id: 'b', kind: 'sticker', emoji: '✨', size: 36, tx: -100, ty: -150, scale: 1, rotation: -0.2, z: 1 },
+      { id: 'c', kind: 'sticker', emoji: '🎀', size: 40, tx: 96, ty: 150, scale: 1, rotation: 0.2, z: 1 },
+    ],
+  },
+  {
+    id: 't-orange', name: 'Sunny Citrus', tag: 'Frame', accent: '#E8720C', active: true, featured: false, sort: 7, uses_count: 0,
+    created_at: new Date().toISOString(),
+    background: { id: 'citrus', name: 'Sunny Citrus', colors: ['#FFDDB0', '#FF9A3D'] },
+    layers: [
+      { id: 'a', kind: 'frame', frameId: 'orange', photoUri: null, photoTx: 0, photoTy: 0, photoScale: 1, tx: 0, ty: -8, scale: 1.05, rotation: 0, z: 2 },
+      { id: 'b', kind: 'sticker', emoji: '✨', size: 36, tx: -100, ty: -150, scale: 1, rotation: -0.2, z: 1 },
+      { id: 'c', kind: 'sticker', emoji: '🎀', size: 40, tx: 96, ty: 150, scale: 1, rotation: 0.2, z: 1 },
+    ],
+  },
+  {
+    id: 't-donut', name: 'Donut Vibes', tag: 'Frame', accent: '#E85AA0', active: true, featured: false, sort: 8, uses_count: 0,
+    created_at: new Date().toISOString(),
+    background: { id: 'donutcream', name: 'Donut Cream', colors: ['#FFE9F4', '#FFC2E0'] },
+    layers: [
+      { id: 'a', kind: 'frame', frameId: 'donut', photoUri: null, photoTx: 0, photoTy: 0, photoScale: 1, tx: 0, ty: -8, scale: 1.05, rotation: 0, z: 2 },
+      { id: 'b', kind: 'sticker', emoji: '✨', size: 36, tx: -100, ty: -150, scale: 1, rotation: -0.2, z: 1 },
+      { id: 'c', kind: 'sticker', emoji: '🎀', size: 40, tx: 96, ty: 150, scale: 1, rotation: 0.2, z: 1 },
+    ],
+  },
+  {
+    id: 't-bear', name: 'Bear Hug', tag: 'Frame', accent: '#3D9C89', active: true, featured: false, sort: 9, uses_count: 0,
+    created_at: new Date().toISOString(),
+    background: { id: 'bearmint', name: 'Bear Mint', colors: ['#B8F2E6', '#6FC9B8'] },
+    layers: [
+      { id: 'a', kind: 'frame', frameId: 'bear', photoUri: null, photoTx: 0, photoTy: 0, photoScale: 1, tx: 0, ty: -8, scale: 1.05, rotation: 0, z: 2 },
+      { id: 'b', kind: 'sticker', emoji: '⭐', size: 36, tx: -100, ty: -150, scale: 1, rotation: -0.2, z: 1 },
+      { id: 'c', kind: 'sticker', emoji: '🎀', size: 40, tx: 96, ty: 150, scale: 1, rotation: 0.2, z: 1 },
+    ],
+  },
+  {
+    id: 't-bunny', name: 'Bunny Love', tag: 'Frame', accent: '#FF6FAE', active: true, featured: false, sort: 10, uses_count: 0,
+    created_at: new Date().toISOString(),
+    background: { id: 'bunnypink', name: 'Bunny Pink', colors: ['#FFE3F0', '#FFB8DA'] },
+    layers: [
+      { id: 'a', kind: 'frame', frameId: 'bunny', photoUri: null, photoTx: 0, photoTy: 0, photoScale: 1, tx: 0, ty: -8, scale: 1.05, rotation: 0, z: 2 },
+      { id: 'b', kind: 'sticker', emoji: '✨', size: 36, tx: -100, ty: -150, scale: 1, rotation: -0.2, z: 1 },
+      { id: 'c', kind: 'sticker', emoji: '🎀', size: 40, tx: 96, ty: 150, scale: 1, rotation: 0.2, z: 1 },
+    ],
+  },
+  {
+    id: 't-dog', name: 'Puppy Love', tag: 'Frame', accent: '#E8A23D', active: true, featured: false, sort: 11, uses_count: 0,
+    created_at: new Date().toISOString(),
+    background: { id: 'puppytan', name: 'Puppy Tan', colors: ['#FFECD2', '#FFD199'] },
+    layers: [
+      { id: 'a', kind: 'frame', frameId: 'dog', photoUri: null, photoTx: 0, photoTy: 0, photoScale: 1, tx: 0, ty: -8, scale: 1.05, rotation: 0, z: 2 },
+      { id: 'b', kind: 'sticker', emoji: '✨', size: 36, tx: -100, ty: -150, scale: 1, rotation: -0.2, z: 1 },
+      { id: 'c', kind: 'sticker', emoji: '🐾', size: 34, tx: 96, ty: 150, scale: 1, rotation: 0.2, z: 1 },
+    ],
+  },
+  {
+    id: 't-cat', name: 'Kitty Cutie', tag: 'Frame', accent: '#8B4FD1', active: true, featured: false, sort: 12, uses_count: 0,
+    created_at: new Date().toISOString(),
+    background: { id: 'kittylilac', name: 'Kitty Lilac', colors: ['#EDE1FB', '#C9A6F5'] },
+    layers: [
+      { id: 'a', kind: 'frame', frameId: 'cat', photoUri: null, photoTx: 0, photoTy: 0, photoScale: 1, tx: 0, ty: -8, scale: 1.05, rotation: 0, z: 2 },
+      { id: 'b', kind: 'sticker', emoji: '✨', size: 36, tx: -100, ty: -150, scale: 1, rotation: -0.2, z: 1 },
+      { id: 'c', kind: 'sticker', emoji: '🎀', size: 40, tx: 96, ty: 150, scale: 1, rotation: 0.2, z: 1 },
+    ],
+  },
+  // Real photographic frame (cut from an actual strawberry-hood product
+  // photo, transparent PNG) — not the flat SVG cartoon look above.
+  {
+    id: 't-strawberry-real', name: 'Strawberry (Real)', tag: 'Real Photo', accent: '#B23A2E', active: true, featured: false, sort: 13, uses_count: 0,
+    created_at: new Date().toISOString(),
+    background: { id: 'gingham-berry', name: 'Gingham Picnic', colors: ['#FCE9C6', '#E4574A'], pattern: 'gingham' },
+    layers: [
+      { id: 'a', kind: 'frame', frameId: 'strawberry-photo', photoUri: null, photoTx: 0, photoTy: 0, photoScale: 1, tx: 0, ty: -6, scale: 1.05, rotation: 0, z: 2 },
+      { id: 'b', kind: 'sticker', emoji: '🎀', size: 38, tx: -100, ty: -150, scale: 1, rotation: -0.2, z: 1 },
+      { id: 'c', kind: 'sticker', emoji: '🎀', size: 38, tx: 100, ty: 150, scale: 1, rotation: 0.2, z: 1 },
+    ],
+  },
 ];
 
 export const mockOrders: OrderRow[] = [

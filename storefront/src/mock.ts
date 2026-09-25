@@ -12,6 +12,14 @@ export const backgrounds: CaseBackground[] = [
   { id: 'lilac', name: 'Lilac Dream', colors: ['#E4C1F9', '#B892FF'] },
   { id: 'solidpink', name: 'Hot Pink', colors: ['#FF3E9A', '#FF3E9A'] },
   { id: 'gingham-berry', name: 'Gingham Picnic', colors: ['#FCE9C6', '#E4574A'], pattern: 'gingham' },
+  { id: 'peachy', name: 'Peachy Keen', colors: ['#FFE3C6', '#FFB37B'] },
+  { id: 'melon', name: 'Melon Splash', colors: ['#C8F5D6', '#5FC98A'] },
+  { id: 'citrus', name: 'Sunny Citrus', colors: ['#FFDDB0', '#FF9A3D'] },
+  { id: 'donutcream', name: 'Donut Cream', colors: ['#FFE9F4', '#FFC2E0'] },
+  { id: 'bearmint', name: 'Bear Mint', colors: ['#B8F2E6', '#6FC9B8'] },
+  { id: 'bunnypink', name: 'Bunny Pink', colors: ['#FFE3F0', '#FFB8DA'] },
+  { id: 'puppytan', name: 'Puppy Tan', colors: ['#FFECD2', '#FFD199'] },
+  { id: 'kittylilac', name: 'Kitty Lilac', colors: ['#EDE1FB', '#C9A6F5'] },
 ];
 
 export const stickerPacks: StickerPack[] = [
@@ -82,6 +90,92 @@ export const templates: Template[] = [
       { kind: 'text', text: 'besties', color: '#B23A2E', fontSize: 30, fontWeight: '800', align: 'center', tx: 0, ty: 155, scale: 1, rotation: 0, z: 3 },
       { kind: 'sticker', emoji: '✨', size: 34, tx: -118, ty: -155, scale: 1, rotation: -0.2, z: 1 },
       { kind: 'sticker', emoji: '✨', size: 34, tx: 118, ty: -155, scale: 1, rotation: 0.2, z: 1 },
+    ],
+  },
+  // One standalone gallery template per new face-frame shape (2026-09-25) —
+  // each just a single centered frame + two corner accents so the customer's
+  // photo is the whole point, name/tag/background themed to match the shape.
+  {
+    id: 't-peach', name: 'Peachy Keen', tag: 'Frame', accent: '#E8720C',
+    background: backgrounds[9],
+    layers: [
+      { kind: 'frame', frameId: 'peach', photoUri: null, photoTx: 0, photoTy: 0, photoScale: 1, tx: 0, ty: -8, scale: 1.05, rotation: 0, z: 2 },
+      { kind: 'sticker', emoji: '✨', size: 36, tx: -100, ty: -150, scale: 1, rotation: -0.2, z: 1 },
+      { kind: 'sticker', emoji: '🎀', size: 40, tx: 96, ty: 150, scale: 1, rotation: 0.2, z: 1 },
+    ],
+  },
+  {
+    id: 't-watermelon', name: 'Melon Splash', tag: 'Frame', accent: '#2E9E5B',
+    background: backgrounds[10],
+    layers: [
+      { kind: 'frame', frameId: 'watermelon', photoUri: null, photoTx: 0, photoTy: 0, photoScale: 1, tx: 0, ty: -8, scale: 1.05, rotation: 0, z: 2 },
+      { kind: 'sticker', emoji: '✨', size: 36, tx: -100, ty: -150, scale: 1, rotation: -0.2, z: 1 },
+      { kind: 'sticker', emoji: '🎀', size: 40, tx: 96, ty: 150, scale: 1, rotation: 0.2, z: 1 },
+    ],
+  },
+  {
+    id: 't-orange', name: 'Sunny Citrus', tag: 'Frame', accent: '#E8720C',
+    background: backgrounds[11],
+    layers: [
+      { kind: 'frame', frameId: 'orange', photoUri: null, photoTx: 0, photoTy: 0, photoScale: 1, tx: 0, ty: -8, scale: 1.05, rotation: 0, z: 2 },
+      { kind: 'sticker', emoji: '✨', size: 36, tx: -100, ty: -150, scale: 1, rotation: -0.2, z: 1 },
+      { kind: 'sticker', emoji: '🎀', size: 40, tx: 96, ty: 150, scale: 1, rotation: 0.2, z: 1 },
+    ],
+  },
+  {
+    id: 't-donut', name: 'Donut Vibes', tag: 'Frame', accent: '#E85AA0',
+    background: backgrounds[12],
+    layers: [
+      { kind: 'frame', frameId: 'donut', photoUri: null, photoTx: 0, photoTy: 0, photoScale: 1, tx: 0, ty: -8, scale: 1.05, rotation: 0, z: 2 },
+      { kind: 'sticker', emoji: '✨', size: 36, tx: -100, ty: -150, scale: 1, rotation: -0.2, z: 1 },
+      { kind: 'sticker', emoji: '🎀', size: 40, tx: 96, ty: 150, scale: 1, rotation: 0.2, z: 1 },
+    ],
+  },
+  {
+    id: 't-bear', name: 'Bear Hug', tag: 'Frame', accent: '#3D9C89',
+    background: backgrounds[13],
+    layers: [
+      { kind: 'frame', frameId: 'bear', photoUri: null, photoTx: 0, photoTy: 0, photoScale: 1, tx: 0, ty: -8, scale: 1.05, rotation: 0, z: 2 },
+      { kind: 'sticker', emoji: '⭐', size: 36, tx: -100, ty: -150, scale: 1, rotation: -0.2, z: 1 },
+      { kind: 'sticker', emoji: '🎀', size: 40, tx: 96, ty: 150, scale: 1, rotation: 0.2, z: 1 },
+    ],
+  },
+  {
+    id: 't-bunny', name: 'Bunny Love', tag: 'Frame', accent: '#FF6FAE',
+    background: backgrounds[14],
+    layers: [
+      { kind: 'frame', frameId: 'bunny', photoUri: null, photoTx: 0, photoTy: 0, photoScale: 1, tx: 0, ty: -8, scale: 1.05, rotation: 0, z: 2 },
+      { kind: 'sticker', emoji: '✨', size: 36, tx: -100, ty: -150, scale: 1, rotation: -0.2, z: 1 },
+      { kind: 'sticker', emoji: '🎀', size: 40, tx: 96, ty: 150, scale: 1, rotation: 0.2, z: 1 },
+    ],
+  },
+  {
+    id: 't-dog', name: 'Puppy Love', tag: 'Frame', accent: '#E8A23D',
+    background: backgrounds[15],
+    layers: [
+      { kind: 'frame', frameId: 'dog', photoUri: null, photoTx: 0, photoTy: 0, photoScale: 1, tx: 0, ty: -8, scale: 1.05, rotation: 0, z: 2 },
+      { kind: 'sticker', emoji: '✨', size: 36, tx: -100, ty: -150, scale: 1, rotation: -0.2, z: 1 },
+      { kind: 'sticker', emoji: '🐾', size: 34, tx: 96, ty: 150, scale: 1, rotation: 0.2, z: 1 },
+    ],
+  },
+  {
+    id: 't-cat', name: 'Kitty Cutie', tag: 'Frame', accent: '#8B4FD1',
+    background: backgrounds[16],
+    layers: [
+      { kind: 'frame', frameId: 'cat', photoUri: null, photoTx: 0, photoTy: 0, photoScale: 1, tx: 0, ty: -8, scale: 1.05, rotation: 0, z: 2 },
+      { kind: 'sticker', emoji: '✨', size: 36, tx: -100, ty: -150, scale: 1, rotation: -0.2, z: 1 },
+      { kind: 'sticker', emoji: '🎀', size: 40, tx: 96, ty: 150, scale: 1, rotation: 0.2, z: 1 },
+    ],
+  },
+  // Real photographic frame (cut from an actual strawberry-hood product
+  // photo, transparent PNG) — not the flat SVG cartoon look above.
+  {
+    id: 't-strawberry-real', name: 'Strawberry (Real)', tag: 'Real Photo', accent: '#B23A2E',
+    background: backgrounds[8],
+    layers: [
+      { kind: 'frame', frameId: 'strawberry-photo', photoUri: null, photoTx: 0, photoTy: 0, photoScale: 1, tx: 0, ty: -6, scale: 1.05, rotation: 0, z: 2 },
+      { kind: 'sticker', emoji: '🎀', size: 38, tx: -100, ty: -150, scale: 1, rotation: -0.2, z: 1 },
+      { kind: 'sticker', emoji: '🎀', size: 38, tx: 100, ty: 150, scale: 1, rotation: 0.2, z: 1 },
     ],
   },
 ];

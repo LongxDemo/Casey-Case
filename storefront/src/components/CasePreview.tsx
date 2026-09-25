@@ -108,6 +108,7 @@ export function LayerView({ layer, scale }: { layer: Layer; scale: number }) {
     const h = def.height * scale;
     const { hole } = def;
     const FrameSvg = def.Svg;
+    const overlayStyle: React.CSSProperties = { position: 'absolute', inset: 0, width: '100%', height: '100%' };
     return (
       <div style={{ ...base, width: w, height: h }}>
         <div
@@ -135,7 +136,7 @@ export function LayerView({ layer, scale }: { layer: Layer; scale: number }) {
             />
           )}
         </div>
-        <FrameSvg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} />
+        {def.image ? <img src={def.image} alt="" style={overlayStyle} /> : FrameSvg ? <FrameSvg style={overlayStyle} /> : null}
       </div>
     );
   }
