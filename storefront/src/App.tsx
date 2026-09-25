@@ -97,15 +97,6 @@ function Home({
         </div>
       </div>
 
-      <div className="hero">
-        <div className="hero-blob" />
-        <span className="hero-pill">DIY PHONE CASE</span>
-        <div className="hero-title" style={{ whiteSpace: 'pre-line' }}>{fp.hero_title}</div>
-        <div className="hero-sub">{fp.hero_subtitle}</div>
-        <button className="btn soft" style={{ marginTop: 14 }} onClick={onBlank}>{fp.hero_cta}</button>
-        <div className="hero-bunny">🐰</div>
-      </div>
-
       <div className="steps">
         {[
           { icon: '📱', label: 'Choose\nmodel' },

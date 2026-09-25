@@ -184,9 +184,6 @@ function FrontPageEditor() {
       <p className="page-sub">Control what customers see when they open the app.</p>
       <div className="card" style={{ maxWidth: 620 }}>
         <div style={{ display: 'grid', gap: 16 }}>
-          <div><label>Hero title</label><textarea className="f" rows={2} value={fp.hero_title} onChange={(e) => set({ hero_title: e.target.value })} /></div>
-          <div><label>Hero subtitle</label><input className="f" value={fp.hero_subtitle} onChange={(e) => set({ hero_subtitle: e.target.value })} /></div>
-          <div><label>CTA button text</label><input className="f" value={fp.hero_cta} onChange={(e) => set({ hero_cta: e.target.value })} /></div>
           <div>
             <label>Featured templates</label>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>

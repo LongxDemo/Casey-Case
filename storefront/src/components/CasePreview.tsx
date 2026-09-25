@@ -248,8 +248,11 @@ function Plate({ l, t, w, h, r, tint }: { l: number; t: number; w: number; h: nu
   );
 }
 
-// A visible lens circle sitting in the die-cut hole — dark glass with a
-// small specular highlight, not a flat silhouette.
+// A real camera lens is a mostly BLACK barrel — a bright chrome/silver ring
+// is what makes a lens read as a toy/drawing. Concentric dark bands suggest
+// the barrel's depth, the glass itself is near-black and glossy, and the
+// only real color comes from a small, OFF-CENTER, blue-violet-pink
+// coating reflection — never a centered flat white dot.
 function Lens({ size, left, top }: { size: number; left: number; top: number }) {
   return (
     <div
@@ -260,12 +263,103 @@ function Lens({ size, left, top }: { size: number; left: number; top: number }) 
         width: size,
         height: size,
         borderRadius: '50%',
-        background: 'radial-gradient(circle at 35% 30%, #52525c 0%, #1c1c22 55%, #000 100%)',
-        boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.1), 0 1px 2px rgba(0,0,0,0.45)',
+        background: [
+          'radial-gradient(circle at 50% 50%, transparent 74%, rgba(255,255,255,0.05) 77%, transparent 80%)',
+          'radial-gradient(circle at 40% 35%, #2a2a30 0%, #141417 40%, #050506 100%)',
+        ].join(', '),
+        boxShadow: '0 1px 2px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(255,255,255,0.06)',
       }}
     >
-      <div style={{ position: 'absolute', left: '30%', top: '26%', width: '20%', height: '20%', borderRadius: '50%', background: 'rgba(255,255,255,0.5)' }} />
+      <div
+        style={{
+          position: 'absolute',
+          inset: '22%',
+          borderRadius: '50%',
+          overflow: 'hidden',
+          background: 'radial-gradient(circle at 42% 38%, #1b1e24 0%, #0a0b0e 45%, #000 100%)',
+          boxShadow: 'inset 0 0 3px rgba(0,0,0,0.95), inset 0 0 0 1px rgba(255,255,255,0.05)',
+        }}
+      >
+        <div
+          style={{
+            position: 'absolute',
+            left: '26%',
+            top: '34%',
+            width: '34%',
+            height: '24%',
+            borderRadius: '50%',
+            background: 'linear-gradient(120deg, rgba(130,175,255,0.55), rgba(200,120,240,0.4) 55%, rgba(255,150,190,0.25))',
+            filter: 'blur(0.4px)',
+          }}
+        />
+        <div style={{ position: 'absolute', left: '31%', top: '38%', width: '10%', height: '7%', borderRadius: '50%', background: 'rgba(255,255,255,0.55)' }} />
+      </div>
     </div>
+  );
+}
+
+// LED flash — warm cream diffuser with a glowing core, not a lens.
+function Flash({ size, left, top }: { size: number; left: number; top: number }) {
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        left,
+        top,
+        width: size,
+        height: size,
+        borderRadius: '50%',
+        overflow: 'hidden',
+        border: `${Math.max(0.6, size * 0.06)}px solid rgba(170,170,190,0.45)`,
+        background: 'radial-gradient(circle at 38% 32%, #fffef8 0%, #f3ecdd 45%, #d8d1c2 100%)',
+        boxShadow: `inset 0 ${Math.max(0.5, size * 0.04)}px ${Math.max(1, size * 0.08)}px rgba(120,110,90,0.35)`,
+      }}
+    >
+      <div
+        style={{
+          position: 'absolute',
+          left: size * 0.3,
+          top: size * 0.3,
+          width: size * 0.4,
+          height: size * 0.4,
+          borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(255,214,140,0.55), rgba(255,214,140,0) 75%)',
+        }}
+      />
+      {size >= 12 && (
+        <div
+          style={{
+            position: 'absolute',
+            left: size * 0.16,
+            top: size * 0.12,
+            width: size * 0.32,
+            height: size * 0.16,
+            borderRadius: size * 0.16,
+            background: 'rgba(255,255,255,0.75)',
+            transform: 'rotate(-18deg)',
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+// Small dark sensor dot — mic pinhole, laser AF, or LiDAR emitter.
+function Dot({ size, left, top }: { size: number; left: number; top: number }) {
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        left,
+        top,
+        width: size,
+        height: size,
+        borderRadius: '50%',
+        background: 'radial-gradient(circle at 35% 30%, #2b2c36 0%, #0b0a10 65%)',
+        border: `${Math.max(0.6, size * 0.08)}px solid rgba(255,255,255,0.16)`,
+        boxShadow: `inset ${size * 0.08}px ${size * 0.1}px ${size * 0.14}px rgba(255,255,255,0.18)`,
+      }}
+    />
   );
 }
 
@@ -285,6 +379,9 @@ export function CameraModule({ style, width: W, height: H }: { style: CamStyle; 
         <Lens size={ld} left={clx} top={my + pad} />
         <Lens size={ld} left={clx} top={my + bh - ld - pad} />
         <Lens size={ld} left={clx + ld * 0.95} top={my + (bh - ld) / 2} />
+        <Flash size={W * 0.075} left={mx + pw * 0.83} top={my + bh * 0.14} />
+        <Dot size={W * 0.075} left={mx + pw * 0.76} top={my + bh * 0.52} />
+        <Dot size={W * 0.028} left={mx + pw * 0.88} top={my + bh * 0.4} />
       </>
     );
   }
@@ -298,6 +395,9 @@ export function CameraModule({ style, width: W, height: H }: { style: CamStyle; 
       <>
         <Plate l={mx} t={my} w={pw} h={ph} r={ph * 0.32} tint={EXPOSED_METAL_TINT} />
         <Lens size={ld} left={mx + pw * 0.07} top={my + (ph - ld) / 2} />
+        {/* Flash + mic sit right beside the lens, not far out on the empty side. */}
+        <Flash size={ph * 0.22} left={mx + pw * 0.33} top={my + ph * 0.3} />
+        <Dot size={ph * 0.1} left={mx + pw * 0.42} top={my + ph * 0.48} />
       </>
     );
   }
@@ -311,6 +411,7 @@ export function CameraModule({ style, width: W, height: H }: { style: CamStyle; 
         <Plate l={px} t={py} w={s} h={sh} r={s * 0.5} tint={EXPOSED_METAL_TINT} />
         <Lens size={ld} left={px + (s - ld) / 2} top={py + sh * 0.08} />
         <Lens size={ld} left={px + (s - ld) / 2} top={py + sh - ld - sh * 0.08} />
+        <Flash size={s * 0.2} left={px + s * 1.06} top={py + sh * 0.08 + ld * 0.18} />
       </>
     );
   }
@@ -326,6 +427,11 @@ export function CameraModule({ style, width: W, height: H }: { style: CamStyle; 
         <Lens size={ld} left={px + s * 0.08} top={py + s * 0.08} />
         <Lens size={ld} left={px + s * 0.08} top={py + s * 0.5} />
         <Lens size={ld} left={px + s * 0.44} top={py + s * 0.29} />
+        {/* Right column, top to bottom: flash, mic, LiDAR, tucked into the
+            corners so they clear the third lens. */}
+        <Flash size={ld * 0.4} left={px + s * 0.76} top={py + s * 0.1} />
+        <Dot size={ld * 0.16} left={px + s * 0.88} top={py + s * 0.47} />
+        <Dot size={ld * 0.3} left={px + s * 0.76} top={py + s * 0.74} />
       </>
     );
   }
@@ -340,6 +446,8 @@ export function CameraModule({ style, width: W, height: H }: { style: CamStyle; 
         <Plate l={px} t={py} w={s} h={sh} r={s * 0.32} tint={EXPOSED_METAL_TINT} />
         <Lens size={ld} left={px + s * 0.06} top={py + s * 0.06} />
         <Lens size={ld} left={px + s - ld - s * 0.06} top={py + sh - ld - s * 0.06} />
+        <Flash size={s * 0.18} left={px + s * 0.68} top={py + s * 0.12} />
+        <Dot size={s * 0.08} left={px + s * 0.2} top={py + sh - s * 0.28} />
       </>
     );
   }
@@ -352,6 +460,8 @@ export function CameraModule({ style, width: W, height: H }: { style: CamStyle; 
         <Plate l={px} t={py} w={s} h={sh} r={s * 0.32} tint={EXPOSED_METAL_TINT} />
         <Lens size={ld} left={px + s * 0.09} top={py + sh * 0.08} />
         <Lens size={ld} left={px + s * 0.09} top={py + sh - ld - sh * 0.08} />
+        <Flash size={s * 0.18} left={px + s * 0.66} top={py + sh * 0.12} />
+        <Dot size={s * 0.1} left={px + s * 0.68} top={py + sh * 0.72} />
       </>
     );
   }
@@ -366,6 +476,7 @@ export function CameraModule({ style, width: W, height: H }: { style: CamStyle; 
       <>
         <Plate l={bx} t={by} w={bw} h={bh} r={ld * 0.4} tint={EXPOSED_METAL_TINT} />
         <Lens size={lensD} left={bx + (bw - lensD) / 2} top={by + (bh - lensD) / 2} />
+        <Flash size={ld * 0.24} left={W * 0.06 + ld * 1.08} top={H * 0.045 + ld * 0.14} />
       </>
     );
   }
@@ -382,6 +493,8 @@ export function CameraModule({ style, width: W, height: H }: { style: CamStyle; 
         <Lens size={ld} left={lx} top={ty + gap} />
         <Lens size={ld} left={lx} top={ty + gap * 2} />
         {style === 'samsung-ultra' && <Lens size={ld * 0.78} left={lx + ld * 1.5} top={ty + gap * 1.45} />}
+        {style === 'samsung-ultra' && <Dot size={ld * 0.22} left={lx + ld * 1.6} top={ty + gap * 0.95} />}
+        <Flash size={ld * 0.3} left={lx + ld * 1.5} top={ty + gap * 0.45} />
       </>
     );
   }
@@ -410,6 +523,7 @@ export function CameraModule({ style, width: W, height: H }: { style: CamStyle; 
         <Plate l={W * 0.52 - ld * 0.12} t={cy - ld * 0.12} w={ld * 2.9} h={ld * 1.3} r={ld * 0.4} tint={EXPOSED_METAL_TINT} />
         <Lens size={lensD} left={W * 0.52 + ld * 0.08} top={cy + (ld * 1.3 - lensD) / 2 - ld * 0.12} />
         <Lens size={lensD} left={W * 0.52 + ld * 1.23} top={cy + (ld * 1.3 - lensD) / 2 - ld * 0.12} />
+        <Flash size={ld * 0.28} left={W * 0.52 + ld * 2.5} top={cy + ld * 0.36} />
       </>
     );
   }
@@ -422,6 +536,7 @@ export function CameraModule({ style, width: W, height: H }: { style: CamStyle; 
         <Plate l={0} t={by} w={W} h={bh} r={0} tint={EXPOSED_METAL_TINT} />
         <Lens size={ld} left={W * 0.15} top={by + (bh - ld) / 2} />
         <Lens size={ld} left={W * 0.15 + ld * 1.3} top={by + (bh - ld) / 2} />
+        <Flash size={bh * 0.22} left={W * 0.88} top={by + bh * 0.39} />
       </>
     );
   }
@@ -435,11 +550,13 @@ export function CameraModule({ style, width: W, height: H }: { style: CamStyle; 
         {[0.2, 0.5, 0.8].map((f, i) => (
           <Lens key={i} size={ld} left={ix + iw * f - ld / 2} top={iy + (ih - ld) / 2} />
         ))}
+        <Flash size={ih * 0.2} left={ix + iw * 0.88} top={iy + ih * 0.4} />
       </>
     );
   }
   if (style === 'xiaomi') {
-    // Xiaomi 14 / Redmi Note: rounded-square island.
+    // Xiaomi 14 / Redmi Note: rounded-square island, three lenses plus the
+    // flash in the fourth corner of the grid.
     const s = W * 0.44, px = W * 0.06, py = H * 0.045;
     const ld = s * 0.36;
     return (
@@ -448,12 +565,13 @@ export function CameraModule({ style, width: W, height: H }: { style: CamStyle; 
         <Lens size={ld} left={px + s * 0.1} top={py + s * 0.1} />
         <Lens size={ld} left={px + s * 0.54} top={py + s * 0.1} />
         <Lens size={ld} left={px + s * 0.1} top={py + s * 0.54} />
+        <Flash size={ld * 0.55} left={px + s * 0.54 + ld * 0.22} top={py + s * 0.54 + ld * 0.22} />
       </>
     );
   }
   if (style === 'oneplus') {
     // OnePlus 12: the signature big circular module joined to the left
-    // edge by a short wing, both blank.
+    // edge by a short wing, three lenses + laser AF inside, flash on the body.
     const d = W * 0.46, cx = W * 0.1, cy = H * 0.045;
     const ld = d * 0.32;
     return (
@@ -463,6 +581,8 @@ export function CameraModule({ style, width: W, height: H }: { style: CamStyle; 
         <Lens size={ld} left={cx + d * 0.14} top={cy + d * 0.14} />
         <Lens size={ld} left={cx + d * 0.54} top={cy + d * 0.14} />
         <Lens size={ld} left={cx + d * 0.14} top={cy + d * 0.54} />
+        <Dot size={ld * 0.4} left={cx + d * 0.6} top={cy + d * 0.58} />
+        <Flash size={W * 0.06} left={cx + d + W * 0.06} top={cy + d * 0.16} />
       </>
     );
   }
@@ -476,6 +596,8 @@ export function CameraModule({ style, width: W, height: H }: { style: CamStyle; 
         <Plate l={px} t={py} w={ow} h={oh} r={ow / 2} tint={EXPOSED_METAL_TINT} />
         <Lens size={l1} left={px + (ow - l1) / 2} top={py + ow * 0.16} />
         <Lens size={l2} left={px + (ow - l2) / 2} top={py + oh - l2 - ow * 0.34} />
+        <Dot size={ow * 0.1} left={px + ow * 0.45} top={py + oh - ow * 0.18} />
+        <Flash size={ow * 0.16} left={px + ow * 1.18} top={py + ow * 0.18} />
       </>
     );
   }
