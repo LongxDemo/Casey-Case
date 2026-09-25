@@ -244,7 +244,7 @@ function camStyleFor(model: PhoneModel): CamStyle {
 export function cameraZoneHeight(style: CamStyle, W: number, H: number): number {
   const pad = H * 0.018;
   switch (style) {
-    case 'ip17-plateau': return H * 0.045 + W * 0.91 * (141 / 222) + pad;
+    case 'ip17-plateau': return W * 0.055 + W * 0.78 * (141 / 222) + pad;
     case 'ip17-air': return H * 0.045 + W * 0.27 + pad;
     case 'ip-vert': return H * 0.045 + W * 0.42 * 1.83 + pad;
     case 'ip-square': return W * 0.5 + pad;
@@ -435,8 +435,11 @@ export function CameraModule({ style, width: W, height: H, tint }: { style: CamS
   if (style === 'ip17-plateau') {
     // Real photo of the actual 17 Pro/Pro Max camera plateau (silver), not a
     // CSS recreation — pixel-exact instead of an approximation. Sized to the
-    // image's own aspect ratio so nothing stretches/distorts.
-    const mx = W * 0.045, my = H * 0.045;
+    // image's own aspect ratio so nothing stretches/distorts. Margins measured
+    // directly off pixel coordinates in a real photo of a finished case: the
+    // plateau is ~78% of the case width with roughly equal side margins, not
+    // stretched to ~91% like the earlier CSS approximation was.
+    const mx = W * 0.11, my = W * 0.055;
     const pw = W - mx * 2, bh = pw * (141 / 222);
     return <img src="/camera/i17pro-silver.png" alt="" style={{ position: 'absolute', left: mx, top: my, width: pw, height: bh }} />;
   }
