@@ -278,7 +278,13 @@ export function cameraZoneRect(style: CamStyle, W: number, H: number): { left: n
       const mx = W * 0.06, my = W * 0.03, pw = W - mx * 2, bh = pw * (141 / 222);
       return { left: 0, top: 0, width: W - mx + pad, height: my + bh + pad * 0.3 };
     }
-    case 'ip17-air': return { left: 0, top: 0, width: W, height: H * 0.045 + W * 0.27 + pad };
+    case 'ip17-air': {
+      // Module position/aspect match the real cropped photo (584x215)
+      // exactly — do not touch mx/my/bh when adjusting the cutoff line, only
+      // the zone's own pad below is tunable, same rule as ip17-plateau.
+      const mx = W * 0.15, my = H * 0.035, pw = W - mx * 2, bh = pw * (215 / 584);
+      return { left: 0, top: 0, width: W, height: my + bh + pad * 0.3 };
+    }
     case 'ip-vert': {
       const s = W * 0.42, px = W * 0.05;
       return { left: 0, top: 0, width: px + s + pad, height: H * 0.045 + s * 1.83 + pad };
@@ -519,20 +525,19 @@ export function CameraModule({ style, width: W, height: H, tint }: { style: CamS
     return <img src="/camera/i17pro-silver.png" alt="" style={{ position: 'absolute', left: mx, top: my, width: pw, height: bh }} />;
   }
   if (style === 'ip17-air') {
-    // Same inset-with-border treatment as the Pro plateau — full width
-    // minus a case-material margin, rounded on all four corners.
-    const mx = W * 0.045, my = H * 0.045;
-    const pw = W - mx * 2, ph = W * 0.27;
-    const ld = ph * 0.7;
-    return (
-      <>
-        <Plate l={mx} t={my} w={pw} h={ph} r={ph * 0.32} tint={EXPOSED_METAL_TINT} caseTint={tint} />
-        <Lens size={ld} left={mx + pw * 0.07} top={my + (ph - ld) / 2} />
-        {/* Flash + mic sit right beside the lens, not far out on the empty side. */}
-        <Flash size={ph * 0.22} left={mx + pw * 0.33} top={my + ph * 0.3} />
-        <Dot size={ph * 0.1} left={mx + pw * 0.42} top={my + ph * 0.48} />
-      </>
-    );
+    // Real photo of the actual Air camera bar. Source was a JPEG re-export
+    // of a transparent render on a faint checkerboard matte — the pill's own
+    // edges were too low-contrast against that matte for pixel-level alpha
+    // extraction (checker leaked into any color-distance mask). Cropped to
+    // the pill's measured bounds instead and masked with a true stadium
+    // shape (rounded rect, radius = height/2) — the real module is a pill,
+    // so this gives a clean, exact-geometry cut with zero speckle, unlike
+    // the noisier pixel-threshold approach. Sized to the image's own aspect
+    // ratio (584x215) so nothing stretches — same pattern as the 17 Pro
+    // plateau above.
+    const mx = W * 0.15, my = H * 0.035;
+    const pw = W - mx * 2, bh = pw * (215 / 584);
+    return <img src="/camera/i17air-skyblue.png" alt="" style={{ position: 'absolute', left: mx, top: my, width: pw, height: bh }} />;
   }
   if (style === 'ip-vert') {
     // Spec table: ~30x55mm pill on a 71.6mm-wide body -> width 0.42,
