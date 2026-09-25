@@ -519,16 +519,18 @@ export function CameraModule({ style, width: W, height: H, tint }: { style: CamS
     );
   }
   if (style === 'ip-dual-vert') {
-    // 11/12: square-ish module, both lenses stacked vertically on the left.
+    // Base 11/12 (not Pro): square-ish module, both lenses stacked
+    // vertically on the left, flash to the right vertically centered
+    // between them — checked against a real product photo. No extra dot.
     const s = W * 0.45, px = W * 0.05, py = H * 0.04, sh = s * 1.15;
     const ld = s * 0.42;
+    const flashSize = s * 0.2;
     return (
       <>
         <Plate l={px} t={py} w={s} h={sh} r={s * 0.32} tint={EXPOSED_METAL_TINT} caseTint={tint} />
         <Lens size={ld} left={px + s * 0.09} top={py + sh * 0.08} />
         <Lens size={ld} left={px + s * 0.09} top={py + sh - ld - sh * 0.08} />
-        <Flash size={s * 0.18} left={px + s * 0.66} top={py + sh * 0.12} />
-        <Dot size={s * 0.1} left={px + s * 0.68} top={py + sh * 0.72} />
+        <Flash size={flashSize} left={px + s * 0.58} top={py + sh * 0.5 - flashSize / 2} />
       </>
     );
   }
