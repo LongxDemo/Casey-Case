@@ -70,6 +70,20 @@ export function CasePreview({
           background: 'linear-gradient(135deg, rgba(255,255,255,0) 38%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0) 62%)',
         }}
       />
+      {/* Real printed cases leave a thin strip of the case's own (black)
+          material unprinted around the edge — the print film never reaches
+          the true edge. Drawn on TOP of the layers/photo so it still shows
+          even on a full edge-to-edge "Fit to Case" photo, matching the
+          actual product. */}
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          pointerEvents: 'none',
+          borderRadius: radius,
+          boxShadow: `inset 0 0 0 ${Math.max(3, renderWidth * 0.032)}px #0c0c0f`,
+        }}
+      />
     </div>
   );
 }
