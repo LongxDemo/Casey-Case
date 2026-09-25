@@ -244,7 +244,7 @@ function camStyleFor(model: PhoneModel): CamStyle {
 export function cameraZoneHeight(style: CamStyle, W: number, H: number): number {
   const pad = H * 0.018;
   switch (style) {
-    case 'ip17-plateau': return H * 0.045 + W * 0.5 + pad;
+    case 'ip17-plateau': return H * 0.045 + W * 0.91 * (141 / 222) + pad;
     case 'ip17-air': return H * 0.045 + W * 0.27 + pad;
     case 'ip-vert': return H * 0.045 + W * 0.42 * 1.83 + pad;
     case 'ip-square': return W * 0.5 + pad;
@@ -433,25 +433,12 @@ function Dot({ size, left, top }: { size: number; left: number; top: number }) {
 
 export function CameraModule({ style, width: W, height: H, tint }: { style: CamStyle; width: number; height: number; tint: string }) {
   if (style === 'ip17-plateau') {
-    // Inset from the phone's edges with a case-material border on all
-    // four sides, all four corners rounded — verified against a real
-    // printed 17 Pro case.
+    // Real photo of the actual 17 Pro/Pro Max camera plateau (silver), not a
+    // CSS recreation — pixel-exact instead of an approximation. Sized to the
+    // image's own aspect ratio so nothing stretches/distorts.
     const mx = W * 0.045, my = H * 0.045;
-    const pw = W - mx * 2, bh = W * 0.5;
-    // Real triple-camera cluster sits on the LEFT side of the plateau, not
-    // spread edge-to-edge — two lenses stacked, a third tucked to their right.
-    const ld = bh * 0.43, pad = bh * 0.065, clx = mx + W * 0.055;
-    return (
-      <>
-        <Plate l={mx} t={my} w={pw} h={bh} r={bh * 0.22} tint={EXPOSED_METAL_TINT} caseTint={tint} />
-        <Lens size={ld} left={clx} top={my + pad} />
-        <Lens size={ld} left={clx} top={my + bh - ld - pad} />
-        <Lens size={ld} left={clx + ld * 0.95} top={my + (bh - ld) / 2} />
-        <Flash size={W * 0.075} left={mx + pw * 0.83} top={my + bh * 0.14} />
-        <Dot size={W * 0.075} left={mx + pw * 0.76} top={my + bh * 0.52} />
-        <Dot size={W * 0.028} left={mx + pw * 0.88} top={my + bh * 0.4} />
-      </>
-    );
+    const pw = W - mx * 2, bh = pw * (141 / 222);
+    return <img src="/camera/i17pro-silver.png" alt="" style={{ position: 'absolute', left: mx, top: my, width: pw, height: bh }} />;
   }
   if (style === 'ip17-air') {
     // Same inset-with-border treatment as the Pro plateau — full width
