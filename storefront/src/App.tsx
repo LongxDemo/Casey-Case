@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { toBlob } from 'html-to-image';
-import { CameraModule, CasePreview, camStyleFor } from './components/CasePreview';
+import { CameraModule, CasePreview, camStyleFor, cameraZoneRect } from './components/CasePreview';
 import { EditableLayer } from './components/EditableLayer';
 import { useDesign } from './hooks/useDesign';
 import { backgrounds, stickerPacks, templates as staticTemplates, BASE_PRICE_CENTS } from './mock';
@@ -288,13 +288,41 @@ function Editor({ design, onBack }: { design: ReturnType<typeof useDesign>; onBa
               onRequestPhoto={pickImage}
             />
           ))}
+          {/* Same camera keep-out zone + case rim as the read-only
+              CasePreview (gallery cards, admin) — was missing here, so the
+              editor let a photo/design show through under the camera
+              module even though the gallery preview already blocked it. */}
           <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+            {(() => {
+              const zone = cameraZoneRect(camStyleFor(model), canvasW, canvasH);
+              return (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: zone.left,
+                    width: zone.width,
+                    height: zone.height,
+                    borderRadius: radius,
+                    background: d.background.colors[0],
+                    boxShadow: '0 1px 0 rgba(0,0,0,0.12)',
+                  }}
+                />
+              );
+            })()}
             <CameraModule style={camStyleFor(model)} width={canvasW} height={canvasH} tint={d.background.colors[0]} />
           </div>
           <div
             style={{
               position: 'absolute', inset: 0, pointerEvents: 'none',
               background: 'linear-gradient(135deg, rgba(255,255,255,0) 38%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0) 62%)',
+            }}
+          />
+          <div
+            style={{
+              position: 'absolute', inset: 0, pointerEvents: 'none',
+              borderRadius: radius,
+              boxShadow: `inset 0 0 0 ${Math.max(3, canvasW * 0.032)}px #0c0c0f`,
             }}
           />
         </div>
