@@ -11,6 +11,30 @@ import { supabase } from './lib/supabase';
 
 type View = 'home' | 'editor';
 
+// html-to-image's very first capture call in a fresh page load reliably
+// drops embedded raster images (confirmed 2026-09-26 via ~10 real trials
+// against the live site with Playwright/WebKit: the first toBlob() call
+// after a fresh page load produced a case with the camera module but NOT
+// the customer's uploaded photo, every single time; every following call
+// in the same session included it correctly, every single time — a cold-
+// start issue in the library's own internal image-embedding cache, not a
+// timing race with the image itself finishing decode). A throwaway warm-
+// up capture (result discarded) before the real one reliably sidesteps
+// it, since only the FIRST call in a session is ever affected.
+let hasWarmedUpCapture = false;
+async function captureDesignBlob(node: HTMLElement, options: Parameters<typeof toBlob>[1]) {
+  if (!hasWarmedUpCapture) {
+    try {
+      await toBlob(node, options);
+    } catch {
+      // The warm-up call's own result/failure doesn't matter — only that
+      // one capture attempt has happened before the real one.
+    }
+    hasWarmedUpCapture = true;
+  }
+  return toBlob(node, options);
+}
+
 // Uploaded photos come straight from a phone camera (often 3-4000px, several
 // MB) and were previously stored as a full-resolution data URI on the
 // layer — the on-case display was already capped small via addImage's own
@@ -287,7 +311,7 @@ function Editor({ design, onBack }: { design: ReturnType<typeof useDesign>; onBa
     if (!canvasRef.current || downloading) return;
     setDownloading(true);
     try {
-      const blob = await toBlob(canvasRef.current, { pixelRatio: 6 });
+      const blob = await captureDesignBlob(canvasRef.current, { pixelRatio: 6 });
       if (!blob) return;
       const filename = `casey-case-${model.name.toLowerCase().replace(/\s+/g, '-')}.png`;
       const file = new File([blob], filename, { type: 'image/png' });
@@ -669,7 +693,7 @@ function SendModal({
       // print-resolution (~300dpi) for every model in the catalog, so this
       // file, not the raw photos, is what should go to the printer.
       if (canvasRef.current) {
-        const preview = await toBlob(canvasRef.current, { pixelRatio: 6 });
+        const preview = await captureDesignBlob(canvasRef.current, { pixelRatio: 6 });
         if (preview) form.append('preview', preview, 'design-print-ready.png');
       }
       // Customer's uploaded photos at original quality, for reference/re-
