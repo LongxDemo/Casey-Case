@@ -17,7 +17,7 @@ export function CasePreview({
   const model = (modelId && MODELS[modelId]) || MODELS.ip15pm;
   const { width: renderWidth, height } = sizeForModel(model, width);
   const scale = renderWidth / CANVAS_BASE;
-  const radius = renderWidth * 0.14;
+  const radius = renderWidth * 0.2;
   const colors = background?.colors?.length ? background.colors : ['#FFF5FA', '#FFE9F4'];
   const ordered = [...(layers || [])].sort((a, b) => a.z - b.z);
   const keyLight = 'radial-gradient(120% 90% at 26% 10%, rgba(255,255,255,0.25), rgba(255,255,255,0) 55%)';
@@ -276,7 +276,13 @@ export function cameraZoneRect(style: CamStyle, W: number, H: number): { left: n
       // the zone's own safety-margin padding is tuned here to nudge where
       // the print starts, independent of the module's real size.
       const mx = W * 0.06, my = W * 0.03, pw = W - mx * 2, bh = pw * (141 / 222);
-      return { left: 0, top: 0, width: W - mx + pad, height: my + bh + pad * 0.3 };
+      // Left/right overflow past the case edge must be equal, or the zone's
+      // own corner arc collides with the outer edge-trim stroke asymmetrically
+      // (one side clips clean against the case's own rounding, the other
+      // flattens into a near-square corner) — confirmed against a real
+      // printed case photo, both corners round identically.
+      const sideMargin = mx - pad;
+      return { left: sideMargin, top: 0, width: W - sideMargin * 2, height: my + bh + pad * 0.3 };
     }
     case 'ip17-air': {
       // Module position/aspect match the real cropped photo (584x215)
