@@ -77,6 +77,15 @@ export function CasePreview({
         // style instead, so skip the generic zone.
         if (camStyle === 'ip-vert') return null;
         const zone = cameraZoneRect(camStyle, renderWidth, height);
+        // The zone only needs to hug the module's own real footprint — the
+        // fixed case-body radius, applied to a much smaller box, rounds its
+        // corners way more aggressively than the module's own real hardware
+        // rounding, so a flat black halo bled out from behind the photo on
+        // every side (looked like a cartoon sticker outline instead of part
+        // of the same object). Real-photo compact modules get their own
+        // tighter, proportional radius instead.
+        const compactPhotoStyles: CamStyle[] = ['ip-dual-vert', 'ip11pro-square', 'ip12pro-square', 'ip13-diag', 'ip15-diag'];
+        const zoneRadius = compactPhotoStyles.includes(camStyle) ? Math.min(zone.width, zone.height) * 0.32 : radius;
         return (
           <div
             style={{
@@ -85,7 +94,7 @@ export function CasePreview({
               left: zone.left,
               width: zone.width,
               height: zone.height,
-              borderRadius: radius,
+              borderRadius: zoneRadius,
               background: '#0c0c0f',
               boxShadow: '0 1px 0 rgba(0,0,0,0.12)',
             }}
@@ -216,7 +225,7 @@ export function LayerView({ layer, scale }: { layer: Layer; scale: number }) {
 // 'ip17-air' (single lens). The base 17 kept the 16-style vertical pill, and
 // pre-17 iPhones keep the old cluster styles.
 export type CamStyle =
-  | 'ip17-plateau' | 'ip17-air' | 'ip15-square' | 'ip-square' | 'ip-vert' | 'ip-dual' | 'ip-dual-vert' | 'ip-single'
+  | 'ip17-plateau' | 'ip17-air' | 'ip15-square' | 'ip11pro-square' | 'ip12pro-square' | 'ip13-diag' | 'ip15-diag' | 'ip-square' | 'ip-vert' | 'ip-dual' | 'ip-dual-vert' | 'ip-single'
   | 'samsung' | 'samsung-ultra' | 'zflip'
   | 'pixel' | 'pixel-pro' | 'pixel-island'
   | 'xiaomi' | 'oneplus' | 'oppo' | 'generic';
@@ -248,12 +257,30 @@ export function camStyleFor(model: PhoneModel): CamStyle {
     // too. 12 Pro/Pro Max have a visibly different, older module design
     // and still use the generic CSS square until they get their own photo.
     if (n === '15 Pro Max' || n === '15 Pro' || n === '16 Pro Max' || n === '16 Pro') return 'ip15-square';
+    // 11 Pro/Pro Max use a real photo (ip11pro-square) — the older
+    // triple-lens design with individual silver lens rings, visibly
+    // different from 15/16 Pro's flush module.
+    if (n === '11 Pro Max' || n === '11 Pro') return 'ip11pro-square';
+    // 12 Pro/Pro Max use their own real photo (ip12pro-square) — confirmed
+    // NOT identical to 11 Pro against real reference photos: 12 Pro added
+    // a LiDAR scanner (a second, larger black dot next to the mic) that 11
+    // Pro doesn't have, plus a visibly duller/darker metallic lens-ring
+    // finish.
+    if (n === '12 Pro Max' || n === '12 Pro') return 'ip12pro-square';
     if (n.includes('Pro')) return 'ip-square';
     if (n.startsWith('16')) return 'ip-vert';
     if (n.startsWith('SE')) return 'ip-single';
     // 13/14/15 use the diagonal pair; 11/12 stack both lenses vertically
     // on the module's left (per Apple's dual-camera timeline).
     if (n.startsWith('12') || n.startsWith('11')) return 'ip-dual-vert';
+    // 13/14 share one catalog model ('14 / 13') and a real photo confirmed
+    // this generation's diagonal pair (ip13-diag).
+    if (n === '14 / 13') return 'ip13-diag';
+    // 15 (plain, non-Pro) is a separate catalog model with its own real
+    // photo (ip15-diag) — confirmed visibly different plate color/lens
+    // ring proportions from 13/14 in the user's reference photos, not
+    // reused.
+    if (n === '15') return 'ip15-diag';
     return 'ip-dual';
   }
   return 'generic';
@@ -327,14 +354,73 @@ export function cameraZoneRect(style: CamStyle, W: number, H: number): { left: n
         height: inset + s * (145 / 140) + pad * 0.3 - Math.max(0, inset - framePad),
       };
     }
+    case 'ip11pro-square': {
+      // Matches the real photo's own footprint (215x233, ip11pro-square.png,
+      // cropped from the user's 11 Pro print-template reference using the
+      // same alpha-aware connected-components method as ip-dual-vert) —
+      // see CameraModule below, do not touch s/px/py/sh here without
+      // updating it to match. Same thin-rim treatment as ip-dual-vert
+      // (rim = 12% of the module's own width, zoneRadius proportional to
+      // the zone's own size) — see the zoneRadius override where this zone
+      // is drawn.
+      const s = W * 0.5, px = W * 0.05, py = H * 0.04, sh = s * (233 / 215);
+      const rim = s * 0.12;
+      return { left: px - rim, top: py - rim, width: s + rim * 2, height: sh + rim * 2 };
+    }
+    case 'ip12pro-square': {
+      // Matches the real photo's own footprint (238x255, ip12pro-square.png,
+      // cropped from the user's 12 Pro print-template reference the same
+      // alpha-aware connected-components way as ip11pro-square) — see
+      // CameraModule below, do not touch s/px/py/sh here without updating
+      // it to match. Same thin-rim treatment as ip-dual-vert/ip11pro-square.
+      const s = W * 0.5, px = W * 0.05, py = H * 0.04, sh = s * (255 / 238);
+      const rim = s * 0.12;
+      return { left: px - rim, top: py - rim, width: s + rim * 2, height: sh + rim * 2 };
+    }
+    case 'ip13-diag': {
+      // Matches the real photo's own footprint (243x244, ip13-diag.png,
+      // cropped from the user's iPhone 13 print-template reference using
+      // the same alpha-aware connected-components method as ip-dual-vert)
+      // — see CameraModule below, do not touch s/px/py/sh here without
+      // updating it to match. Same thin-rim treatment as the other
+      // real-photo compact modules.
+      const s = W * 0.45, px = W * 0.05, py = H * 0.04, sh = s * (244 / 243);
+      const rim = s * 0.12;
+      return { left: px - rim, top: py - rim, width: s + rim * 2, height: sh + rim * 2 };
+    }
+    case 'ip15-diag': {
+      // Matches the real photo's own footprint (264x265, ip15-diag.png,
+      // cropped from the user's iPhone 15 print-template reference using
+      // the same alpha-aware connected-components method as ip13-diag) —
+      // see CameraModule below, do not touch s/px/py/sh here without
+      // updating it to match. Same thin-rim treatment as the other
+      // real-photo compact modules.
+      const s = W * 0.45, px = W * 0.05, py = H * 0.04, sh = s * (265 / 264);
+      const rim = s * 0.12;
+      return { left: px - rim, top: py - rim, width: s + rim * 2, height: sh + rim * 2 };
+    }
     case 'ip-square': return { left: 0, top: 0, width: W * 0.5 + pad, height: W * 0.5 + pad };
     case 'ip-dual': {
       const s = W * 0.45, px = W * 0.05;
       return { left: 0, top: 0, width: px + s + pad, height: H * 0.04 + s * 1.04 + pad };
     }
     case 'ip-dual-vert': {
-      const s = W * 0.45, px = W * 0.05;
-      return { left: 0, top: 0, width: px + s + pad, height: H * 0.04 + s * 1.02 + pad };
+      // Matches the real photo's own footprint (200x226, ip11-dualvert.png,
+      // re-cropped 2026-09-26 directly from the user's iPhone 11 print-
+      // template reference — plate isolated from the case outline via the
+      // PNG's own alpha channel + connected-components, so the crop is
+      // pixel-exact with no dead margin) — see CameraModule below, do not
+      // touch s/px/py/sh here without updating it to match. A thin rim
+      // (5% of the module's own width, same proportion as the 15 Pro's
+      // framePad) is added evenly on all sides so a small strip of the
+      // case's own black shows around the photo like the unprinted panel
+      // on a real case — this is much smaller than the old full `pad`
+      // margin that read as an oversized cartoon halo (see the zoneRadius
+      // override where this zone is drawn, which keeps the rounding
+      // proportional to this small box instead of the case's own radius).
+      const s = W * 0.45, px = W * 0.05, py = H * 0.04, sh = s * (226 / 200);
+      const rim = s * 0.12;
+      return { left: px - rim, top: py - rim, width: s + rim * 2, height: sh + rim * 2 };
     }
     case 'ip-single': {
       const ld = W * 0.22, bx = W * 0.06 - ld * 0.15, bw = ld * 1.6;
@@ -611,6 +697,35 @@ export function CameraModule({ style, width: W, height: H, tint }: { style: CamS
     const s = W * 0.5, inset = W * 0.04;
     return <img src="/camera/i15promax-silver.png" alt="" style={{ position: 'absolute', left: inset, top: inset, width: s, height: s * (145 / 140) }} />;
   }
+  if (style === 'ip11pro-square') {
+    // Real photo of the 11 Pro/Pro Max triple-lens module, cropped directly
+    // from the user's print-template reference (11-PRO-T-FRAME-scaled.png)
+    // the same way as ip-dual-vert — plate isolated from the case outline
+    // via the PNG's alpha channel + connected-components, pixel-exact to
+    // its own bounding box.
+    const s = W * 0.5, px = W * 0.05, py = H * 0.04, sh = s * (233 / 215);
+    return <img src="/camera/ip11pro-square.png" alt="" style={{ position: 'absolute', left: px, top: py, width: s, height: sh }} />;
+  }
+  if (style === 'ip12pro-square') {
+    // Real photo of the 12 Pro/Pro Max triple-lens + LiDAR module, cropped
+    // directly from the user's print-template reference
+    // (12-PRO-T-FRAME-scaled.png) the same way as ip11pro-square.
+    const s = W * 0.5, px = W * 0.05, py = H * 0.04, sh = s * (255 / 238);
+    return <img src="/camera/ip12pro-square.png" alt="" style={{ position: 'absolute', left: px, top: py, width: s, height: sh }} />;
+  }
+  if (style === 'ip13-diag') {
+    // Real photo of the 13/14 diagonal dual-lens module, cropped directly
+    // from the user's print-template reference (13-T-FRAME-scaled.png).
+    const s = W * 0.45, px = W * 0.05, py = H * 0.04, sh = s * (244 / 243);
+    return <img src="/camera/ip13-diag.png" alt="" style={{ position: 'absolute', left: px, top: py, width: s, height: sh }} />;
+  }
+  if (style === 'ip15-diag') {
+    // Real photo of the 15 (non-Pro) diagonal dual-lens module, cropped
+    // directly from the user's print-template reference
+    // (15-T-FRAME-scaled.png).
+    const s = W * 0.45, px = W * 0.05, py = H * 0.04, sh = s * (265 / 264);
+    return <img src="/camera/ip15-diag.png" alt="" style={{ position: 'absolute', left: px, top: py, width: s, height: sh }} />;
+  }
   if (style === 'ip-square') {
     // Spec table bump figures for 15 Pro/16 Pro/16 Pro Max average ~0.50 of
     // body width (38-40mm on 70.6-77.6mm bodies). Flush against the case's
@@ -647,23 +762,16 @@ export function CameraModule({ style, width: W, height: H, tint }: { style: CamS
     );
   }
   if (style === 'ip-dual-vert') {
-    // Base 11/12 (not Pro): re-measured against a confirmed real iPhone 11
-    // product photo (pixel-sampled, not eyeballed) — the plate is almost
-    // perfectly square (not 15% taller than wide), the lenses sit a bit more
-    // toward the plate's center than flush-left, and there IS a small mic
-    // dot above the flash that an earlier pass missed entirely.
-    const s = W * 0.45, px = W * 0.05, py = H * 0.04, sh = s * 1.02;
-    const ld = s * 0.44;
-    const flashSize = s * 0.19, micSize = s * 0.06;
-    return (
-      <>
-        <Plate l={px} t={py} w={s} h={sh} r={s * 0.32} tint={EXPOSED_METAL_TINT} caseTint={tint} />
-        <Lens size={ld} left={px + s * 0.161} top={py + sh * 0.06} />
-        <Lens size={ld} left={px + s * 0.161} top={py + sh - ld - sh * 0.06} />
-        <Flash size={flashSize} left={px + s * 0.677} top={py + sh * 0.493 - flashSize / 2} />
-        <Dot size={micSize} left={px + s * 0.779 - micSize / 2} top={py + sh * 0.208 - micSize / 2} />
-      </>
-    );
+    // Base 11/12 (not Pro) — real photo cropped directly from the user's
+    // iPhone 11 print-template reference (11-T-FRAME-scaled.png). The plate
+    // is opaque while the case body around it is transparent (alpha 0) in
+    // that source, so the plate was isolated from the case outline (which
+    // is also opaque and nearly touches it at the top-left corner) via
+    // alpha-aware connected-components (PIL/scipy) rather than eyeballed —
+    // the crop is pixel-exact to the plate's own bounding box, no dead
+    // margin on any side.
+    const s = W * 0.45, px = W * 0.05, py = H * 0.04, sh = s * (226 / 200);
+    return <img src="/camera/ip11-dualvert.png" alt="" style={{ position: 'absolute', left: px, top: py, width: s, height: sh }} />;
   }
   if (style === 'ip-single') {
     // SE / iPhone 8 body: a small bare-lens housing top-left. Real housing
