@@ -100,6 +100,14 @@ export function EditableLayer({
     (e.target as HTMLElement).releasePointerCapture(e.pointerId);
   };
 
+  // The transform's own translate(-50%,-50%) already centers the box on
+  // left:50%/top:50% (percentages resolve against the box's own size) —
+  // a marginLeft/marginTop: -dw/2 alongside it double-centers, shifting
+  // the box an extra half-width/half-height toward the top-left. Barely
+  // visible for small layers (stickers/text) but glaring for a "Fit to
+  // Case" full-canvas image, which is exactly where the user caught it
+  // (2026-09-26): the fitted photo landed in the top-left instead of
+  // filling the case, because it was offset by half the canvas size.
   const transform = `translate(-50%, -50%) translate(${layer.tx * scale}px, ${layer.ty * scale}px) scale(${layer.scale}) rotate(${layer.rotation}rad)`;
 
   return (
@@ -113,8 +121,6 @@ export function EditableLayer({
         top: '50%',
         width: dw,
         height: dh,
-        marginLeft: -dw / 2,
-        marginTop: -dh / 2,
         transform,
         transformOrigin: 'center',
         cursor: 'grab',
