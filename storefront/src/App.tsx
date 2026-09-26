@@ -11,6 +11,49 @@ import { supabase } from './lib/supabase';
 
 type View = 'home' | 'editor';
 
+// Uploaded photos come straight from a phone camera (often 3-4000px, several
+// MB) and were previously stored as a full-resolution data URI on the
+// layer — the on-case display was already capped small via addImage's own
+// maxW, but the STORED uri stayed huge. html-to-image embeds that uri
+// literally inside a generated SVG for capture, and a multi-MB data URI
+// there silently failed to rasterize on iOS Safari/Telegram's in-app
+// browser — the Download button's saved image showed the case + camera
+// module but not the customer's photo (confirmed by the user 2026-09-26).
+// Downscaling before it ever becomes a layer's uri fixes the capture and
+// also shrinks the payload sent to Telegram on submit.
+const MAX_UPLOAD_DIM = 1600;
+function loadAndResizeImage(file: File): Promise<{ uri: string; width: number; height: number }> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(reader.error);
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = reject;
+      img.onload = () => {
+        const { naturalWidth: w, naturalHeight: h } = img;
+        const scale = Math.min(1, MAX_UPLOAD_DIM / Math.max(w, h));
+        if (scale === 1) {
+          resolve({ uri: reader.result as string, width: w, height: h });
+          return;
+        }
+        const cw = Math.round(w * scale), ch = Math.round(h * scale);
+        const canvas = document.createElement('canvas');
+        canvas.width = cw;
+        canvas.height = ch;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          resolve({ uri: reader.result as string, width: w, height: h });
+          return;
+        }
+        ctx.drawImage(img, 0, 0, cw, ch);
+        resolve({ uri: canvas.toDataURL('image/jpeg', 0.85), width: cw, height: ch });
+      };
+      img.src = reader.result as string;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
 export default function App() {
   const [view, setView] = useState<View>('home');
   const design = useDesign(phoneModels[0].id);
@@ -225,9 +268,7 @@ function Editor({ design, onBack }: { design: ReturnType<typeof useDesign>; onBa
     uploadTargetFrameId.current = null;
     e.target.value = '';
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const uri = reader.result as string;
+    loadAndResizeImage(file).then(({ uri, width, height }) => {
       if (targetFrameId) {
         const target = d.layers.find((l) => l.id === targetFrameId);
         if (target?.kind === 'image') {
@@ -237,11 +278,8 @@ function Editor({ design, onBack }: { design: ReturnType<typeof useDesign>; onBa
         }
         return;
       }
-      const img = new Image();
-      img.onload = () => addImage(uri, img.naturalWidth || 1000, img.naturalHeight || 1000);
-      img.src = uri;
-    };
-    reader.readAsDataURL(file);
+      addImage(uri, width, height);
+    });
   };
 
   const [downloading, setDownloading] = useState(false);
