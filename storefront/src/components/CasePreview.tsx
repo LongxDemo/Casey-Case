@@ -84,8 +84,36 @@ export function CasePreview({
         // every side (looked like a cartoon sticker outline instead of part
         // of the same object). Real-photo compact modules get their own
         // tighter, proportional radius instead.
-        const compactPhotoStyles: CamStyle[] = ['ip-dual-vert', 'ip11pro-square', 'ip12pro-square', 'ip13-diag', 'ip15-diag', 'ip15-square'];
+        const compactPhotoStyles: CamStyle[] = ['ip-dual-vert', 'ip11pro-square', 'ip12pro-square', 'ip13-diag', 'ip15-diag', 'ip15-square', 's26u'];
         const zoneRadius = compactPhotoStyles.includes(camStyle) ? Math.min(zone.width, zone.height) * 0.32 : radius;
+        // s26u's module is a single irregular (notched, not rectangular)
+        // hardware shape — a rounded-rect zone always either clips a
+        // corner of the photo or leaves extra flat black showing in the
+        // notch, whichever radius you pick. Masking the zone div with the
+        // photo's own alpha channel (scaled up slightly to the rim-
+        // inflated zone box) makes the black hug the module's real
+        // silhouette instead, confirmed with the user 2026-09-26.
+        if (camStyle === 's26u') {
+          const maskUrl = 'url(/camera/s26u.png)';
+          return (
+            <div
+              style={{
+                position: 'absolute',
+                top: zone.top,
+                left: zone.left,
+                width: zone.width,
+                height: zone.height,
+                background: '#0c0c0f',
+                WebkitMaskImage: maskUrl,
+                maskImage: maskUrl,
+                WebkitMaskSize: '100% 100%',
+                maskSize: '100% 100%',
+                WebkitMaskRepeat: 'no-repeat',
+                maskRepeat: 'no-repeat',
+              }}
+            />
+          );
+        }
         return (
           <div
             style={{
@@ -226,7 +254,7 @@ export function LayerView({ layer, scale }: { layer: Layer; scale: number }) {
 // pre-17 iPhones keep the old cluster styles.
 export type CamStyle =
   | 'ip17-plateau' | 'ip17-air' | 'ip15-square' | 'ip11pro-square' | 'ip12pro-square' | 'ip13-diag' | 'ip15-diag' | 'ip-square' | 'ip-vert' | 'ip-dual' | 'ip-dual-vert' | 'ip-single'
-  | 'samsung' | 'samsung-ultra' | 'zflip'
+  | 'samsung' | 'samsung-ultra' | 's26u' | 'zflip'
   | 'pixel' | 'pixel-pro' | 'pixel-island'
   | 'xiaomi' | 'oneplus' | 'oppo' | 'generic';
 
@@ -239,6 +267,12 @@ export function camStyleFor(model: PhoneModel): CamStyle {
   }
   if (model.brand === 'Samsung') {
     if (model.id === 'zflip5') return 'zflip';
+    // S26 Ultra uses a real photo (s26u) — a shared metal backing plate
+    // connecting all 4 lens housings + flash, visibly different from the
+    // older Ultra generations' bare individually-mounted lenses with no
+    // shared plate. S24/S23 Ultra stay on the CSS 'samsung-ultra'
+    // approximation until they get their own confirmed reference photo.
+    if (model.id === 's26u') return 's26u';
     if (model.id === 's24u' || model.id === 's23u') return 'samsung-ultra';
     return 'samsung'; // slabs + the Fold's rear cover: bare vertical lenses
   }
@@ -428,6 +462,17 @@ export function cameraZoneRect(style: CamStyle, W: number, H: number): { left: n
       const ld = W * 0.145, lx = W * 0.07;
       const w = style === 'samsung-ultra' ? ld * 2.5 : ld * 1.3;
       return { left: 0, top: 0, width: lx - ld * 0.12 + w + pad, height: H * 0.045 + ld * 1.24 * 2 + ld * 1.25 + pad };
+    }
+    case 's26u': {
+      // Matches the real photo's own footprint (315x486, s26u.png, cropped
+      // from the user's S26 Ultra print-template reference using the same
+      // alpha-aware connected-components method as the iPhone real-photo
+      // modules) — see CameraModule below, do not touch s/px/py/sh here
+      // without updating it to match. Same thin-rim treatment as the
+      // compact iPhone modules.
+      const s = W * 0.36, px = W * 0.05, py = H * 0.03, sh = s * (486 / 315);
+      const rim = s * 0.12;
+      return { left: px - rim, top: py - rim, width: s + rim * 2, height: sh + rim * 2 };
     }
     case 'zflip': return { left: 0, top: 0, width: 0, height: 0 }; // the closed-flip screen already dominates the top
     case 'pixel': case 'pixel-pro': return { left: 0, top: 0, width: W, height: H * 0.065 + W * 0.17 + pad };
@@ -817,6 +862,15 @@ export function CameraModule({ style, width: W, height: H, tint }: { style: CamS
         <Flash size={ld * 0.3} left={lx + ld * 1.5} top={ty + gap * 0.45} />
       </>
     );
+  }
+  if (style === 's26u') {
+    // Real photo of the S26 Ultra camera module, cropped directly from the
+    // user's print-template reference (S26-ULTRA-T-FRAME-scaled.png) — a
+    // shared metal backing plate connecting all 4 lens housings + flash,
+    // unlike the older 'samsung-ultra' CSS style's bare individually-
+    // mounted lenses with no shared plate.
+    const s = W * 0.36, px = W * 0.05, py = H * 0.03, sh = s * (486 / 315);
+    return <img src="/camera/s26u.png" alt="" style={{ position: 'absolute', left: px, top: py, width: s, height: sh }} />;
   }
   if (style === 'zflip') {
     // Closed Flip: the big cover-screen glass dominates the face — real

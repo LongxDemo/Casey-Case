@@ -98,6 +98,13 @@ export const MODELS: Record<string, PhoneModel> = {
 
   // Android: approximate published specs (less rigorously sourced than the
   // Apple table above — good enough for relative sizing, not manufacturing).
+  // S26 Ultra's real published spec isn't available yet — height derived
+  // from measuring the user's own print-template reference photo's body
+  // silhouette (665x1370px, h/w=2.06) against a 79.0mm width assumption
+  // (unchanged from recent Ultra generations), landing at 162.7mm — near-
+  // identical to S24 Ultra's confirmed 162.3mm, which corroborates the
+  // measurement rather than being an independent source.
+  s26u: { id: 's26u', brand: 'Samsung', name: 'S26 Ultra', heightMm: 162.7, widthMm: 79.0 },
   s24u: { id: 's24u', brand: 'Samsung', name: 'S24 Ultra', heightMm: 162.3, widthMm: 79.0 },
   s24p: { id: 's24p', brand: 'Samsung', name: 'S24+', heightMm: 158.5, widthMm: 75.9 },
   s24: { id: 's24', brand: 'Samsung', name: 'Galaxy S24', heightMm: 147.0, widthMm: 70.6 },
