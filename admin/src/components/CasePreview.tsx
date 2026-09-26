@@ -207,7 +207,7 @@ function LayerView({ layer, scale }: { layer: Layer; scale: number }) {
 // 'ip17-air' (single lens). The base 17 kept the 16-style vertical pill, and
 // pre-17 iPhones keep the old cluster styles.
 type CamStyle =
-  | 'ip17-plateau' | 'ip17-air' | 'ip15-square' | 'ip-square' | 'ip-vert' | 'ip-dual' | 'ip-dual-vert' | 'ip-single'
+  | 'ip17-plateau' | 'ip17-air' | 'ip15-square' | 'ip-square' | 'ip-vert' | 'ip16-vert' | 'ip-dual' | 'ip-dual-vert' | 'ip-single'
   | 'samsung' | 'samsung-ultra' | 'zflip'
   | 'pixel' | 'pixel-pro' | 'pixel-island'
   | 'xiaomi' | 'oneplus' | 'oppo' | 'generic';
@@ -240,7 +240,7 @@ function camStyleFor(model: PhoneModel): CamStyle {
     // and still use the generic CSS square until they get their own photo.
     if (n === '15 Pro Max' || n === '15 Pro' || n === '16 Pro Max' || n === '16 Pro') return 'ip15-square';
     if (n.includes('Pro')) return 'ip-square';
-    if (n.startsWith('16')) return 'ip-vert';
+    if (n.startsWith('16')) return 'ip16-vert';
     if (n.startsWith('SE')) return 'ip-single';
     // 13/14/15 use the diagonal pair; 11/12 stack both lenses vertically
     // on the module's left (per Apple's dual-camera timeline).
@@ -300,6 +300,13 @@ export function cameraZoneRect(style: CamStyle, W: number, H: number): { left: n
       // 50% width — see CameraModule below, do not touch mx/my/pw/bh here
       // without updating it to match, only the zone's own pad is tunable.
       const mx = W * 0.05, my = H * 0.045, pw = W * 0.5, bh = pw * (1234 / 1055);
+      return { left: 0, top: 0, width: mx + pw + pad, height: my + bh + pad * 0.3 };
+    }
+    case 'ip16-vert': {
+      // Base 16/16 Plus — split off from 'ip-vert' 2026-09-26 so swapping the
+      // 17's camera photo doesn't also change theirs. Same shape, still on
+      // the original lavender crop (245x280).
+      const mx = W * 0.05, my = H * 0.045, pw = W * 0.5, bh = pw * (280 / 245);
       return { left: 0, top: 0, width: mx + pw + pad, height: my + bh + pad * 0.3 };
     }
     case 'ip15-square': {
@@ -571,6 +578,14 @@ export function CameraModule({ style, width: W, height: H, tint }: { style: CamS
     const mx = W * 0.05, my = H * 0.045;
     const pw = W * 0.5, bh = pw * (1234 / 1055);
     return <img src="/camera/ip17-blue.png" alt="" style={{ position: 'absolute', left: mx, top: my, width: pw, height: bh }} />;
+  }
+  if (style === 'ip16-vert') {
+    // Base 16/16 Plus — split off from 'ip-vert' 2026-09-26, kept on the
+    // original lavender crop (245x280) so the 17's new photo doesn't bleed
+    // into a model it was never meant for.
+    const mx = W * 0.05, my = H * 0.045;
+    const pw = W * 0.5, bh = pw * (280 / 245);
+    return <img src="/camera/ip17-lavender.png" alt="" style={{ position: 'absolute', left: mx, top: my, width: pw, height: bh }} />;
   }
   if (style === 'ip15-square') {
     // Real photo of the 15 Pro/Pro Max camera module — pixel-exact instead
