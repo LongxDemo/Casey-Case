@@ -68,13 +68,14 @@ export function CasePreview({
           in the case's own solid color, before the module draws on top. */}
       {(() => {
         const camStyle = camStyleFor(model);
-        // 'ip-vert'/'ip16-vert' are two disconnected real-hardware shapes
-        // (lens pill + separate flash) with a lot of empty space between
-        // them inside their own bounding box — a single rounded-rect zone
-        // there reads as an oversized black slab instead of hugging the
-        // module. CameraModule draws its own tightly-fitted pill+circle
-        // background for those styles instead, so skip the generic zone.
-        if (camStyle === 'ip-vert' || camStyle === 'ip16-vert') return null;
+        // 'ip-vert' (base 17, and 16/16 Plus which share the same module)
+        // is two disconnected real-hardware shapes (lens pill + separate
+        // flash) with a lot of empty space between them inside their own
+        // bounding box — a single rounded-rect zone there reads as an
+        // oversized black slab instead of hugging the module. CameraModule
+        // draws its own tightly-fitted pill+circle background for this
+        // style instead, so skip the generic zone.
+        if (camStyle === 'ip-vert') return null;
         const zone = cameraZoneRect(camStyle, renderWidth, height);
         return (
           <div
@@ -215,7 +216,7 @@ function LayerView({ layer, scale }: { layer: Layer; scale: number }) {
 // 'ip17-air' (single lens). The base 17 kept the 16-style vertical pill, and
 // pre-17 iPhones keep the old cluster styles.
 type CamStyle =
-  | 'ip17-plateau' | 'ip17-air' | 'ip15-square' | 'ip-square' | 'ip-vert' | 'ip16-vert' | 'ip-dual' | 'ip-dual-vert' | 'ip-single'
+  | 'ip17-plateau' | 'ip17-air' | 'ip15-square' | 'ip-square' | 'ip-vert' | 'ip-dual' | 'ip-dual-vert' | 'ip-single'
   | 'samsung' | 'samsung-ultra' | 'zflip'
   | 'pixel' | 'pixel-pro' | 'pixel-island'
   | 'xiaomi' | 'oneplus' | 'oppo' | 'generic';
@@ -248,7 +249,7 @@ function camStyleFor(model: PhoneModel): CamStyle {
     // and still use the generic CSS square until they get their own photo.
     if (n === '15 Pro Max' || n === '15 Pro' || n === '16 Pro Max' || n === '16 Pro') return 'ip15-square';
     if (n.includes('Pro')) return 'ip-square';
-    if (n.startsWith('16')) return 'ip16-vert';
+    if (n.startsWith('16')) return 'ip-vert';
     if (n.startsWith('SE')) return 'ip-single';
     // 13/14/15 use the diagonal pair; 11/12 stack both lenses vertically
     // on the module's left (per Apple's dual-camera timeline).
@@ -308,13 +309,6 @@ export function cameraZoneRect(style: CamStyle, W: number, H: number): { left: n
       // 50% width — see CameraModule below, do not touch mx/my/pw/bh here
       // without updating it to match, only the zone's own pad is tunable.
       const mx = W * 0.05, my = H * 0.045, pw = W * 0.5, bh = pw * (1234 / 1055);
-      return { left: 0, top: 0, width: mx + pw + pad, height: my + bh + pad * 0.3 };
-    }
-    case 'ip16-vert': {
-      // Base 16/16 Plus — split off from 'ip-vert' 2026-09-26 so swapping the
-      // 17's camera photo doesn't also change theirs. Same shape, still on
-      // the original lavender crop (245x280).
-      const mx = W * 0.05, my = H * 0.045, pw = W * 0.5, bh = pw * (280 / 245);
       return { left: 0, top: 0, width: mx + pw + pad, height: my + bh + pad * 0.3 };
     }
     case 'ip15-square': {
@@ -595,31 +589,17 @@ export function CameraModule({ style, width: W, height: H, tint }: { style: CamS
     const rim = pw * 0.08;
     const pill = { left: mx + (215 / 1055) * pw, top: my + (113 / 1234) * bh, w: (533 / 1055) * pw, h: (1011 / 1234) * bh };
     const flash = { left: mx + (787 / 1055) * pw, top: my + (513 / 1234) * bh, w: (198 / 1055) * pw, h: (202 / 1234) * bh };
+    // Real hardware connects the pill to the flash housing via a short neck
+    // (confirmed against a 16 Plus print-template reference, 2026-09-26) —
+    // without it the two shapes read as floating/disconnected.
+    const bridgeH = flash.h * 0.55;
+    const bridge = { left: pill.left + pill.w - rim, top: (pill.top + pill.h / 2 + flash.top + flash.h / 2) / 2 - bridgeH / 2, w: flash.left + rim - (pill.left + pill.w - rim), h: bridgeH };
     return (
       <>
         <div style={{ position: 'absolute', left: pill.left - rim, top: pill.top - rim, width: pill.w + rim * 2, height: pill.h + rim * 2, borderRadius: 999, background: tint }} />
+        <div style={{ position: 'absolute', left: bridge.left, top: bridge.top, width: bridge.w, height: bridge.h, background: tint }} />
         <div style={{ position: 'absolute', left: flash.left - rim, top: flash.top - rim, width: flash.w + rim * 2, height: flash.h + rim * 2, borderRadius: '50%', background: tint }} />
         <img src="/camera/ip17-blue.png" alt="" style={{ position: 'absolute', left: mx, top: my, width: pw, height: bh }} />
-      </>
-    );
-  }
-  if (style === 'ip16-vert') {
-    // Base 16/16 Plus — split off from 'ip-vert' 2026-09-26, kept on the
-    // original lavender crop (245x280) so the 17's new photo doesn't bleed
-    // into a model it was never meant for.
-    const mx = W * 0.05, my = H * 0.045;
-    const pw = W * 0.5, bh = pw * (280 / 245);
-    // Same two-piece hugging shape as 'ip-vert' above, measured against
-    // ip17-lavender.png (245x280): pill x[5,185] y[18,263], flash
-    // x[191,239] y[117,165].
-    const rim = pw * 0.08;
-    const pill = { left: mx + (5 / 245) * pw, top: my + (18 / 280) * bh, w: (180 / 245) * pw, h: (245 / 280) * bh };
-    const flash = { left: mx + (191 / 245) * pw, top: my + (117 / 280) * bh, w: (48 / 245) * pw, h: (48 / 280) * bh };
-    return (
-      <>
-        <div style={{ position: 'absolute', left: pill.left - rim, top: pill.top - rim, width: pill.w + rim * 2, height: pill.h + rim * 2, borderRadius: 999, background: tint }} />
-        <div style={{ position: 'absolute', left: flash.left - rim, top: flash.top - rim, width: flash.w + rim * 2, height: flash.h + rim * 2, borderRadius: '50%', background: tint }} />
-        <img src="/camera/ip17-lavender.png" alt="" style={{ position: 'absolute', left: mx, top: my, width: pw, height: bh }} />
       </>
     );
   }

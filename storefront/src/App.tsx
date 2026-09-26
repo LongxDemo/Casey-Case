@@ -95,21 +95,24 @@ function Home({
         </div>
       </div>
 
-      <div className="steps">
-        {[
-          { icon: '📱', label: 'Choose\nmodel' },
-          { icon: '🖼️', label: 'Upload\n& design' },
-          { icon: '📩', label: 'Send to\nCasey' },
-          { icon: '📦', label: "We'll\nreach out" },
-        ].map((s, i) => (
-          <div className="step" key={s.label}>
-            <div className="step-bubble">
-              {s.icon}
-              <span className="step-num">{i + 1}</span>
+      <div className="explainer">
+        <h2 className="explainer-title">How It Works ✨</h2>
+        <div className="explainer-list">
+          {[
+            { icon: '📱', title: 'Choose your phone', desc: 'Pick from iPhone or Android models for a perfect fit.' },
+            { icon: '🖼️', title: 'Design your case', desc: 'Add photos, stickers, text, or start from a template.' },
+            { icon: '📩', title: 'Send to Casey', desc: 'Share your design and contact info — no payment needed yet.' },
+            { icon: '📦', title: "We'll reach out", desc: "Casey confirms the details and gets your case made." },
+          ].map((s, i) => (
+            <div className="explainer-item" key={s.title}>
+              <div className="explainer-num">{i + 1}</div>
+              <div className="explainer-body">
+                <div className="explainer-item-title">{s.icon} {s.title}</div>
+                <div className="explainer-item-desc">{s.desc}</div>
+              </div>
             </div>
-            <span className="step-label">{s.label}</span>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
 
       <div className="section">
@@ -313,10 +316,10 @@ function Editor({ design, onBack }: { design: ReturnType<typeof useDesign>; onBa
           <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
             {(() => {
               const camStyle = camStyleFor(model);
-              // See CasePreview.tsx for why 'ip-vert'/'ip16-vert' skip this
-              // generic zone — CameraModule draws its own tightly-fitted
-              // pill+circle background for those instead.
-              if (camStyle === 'ip-vert' || camStyle === 'ip16-vert') return null;
+              // See CasePreview.tsx for why 'ip-vert' skips this generic
+              // zone — CameraModule draws its own tightly-fitted pill+circle
+              // background for it instead.
+              if (camStyle === 'ip-vert') return null;
               const zone = cameraZoneRect(camStyle, canvasW, canvasH);
               return (
                 <div
