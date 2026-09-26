@@ -661,8 +661,18 @@ export function CameraModule({ style, width: W, height: H, tint }: { style: CamS
     // pre-photo CSS had the plate at 42% width; treating this crop's width
     // as "W minus a small margin" blew it up to 90%+ and swallowed most of
     // the case in black).
-    const mx = W * 0.05, my = H * 0.045;
+    // mx/my position the PHOTO's own canvas, but the pill's actual opaque
+    // hardware doesn't start at the photo's (0,0) — there's a real gap
+    // baked into the crop before the pill begins (the canvas has to fit
+    // the flash off to the side too). Positioning the raw photo origin at
+    // a small inset therefore left the pill itself sitting much farther
+    // from the true case corner than intended (confirmed too far by the
+    // user 2026-09-26, then nudged up further at their request) — so
+    // mx/my are solved backwards from where the PILL itself should sit,
+    // not from the photo's own canvas origin.
+    const pillInsetX = W * 0.05, pillInsetY = H * 0.02;
     const pw = W * 0.5, bh = pw * (1234 / 1055);
+    const mx = pillInsetX - (215 / 1055) * pw, my = pillInsetY - (113 / 1234) * bh;
     // The photo is two disconnected hardware pieces (lens pill + separate
     // flash housing) with real empty space between them — CasePreview.tsx's
     // caller skips the generic rounded-rect zone for this style and relies
