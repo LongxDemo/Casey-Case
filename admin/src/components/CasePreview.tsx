@@ -146,14 +146,19 @@ export function CasePreview({
           material unprinted around the edge — the print film never reaches
           the true edge. Drawn on TOP of the layers/photo so it still shows
           even on a full edge-to-edge "Fit to Case" photo, matching the
-          actual product. */}
+          actual product. A real `border` instead of an inset box-shadow —
+          confirmed 2026-09-26 the box-shadow rendered fine in an automated
+          WebKit test but was silently missing from the actual iOS Safari-
+          saved image on a real phone. box-sizing: border-box is set
+          globally, so the border draws inward from inset:0 without
+          changing this div's own size. */}
       <div
         style={{
           position: 'absolute',
           inset: 0,
           pointerEvents: 'none',
           borderRadius: radius,
-          boxShadow: `inset 0 0 0 ${Math.max(3, renderWidth * 0.032)}px #0c0c0f`,
+          border: `${Math.max(3, renderWidth * 0.032)}px solid #0c0c0f`,
         }}
       />
     </div>
