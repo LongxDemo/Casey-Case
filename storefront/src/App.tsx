@@ -19,18 +19,25 @@ type View = 'home' | 'editor';
 // in the same session included it correctly, every single time — a cold-
 // start issue in the library's own internal image-embedding cache, not a
 // timing race with the image itself finishing decode). A throwaway warm-
-// up capture (result discarded) before the real one reliably sidesteps
-// it, since only the FIRST call in a session is ever affected.
-let hasWarmedUpCapture = false;
+// up capture (result discarded) before the real one reliably sidesteps it.
+//
+// This used to gate the warm-up behind a one-time module-level flag, but
+// that's unreliable on mobile: backgrounding Safari to switch to another
+// app (e.g. to paste into Telegram after using Share > Copy) commonly
+// gets the tab silently reloaded on return under memory pressure, which
+// resets any in-memory flag — so a LATER Download press in the same
+// visit can still hit the "first call" bug even though an earlier press
+// worked (confirmed by the user 2026-09-26: Copy→paste-to-Telegram
+// worked, a later Save Image from the same visit didn't). Always doing
+// the throwaway warm-up call, unconditionally, costs one extra (fast,
+// discarded) capture per Download/Send press but can't be invalidated by
+// a reload in between.
 async function captureDesignBlob(node: HTMLElement, options: Parameters<typeof toBlob>[1]) {
-  if (!hasWarmedUpCapture) {
-    try {
-      await toBlob(node, options);
-    } catch {
-      // The warm-up call's own result/failure doesn't matter — only that
-      // one capture attempt has happened before the real one.
-    }
-    hasWarmedUpCapture = true;
+  try {
+    await toBlob(node, options);
+  } catch {
+    // The warm-up call's own result/failure doesn't matter — only that
+    // one capture attempt has happened before the real one below.
   }
   return toBlob(node, options);
 }
