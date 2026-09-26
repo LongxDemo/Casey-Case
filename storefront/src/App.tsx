@@ -251,12 +251,33 @@ function Editor({ design, onBack }: { design: ReturnType<typeof useDesign>; onBa
     try {
       const blob = await toBlob(canvasRef.current, { pixelRatio: 6 });
       if (!blob) return;
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `casey-case-${model.name.toLowerCase().replace(/\s+/g, '-')}.png`;
-      a.click();
-      URL.revokeObjectURL(url);
+      const filename = `casey-case-${model.name.toLowerCase().replace(/\s+/g, '-')}.png`;
+      const file = new File([blob], filename, { type: 'image/png' });
+      // iOS Safari (and every other iOS browser, since they're all WebKit
+      // under the hood, including Telegram's in-app browser) ignores the
+      // <a download> attribute — clicking it just opens the raw image
+      // instead of saving anything, so there was no way to reach Photos
+      // from here (confirmed by the user 2026-09-26: "download in not
+      // store in the photo"). The Web Share API's native share sheet has
+      // a "Save Image" action that reliably saves to Photos on iOS, and
+      // Android/desktop browsers that support file sharing get the same
+      // native picker. Only fall back to the classic anchor-download
+      // trick where file sharing isn't supported at all (older desktop
+      // browsers).
+      if (navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ files: [file], title: filename });
+      } else {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+    } catch (err) {
+      // AbortError just means the user dismissed the share sheet — not a
+      // real failure, don't let it bubble up as one.
+      if ((err as DOMException)?.name !== 'AbortError') throw err;
     } finally {
       setDownloading(false);
     }
