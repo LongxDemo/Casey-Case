@@ -312,7 +312,12 @@ function Editor({ design, onBack }: { design: ReturnType<typeof useDesign>; onBa
               module even though the gallery preview already blocked it. */}
           <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
             {(() => {
-              const zone = cameraZoneRect(camStyleFor(model), canvasW, canvasH);
+              const camStyle = camStyleFor(model);
+              // See CasePreview.tsx for why 'ip-vert'/'ip16-vert' skip this
+              // generic zone — CameraModule draws its own tightly-fitted
+              // pill+circle background for those instead.
+              if (camStyle === 'ip-vert' || camStyle === 'ip16-vert') return null;
+              const zone = cameraZoneRect(camStyle, canvasW, canvasH);
               return (
                 <div
                   style={{

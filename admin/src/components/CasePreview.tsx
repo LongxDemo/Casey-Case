@@ -67,7 +67,15 @@ export function CasePreview({
           full-width band). Painted over the layers/photo with a hard edge,
           in the case's own solid color, before the module draws on top. */}
       {(() => {
-        const zone = cameraZoneRect(camStyleFor(model), renderWidth, height);
+        const camStyle = camStyleFor(model);
+        // 'ip-vert'/'ip16-vert' are two disconnected real-hardware shapes
+        // (lens pill + separate flash) with a lot of empty space between
+        // them inside their own bounding box — a single rounded-rect zone
+        // there reads as an oversized black slab instead of hugging the
+        // module. CameraModule draws its own tightly-fitted pill+circle
+        // background for those styles instead, so skip the generic zone.
+        if (camStyle === 'ip-vert' || camStyle === 'ip16-vert') return null;
+        const zone = cameraZoneRect(camStyle, renderWidth, height);
         return (
           <div
             style={{
@@ -577,7 +585,23 @@ export function CameraModule({ style, width: W, height: H, tint }: { style: CamS
     // the case in black).
     const mx = W * 0.05, my = H * 0.045;
     const pw = W * 0.5, bh = pw * (1234 / 1055);
-    return <img src="/camera/ip17-blue.png" alt="" style={{ position: 'absolute', left: mx, top: my, width: pw, height: bh }} />;
+    // The photo is two disconnected hardware pieces (lens pill + separate
+    // flash housing) with real empty space between them — CasePreview.tsx's
+    // caller skips the generic rounded-rect zone for this style and relies
+    // on these two hugging shapes instead. Bounding boxes below are the
+    // photo's own alpha-channel islands (pixel-measured via PIL/scipy
+    // connected-components against ip17-blue.png, 1055x1234): pill
+    // x[215,748] y[113,1124], flash x[787,985] y[513,715].
+    const rim = pw * 0.08;
+    const pill = { left: mx + (215 / 1055) * pw, top: my + (113 / 1234) * bh, w: (533 / 1055) * pw, h: (1011 / 1234) * bh };
+    const flash = { left: mx + (787 / 1055) * pw, top: my + (513 / 1234) * bh, w: (198 / 1055) * pw, h: (202 / 1234) * bh };
+    return (
+      <>
+        <div style={{ position: 'absolute', left: pill.left - rim, top: pill.top - rim, width: pill.w + rim * 2, height: pill.h + rim * 2, borderRadius: 999, background: tint }} />
+        <div style={{ position: 'absolute', left: flash.left - rim, top: flash.top - rim, width: flash.w + rim * 2, height: flash.h + rim * 2, borderRadius: '50%', background: tint }} />
+        <img src="/camera/ip17-blue.png" alt="" style={{ position: 'absolute', left: mx, top: my, width: pw, height: bh }} />
+      </>
+    );
   }
   if (style === 'ip16-vert') {
     // Base 16/16 Plus — split off from 'ip-vert' 2026-09-26, kept on the
@@ -585,7 +609,19 @@ export function CameraModule({ style, width: W, height: H, tint }: { style: CamS
     // into a model it was never meant for.
     const mx = W * 0.05, my = H * 0.045;
     const pw = W * 0.5, bh = pw * (280 / 245);
-    return <img src="/camera/ip17-lavender.png" alt="" style={{ position: 'absolute', left: mx, top: my, width: pw, height: bh }} />;
+    // Same two-piece hugging shape as 'ip-vert' above, measured against
+    // ip17-lavender.png (245x280): pill x[5,185] y[18,263], flash
+    // x[191,239] y[117,165].
+    const rim = pw * 0.08;
+    const pill = { left: mx + (5 / 245) * pw, top: my + (18 / 280) * bh, w: (180 / 245) * pw, h: (245 / 280) * bh };
+    const flash = { left: mx + (191 / 245) * pw, top: my + (117 / 280) * bh, w: (48 / 245) * pw, h: (48 / 280) * bh };
+    return (
+      <>
+        <div style={{ position: 'absolute', left: pill.left - rim, top: pill.top - rim, width: pill.w + rim * 2, height: pill.h + rim * 2, borderRadius: 999, background: tint }} />
+        <div style={{ position: 'absolute', left: flash.left - rim, top: flash.top - rim, width: flash.w + rim * 2, height: flash.h + rim * 2, borderRadius: '50%', background: tint }} />
+        <img src="/camera/ip17-lavender.png" alt="" style={{ position: 'absolute', left: mx, top: my, width: pw, height: bh }} />
+      </>
+    );
   }
   if (style === 'ip15-square') {
     // Real photo of the 15 Pro/Pro Max camera module — pixel-exact instead
