@@ -102,7 +102,15 @@ input, textarea, select { font-family: inherit; }
 .editor-subtitle { font-size: 11px; font-weight: 600; color: var(--ink-faint); text-align: center; margin: 0; }
 .send-btn { display: flex; align-items: center; gap: 5px; background: var(--pink); color: #fff; border: none; padding: 9px 16px; border-radius: 999px; font-weight: 800; font-size: 13px; box-shadow: 0 6px 16px rgba(214,0,110,0.28); }
 
-.stage { display: flex; align-items: center; justify-content: center; padding: 10px 0 18px; min-height: 46vh; touch-action: none; position: relative; }
+/* No touch-action here — EditableLayer's own draggable divs already set
+   touch-action: none on themselves (scoped to just the layer being
+   dragged). Applying it to this whole ~46vh container blocked normal
+   page scrolling on touch devices for any touch starting on empty stage
+   space, not just on a layer — confirmed the cause of "can't scroll
+   down"/"can't reach the upload button" reported from Telegram's in-app
+   browser 2026-09-26 (the Photo tab's upload control sits below this in
+   the page, unreachable if the page can't scroll past the stage). */
+.stage { display: flex; align-items: center; justify-content: center; padding: 10px 0 18px; min-height: 46vh; position: relative; }
 /* soft studio spotlight behind the case */
 .stage::before { content: ''; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(58% 52% at 50% 42%, rgba(255,255,255,0.55), rgba(255,255,255,0) 72%); }
 /* product-photo edges: crisp 1px seam + catch-light + deep grounded shadow (no sticker border) */
