@@ -84,7 +84,7 @@ export function CasePreview({
         // every side (looked like a cartoon sticker outline instead of part
         // of the same object). Real-photo compact modules get their own
         // tighter, proportional radius instead.
-        const compactPhotoStyles: CamStyle[] = ['ip-dual-vert', 'ip11pro-square', 'ip12pro-square', 'ip13-diag', 'ip15-diag'];
+        const compactPhotoStyles: CamStyle[] = ['ip-dual-vert', 'ip11pro-square', 'ip12pro-square', 'ip13-diag', 'ip15-diag', 'ip15-square'];
         const zoneRadius = compactPhotoStyles.includes(camStyle) ? Math.min(zone.width, zone.height) * 0.32 : radius;
         return (
           <div
@@ -254,8 +254,7 @@ export function camStyleFor(model: PhoneModel): CamStyle {
     if (n === '17') return 'ip-vert';
     // 15 Pro/Pro Max use a real photo (ip15-square) — Apple kept the exact
     // same camera module design for 16 Pro/Pro Max, so it's reused there
-    // too. 12 Pro/Pro Max have a visibly different, older module design
-    // and still use the generic CSS square until they get their own photo.
+    // too.
     if (n === '15 Pro Max' || n === '15 Pro' || n === '16 Pro Max' || n === '16 Pro') return 'ip15-square';
     // 11 Pro/Pro Max use a real photo (ip11pro-square) — the older
     // triple-lens design with individual silver lens rings, visibly
@@ -342,17 +341,16 @@ export function cameraZoneRect(style: CamStyle, W: number, H: number): { left: n
       // Real photo, inset a bit from the true corner (not flush) so the
       // black margin frames the module evenly on left/top/right — a flush
       // 0,0 position left zero margin on two sides and all the margin on
-      // the other two, which read as visibly off-center. Bottom cutoff
-      // pulled up (pad*0.3, same treatment as ip17-plateau) — the full
-      // pad read as an oversized black bar below the module. Width
-      // unverified against a real finished case yet for this model.
-      const s = W * 0.5, inset = W * 0.04, framePad = W * 0.025;
-      return {
-        left: Math.max(0, inset - framePad),
-        top: Math.max(0, inset - framePad),
-        width: inset + s + framePad - Math.max(0, inset - framePad),
-        height: inset + s * (145 / 140) + pad * 0.3 - Math.max(0, inset - framePad),
-      };
+      // the other two, which read as visibly off-center. Aspect ratio
+      // (335/321) confirmed 2026-09-26 against the user's own 15 Pro
+      // print-template reference (ip15pro-square.png) — replaces the
+      // earlier unverified 145/140 estimate. Switched 2026-09-26 to the
+      // same rim/zoneRadius treatment as the other compact real-photo
+      // modules (12 Pro etc.) at the user's request — was previously its
+      // own bespoke framePad + full case radius.
+      const s = W * 0.5, inset = W * 0.04, sh = s * (335 / 321);
+      const rim = s * 0.12;
+      return { left: inset - rim, top: inset - rim, width: s + rim * 2, height: sh + rim * 2 };
     }
     case 'ip11pro-square': {
       // Matches the real photo's own footprint (215x233, ip11pro-square.png,
@@ -693,9 +691,13 @@ export function CameraModule({ style, width: W, height: H, tint }: { style: CamS
     // Real photo of the 15 Pro/Pro Max camera module — pixel-exact instead
     // of a CSS approximation. Inset from the corner (matches cameraZoneRect
     // above) so the black frames it evenly instead of sitting flush in the
-    // corner; width not yet verified against a real finished case.
+    // corner. Re-cropped 2026-09-26 from the user's own print-template
+    // reference (15-PRO-T-FRAME-scaled.png, black titanium) using the same
+    // alpha-aware connected-components method as the other real-photo
+    // modules — confirms the same lens/flash/LiDAR layout as the earlier
+    // silver-colorway asset it replaces, just pixel-verified now.
     const s = W * 0.5, inset = W * 0.04;
-    return <img src="/camera/i15promax-silver.png" alt="" style={{ position: 'absolute', left: inset, top: inset, width: s, height: s * (145 / 140) }} />;
+    return <img src="/camera/ip15pro-square.png" alt="" style={{ position: 'absolute', left: inset, top: inset, width: s, height: s * (335 / 321) }} />;
   }
   if (style === 'ip11pro-square') {
     // Real photo of the 11 Pro/Pro Max triple-lens module, cropped directly
