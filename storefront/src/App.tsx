@@ -3,13 +3,11 @@ import { toBlob } from 'html-to-image';
 import { CameraModule, CasePreview, camStyleFor, cameraZoneRect } from './components/CasePreview';
 import { EditableLayer } from './components/EditableLayer';
 import { useDesign } from './hooks/useDesign';
-import { backgrounds, stickerPacks, templates as staticTemplates, BASE_PRICE_CENTS } from './mock';
+import { backgrounds, stickerPacks, templates as staticTemplates } from './mock';
 import { CANVAS_BASE, MODELS, phoneModels, platformOf, sizeForModel } from './lib/types';
 import type { FrontPage, Layer, Platform, Template, TextLayer } from './lib/types';
 import { FRAME_DEFS, frameOrder } from './lib/frames';
 import { supabase } from './lib/supabase';
-
-const money = (c: number) => `$${(c / 100).toFixed(2)}`;
 
 type View = 'home' | 'editor';
 
@@ -210,7 +208,7 @@ function Editor({ design, onBack }: { design: ReturnType<typeof useDesign>; onBa
 
   const { width: canvasW, height: canvasH } = sizeForModel(model, 300);
   const scale = canvasW / CANVAS_BASE;
-  const radius = canvasW * 0.14;
+  const radius = canvasW * 0.2;
   const selected = d.layers.find((l) => l.id === selectedId) ?? null;
   const ordered = [...d.layers].sort((a, b) => a.z - b.z);
 
@@ -243,6 +241,24 @@ function Editor({ design, onBack }: { design: ReturnType<typeof useDesign>; onBa
     reader.readAsDataURL(file);
   };
 
+  const [downloading, setDownloading] = useState(false);
+  const downloadDesign = async () => {
+    if (!canvasRef.current || downloading) return;
+    setDownloading(true);
+    try {
+      const blob = await toBlob(canvasRef.current, { pixelRatio: 6 });
+      if (!blob) return;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `casey-case-${model.name.toLowerCase().replace(/\s+/g, '-')}.png`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setDownloading(false);
+    }
+  };
+
   const openTextEditor = () => {
     setDraftText(selected?.kind === 'text' ? selected.text : '');
     setTextModal(true);
@@ -265,7 +281,9 @@ function Editor({ design, onBack }: { design: ReturnType<typeof useDesign>; onBa
         <button className="send-btn" onClick={() => { select(null); setSendModal(true); }}>Send to Casey →</button>
       </div>
 
-      <div className="price-tag">from {money(BASE_PRICE_CENTS)}</div>
+      <button className="download-tag" onClick={downloadDesign} disabled={downloading}>
+        {downloading ? 'Preparing…' : '⬇ Download'}
+      </button>
 
       <div className="stage" onPointerDown={() => select(null)}>
         <div ref={canvasRef} className="canvas" style={{ width: canvasW, height: canvasH, borderRadius: radius }}>

@@ -296,10 +296,10 @@ export function cameraZoneRect(style: CamStyle, W: number, H: number): { left: n
       return { left: 0, top: 0, width: W, height: my + bh + pad * 0.3 };
     }
     case 'ip-vert': {
-      // Matches the real photo's own footprint (245x280) at 50% width — see
-      // CameraModule below, do not touch mx/my/pw/bh here without updating
-      // it to match, only the zone's own pad is tunable.
-      const mx = W * 0.05, my = H * 0.045, pw = W * 0.5, bh = pw * (280 / 245);
+      // Matches the real photo's own footprint (1055x1234, ip17-blue.png) at
+      // 50% width — see CameraModule below, do not touch mx/my/pw/bh here
+      // without updating it to match, only the zone's own pad is tunable.
+      const mx = W * 0.05, my = H * 0.045, pw = W * 0.5, bh = pw * (1234 / 1055);
       return { left: 0, top: 0, width: mx + pw + pad, height: my + bh + pad * 0.3 };
     }
     case 'ip15-square': {
@@ -557,22 +557,20 @@ export function CameraModule({ style, width: W, height: H, tint }: { style: CamS
   }
   if (style === 'ip-vert') {
     // Real photo of the actual iPhone 17/16 camera (plate + separate flash
-    // housing), cropped from Apple's own flat "finish-select" product photo
-    // — a real product shot instead of a CSS recreation, same reasoning as
-    // the 17 Pro plateau above (flat CSS with no lens-glass reflections or
-    // metal shading read as an obviously fake flat cutout). Background was
-    // a smooth lavender gradient too close in hue to the metal ring for a
-    // color-distance mask, so cropped to the plate+flash bounds (pixel-
-    // measured) and masked with true stadium + circle shapes instead.
-    // Sized to the image's own aspect ratio (245x280) so nothing stretches.
+    // housing) — a real product shot instead of a CSS recreation, same
+    // reasoning as the 17 Pro plateau above (flat CSS with no lens-glass
+    // reflections or metal shading read as an obviously fake flat cutout).
+    // ip17-blue.png (2026-09-26) replaces the earlier lavender crop —
+    // trimmed to its alpha bbox with PIL (1055x1234), so this ratio is
+    // exact, not eyeballed; do not stretch away from it.
     // Width is NOT a near-full-case inset like the Air/17 Pro plateau above
     // — this module sits in the top-left corner at real proportions (the
     // pre-photo CSS had the plate at 42% width; treating this crop's width
     // as "W minus a small margin" blew it up to 90%+ and swallowed most of
     // the case in black).
     const mx = W * 0.05, my = H * 0.045;
-    const pw = W * 0.5, bh = pw * (280 / 245);
-    return <img src="/camera/ip17-lavender.png" alt="" style={{ position: 'absolute', left: mx, top: my, width: pw, height: bh }} />;
+    const pw = W * 0.5, bh = pw * (1234 / 1055);
+    return <img src="/camera/ip17-blue.png" alt="" style={{ position: 'absolute', left: mx, top: my, width: pw, height: bh }} />;
   }
   if (style === 'ip15-square') {
     // Real photo of the 15 Pro/Pro Max camera module — pixel-exact instead
