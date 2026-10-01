@@ -258,7 +258,7 @@ export function LayerView({ layer, scale }: { layer: Layer; scale: number }) {
 // 'ip17-air' (single lens). The base 17 kept the 16-style vertical pill, and
 // pre-17 iPhones keep the old cluster styles.
 export type CamStyle =
-  | 'ip17-plateau' | 'ip17-air' | 'ip15-square' | 'ip11pro-square' | 'ip12pro-square' | 'ip13-diag' | 'ip15-diag' | 'ip-square' | 'ip-vert' | 'ip-dual' | 'ip-dual-vert' | 'ip-single'
+  | 'ip17-plateau' | 'ip17-air' | 'ip15-square' | 'ip11pro-square' | 'ip12pro-square' | 'ip13-diag' | 'ip15-diag' | 'ip-square' | 'ip-vert' | 'ip-dual' | 'ip-dual-vert'
   | 'samsung' | 'samsung-ultra' | 's26u'
   | 'xiaomi' | 'oppo' | 'generic';
 
@@ -298,7 +298,6 @@ export function camStyleFor(model: PhoneModel): CamStyle {
     if (n === '12 Pro Max' || n === '12 Pro') return 'ip12pro-square';
     if (n.includes('Pro')) return 'ip-square';
     if (n.startsWith('16')) return 'ip-vert';
-    if (n.startsWith('SE')) return 'ip-single';
     // 13/14/15 use the diagonal pair; 11/12 stack both lenses vertically
     // on the module's left (per Apple's dual-camera timeline).
     if (n.startsWith('12') || n.startsWith('11')) return 'ip-dual-vert';
@@ -449,10 +448,6 @@ export function cameraZoneRect(style: CamStyle, W: number, H: number): { left: n
       const s = W * 0.45, px = W * 0.05, py = H * 0.04, sh = s * (226 / 200);
       const rim = s * 0.12;
       return { left: px - rim, top: py - rim, width: s + rim * 2, height: sh + rim * 2 };
-    }
-    case 'ip-single': {
-      const ld = W * 0.22, bx = W * 0.06 - ld * 0.15, bw = ld * 1.6;
-      return { left: 0, top: 0, width: bx + bw + pad, height: H * 0.045 + ld * 1.3 + pad };
     }
     case 'samsung': case 'samsung-ultra': {
       const ld = W * 0.145, lx = W * 0.07;
@@ -821,21 +816,6 @@ export function CameraModule({ style, width: W, height: H, tint }: { style: CamS
     // margin on any side.
     const s = W * 0.45, px = W * 0.05, py = H * 0.04, sh = s * (226 / 200);
     return <img src="/camera/ip11-dualvert.png" alt="" style={{ position: 'absolute', left: px, top: py, width: s, height: sh }} />;
-  }
-  if (style === 'ip-single') {
-    // SE / iPhone 8 body: a small bare-lens housing top-left. Real housing
-    // is small (~15mm on a 67mm body), not a Pro-sized lens.
-    const ld = W * 0.22;
-    const bx = W * 0.06 - ld * 0.15, by = H * 0.045 - ld * 0.15;
-    const bw = ld * 1.6, bh = ld * 1.3;
-    const lensD = ld * 0.85;
-    return (
-      <>
-        <Plate l={bx} t={by} w={bw} h={bh} r={ld * 0.4} tint={EXPOSED_METAL_TINT} caseTint={tint} />
-        <Lens size={lensD} left={bx + (bw - lensD) / 2} top={by + (bh - lensD) / 2} />
-        <Flash size={ld * 0.24} left={W * 0.06 + ld * 1.08} top={H * 0.045 + ld * 0.14} />
-      </>
-    );
   }
   if (style === 'samsung' || style === 'samsung-ultra') {
     // S/A-series and the Fold's rear: a tall blank channel clearing the

@@ -92,7 +92,6 @@ export const MODELS: Record<string, PhoneModel> = {
   ip11pm: { id: 'ip11pm', brand: 'iPhone', name: '11 Pro Max', heightMm: 158.0, widthMm: 77.8 },
   ip11p: { id: 'ip11p', brand: 'iPhone', name: '11 Pro', heightMm: 144.0, widthMm: 71.4 },
   ip12: { id: 'ip12', brand: 'iPhone', name: '12 / 11', heightMm: 148.8, widthMm: 73.6 }, // avg 146.7x71.5, 150.9x75.7
-  ipse: { id: 'ipse', brand: 'iPhone', name: 'SE (2022)', heightMm: 138.4, widthMm: 67.3 }, // iPhone 8 body
 
   // Android: approximate published specs (less rigorously sourced than the
   // Apple table above — good enough for relative sizing, not manufacturing).
