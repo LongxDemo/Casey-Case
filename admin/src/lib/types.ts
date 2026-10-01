@@ -113,23 +113,41 @@ export const MODELS: Record<string, PhoneModel> = {
   // (unchanged from recent Ultra generations), landing at 162.7mm — near-
   // identical to S24 Ultra's confirmed 162.3mm, which corroborates the
   // measurement rather than being an independent source.
+  // Samsung/Xiaomi/OPPO lineup synced 2026-10-01 against the actual vending-
+  // machine partner's supported model list (autovendpro, device 668 / shop
+  // 332) — kept S26 Ultra even though it's not on that list yet (its own
+  // camera module was already built and fixed this session), dropped Z Flip
+  // 5 / Z Fold 5 (not offered by this vendor), and dropped Google Pixel /
+  // OnePlus entirely — this vendor doesn't support either brand at all.
   s26u: { id: 's26u', brand: 'Samsung', name: 'S26 Ultra', heightMm: 162.7, widthMm: 79.0 },
+  s25p: { id: 's25p', brand: 'Samsung', name: 'S25+', heightMm: 158.4, widthMm: 75.8 },
+  s25: { id: 's25', brand: 'Samsung', name: 'Galaxy S25', heightMm: 146.9, widthMm: 70.5 },
   s24u: { id: 's24u', brand: 'Samsung', name: 'S24 Ultra', heightMm: 162.3, widthMm: 79.0 },
+  s24fe: { id: 's24fe', brand: 'Samsung', name: 'S24 Fe', heightMm: 161.3, widthMm: 76.6 },
   s24p: { id: 's24p', brand: 'Samsung', name: 'S24+', heightMm: 158.5, widthMm: 75.9 },
   s24: { id: 's24', brand: 'Samsung', name: 'Galaxy S24', heightMm: 147.0, widthMm: 70.6 },
   s23u: { id: 's23u', brand: 'Samsung', name: 'S23 Ultra', heightMm: 163.4, widthMm: 78.1 },
+  s23fe: { id: 's23fe', brand: 'Samsung', name: 'S23 Fe', heightMm: 158.0, widthMm: 76.5 },
   s23: { id: 's23', brand: 'Samsung', name: 'Galaxy S23', heightMm: 146.3, widthMm: 70.9 },
   a55: { id: 'a55', brand: 'Samsung', name: 'A55 / A54', heightMm: 161.1, widthMm: 77.4 },
-  zflip5: { id: 'zflip5', brand: 'Samsung', name: 'Z Flip 5', heightMm: 84.9, widthMm: 71.9 }, // folded/closed
-  zfold5: { id: 'zfold5', brand: 'Samsung', name: 'Z Fold 5', heightMm: 154.9, widthMm: 67.1 }, // folded/closed
-  pixel9p: { id: 'pixel9p', brand: 'Google', name: 'Pixel 9 Pro', heightMm: 152.8, widthMm: 72.0 },
-  pixel8pro: { id: 'pixel8pro', brand: 'Google', name: 'Pixel 8 Pro', heightMm: 162.6, widthMm: 76.5 },
-  pixel8: { id: 'pixel8', brand: 'Google', name: 'Pixel 8 / 8a', heightMm: 150.5, widthMm: 70.8 },
-  pixel7: { id: 'pixel7', brand: 'Google', name: 'Pixel 7', heightMm: 155.6, widthMm: 73.2 },
-  xiaomi14: { id: 'xiaomi14', brand: 'Xiaomi', name: 'Xiaomi 14', heightMm: 152.8, widthMm: 71.5 },
-  redmi13: { id: 'redmi13', brand: 'Xiaomi', name: 'Redmi Note 13', heightMm: 161.1, widthMm: 74.3 },
-  oneplus12: { id: 'oneplus12', brand: 'OnePlus', name: 'OnePlus 12', heightMm: 164.3, widthMm: 75.8 },
-  oppo: { id: 'oppo', brand: 'OPPO', name: 'Reno 11', heightMm: 161.6, widthMm: 74.2 },
+  a36: { id: 'a36', brand: 'Samsung', name: 'A36', heightMm: 161.7, widthMm: 77.8 },
+  a16: { id: 'a16', brand: 'Samsung', name: 'A16', heightMm: 164.0, widthMm: 77.4 },
+  xiaomi15p: { id: 'xiaomi15p', brand: 'Xiaomi', name: 'Xiaomi 15 Pro', heightMm: 161.3, widthMm: 75.3 },
+  xiaomi15u: { id: 'xiaomi15u', brand: 'Xiaomi', name: 'Xiaomi 15 Ultra', heightMm: 161.3, widthMm: 75.3 },
+  redmiNote14: { id: 'redmiNote14', brand: 'Xiaomi', name: 'Redmi Note 14 5G', heightMm: 161.4, widthMm: 74.8 },
+  xiaomi14c: { id: 'xiaomi14c', brand: 'Xiaomi', name: 'Xiaomi 14C', heightMm: 169.5, widthMm: 76.7 },
+  redmiNote13pp: { id: 'redmiNote13pp', brand: 'Xiaomi', name: 'Redmi Note 13 Pro+ 5G', heightMm: 161.1, widthMm: 74.2 },
+  redmi13c: { id: 'redmi13c', brand: 'Xiaomi', name: 'Redmi 13C 5G', heightMm: 168.4, widthMm: 76.3 },
+  redmi13: { id: 'redmi13', brand: 'Xiaomi', name: 'Redmi Note 13 5G', heightMm: 161.1, widthMm: 74.3 },
+  redmiNote12p: { id: 'redmiNote12p', brand: 'Xiaomi', name: 'Redmi Note 12 Pro 5G', heightMm: 162.9, widthMm: 76.0 },
+  oppoFindX9: { id: 'oppoFindX9', brand: 'OPPO', name: 'Find X9', heightMm: 161.6, widthMm: 74.2 },
+  oppoFindX8Pro: { id: 'oppoFindX8Pro', brand: 'OPPO', name: 'Find X8 Pro', heightMm: 163.3, widthMm: 76.3 },
+  oppoFindX8Ultra: { id: 'oppoFindX8Ultra', brand: 'OPPO', name: 'Find X8 Ultra', heightMm: 163.6, widthMm: 76.8 },
+  oppoFindX8: { id: 'oppoFindX8', brand: 'OPPO', name: 'Find X8', heightMm: 155.0, widthMm: 72.7 },
+  oppoFindX5: { id: 'oppoFindX5', brand: 'OPPO', name: 'Find X5', heightMm: 160.3, widthMm: 72.6 },
+  oppoReno8: { id: 'oppoReno8', brand: 'OPPO', name: 'Reno 8', heightMm: 160.0, widthMm: 74.2 },
+  oppoA98: { id: 'oppoA98', brand: 'OPPO', name: 'A98', heightMm: 164.0, widthMm: 74.8 },
+  oppoA74: { id: 'oppoA74', brand: 'OPPO', name: 'A74', heightMm: 165.3, widthMm: 75.1 },
 };
 
 // Widest real device in the catalog — the anchor other models scale against.

@@ -4,8 +4,8 @@ import { CameraModule, CasePreview, camStyleFor, cameraZoneRect } from './compon
 import { EditableLayer } from './components/EditableLayer';
 import { useDesign } from './hooks/useDesign';
 import { backgrounds, stickerPacks, templates as staticTemplates } from './mock';
-import { CANVAS_BASE, MODELS, phoneModels, platformOf, sizeForModel } from './lib/types';
-import type { FrontPage, Layer, Platform, Template, TextLayer } from './lib/types';
+import { CANVAS_BASE, MODELS, phoneModels, sizeForModel } from './lib/types';
+import type { FrontPage, Layer, Template, TextLayer } from './lib/types';
 import { FRAME_DEFS, frameOrder } from './lib/frames';
 import { supabase } from './lib/supabase';
 
@@ -113,6 +113,16 @@ export default function App() {
 
 /* ───────────────────────── Home ───────────────────────── */
 
+// The 4 brands our print vendor actually supports (autovendpro, device 668 /
+// shop 332) — matches their own brand-picker screen exactly, so every tab
+// here has real models behind it instead of a generic "Android" catch-all.
+const BRAND_TABS: { brand: string; label: string }[] = [
+  { brand: 'iPhone', label: 'iPhone' },
+  { brand: 'Samsung', label: 'Samsung' },
+  { brand: 'Xiaomi', label: 'Xiaomi' },
+  { brand: 'OPPO', label: 'OPPO' },
+];
+
 const DEFAULT_FRONT_PAGE: FrontPage = {
   hero_title: 'Design it.\nPrint it.\nLove it.',
   hero_subtitle: '100% you, 100% Casey 💗',
@@ -130,8 +140,8 @@ function Home({
   onTemplate: (t: Template) => void;
   onModel: (modelId: string) => void;
 }) {
-  const [platform, setPlatform] = useState<Platform>('ios');
-  const modelsForPlatform = phoneModels.filter((m) => platformOf(m) === platform);
+  const [brand, setBrand] = useState<string>('iPhone');
+  const modelsForBrand = phoneModels.filter((m) => m.brand === brand);
   const [galleryTemplates, setGalleryTemplates] = useState<Template[]>(staticTemplates);
   const [fp, setFp] = useState<FrontPage>(DEFAULT_FRONT_PAGE);
 
@@ -173,7 +183,7 @@ function Home({
         <h2 className="explainer-title">How It Works ✨</h2>
         <div className="explainer-list">
           {[
-            { icon: '📱', title: 'Choose your phone', desc: 'Pick from iPhone or Android models for a perfect fit.' },
+            { icon: '📱', title: 'Choose your phone', desc: 'Pick from iPhone, Samsung, Xiaomi, or OPPO models for a perfect fit.' },
             { icon: '🖼️', title: 'Design your case', desc: 'Add photos, stickers, text, or start from a template.' },
             { icon: '📩', title: 'Send to Casey', desc: 'Share your design and contact info — no payment needed yet.' },
             { icon: '📦', title: "We'll reach out", desc: "Casey confirms the details and gets your case made." },
@@ -228,11 +238,12 @@ function Home({
       <div className="section">
         <div className="section-header"><h2 className="section-title">Pick your phone 📱</h2></div>
         <div className="seg-row">
-          <button className={`seg ${platform === 'ios' ? 'active' : ''}`} onClick={() => setPlatform('ios')}>🍎 iPhone</button>
-          <button className={`seg ${platform === 'android' ? 'active' : ''}`} onClick={() => setPlatform('android')}>🤖 Android</button>
+          {BRAND_TABS.map((b) => (
+            <button key={b.brand} className={`seg ${brand === b.brand ? 'active' : ''}`} onClick={() => setBrand(b.brand)}>{b.label}</button>
+          ))}
         </div>
         <div className="chip-row">
-          {modelsForPlatform.map((m) => (
+          {modelsForBrand.map((m) => (
             <button key={m.id} className="chip" onClick={() => onModel(m.id)}>{m.brand} {m.name}</button>
           ))}
         </div>
@@ -617,13 +628,13 @@ function TabBtn({ icon, label, active, onClick }: { icon: string; label: string;
 
 function ModelPicker({ modelId, onSetModel }: { modelId: string; onSetModel: (id: string) => void }) {
   const current = MODELS[modelId] ?? phoneModels[0];
-  const [platform, setPlatform] = useState<Platform>(platformOf(current));
-  const list = phoneModels.filter((m) => platformOf(m) === platform);
+  const [brand, setBrand] = useState<string>(current.brand);
+  const list = phoneModels.filter((m) => m.brand === brand);
 
-  const choosePlatform = (p: Platform) => {
-    setPlatform(p);
-    if (platformOf(current) !== p) {
-      const first = phoneModels.find((m) => platformOf(m) === p);
+  const chooseBrand = (b: string) => {
+    setBrand(b);
+    if (current.brand !== b) {
+      const first = phoneModels.find((m) => m.brand === b);
       if (first) onSetModel(first.id);
     }
   };
@@ -631,8 +642,9 @@ function ModelPicker({ modelId, onSetModel }: { modelId: string; onSetModel: (id
   return (
     <>
       <div className="seg-row">
-        <button className={`seg ${platform === 'ios' ? 'active' : ''}`} onClick={() => choosePlatform('ios')}>🍎 iPhone</button>
-        <button className={`seg ${platform === 'android' ? 'active' : ''}`} onClick={() => choosePlatform('android')}>🤖 Android</button>
+        {BRAND_TABS.map((b) => (
+          <button key={b.brand} className={`seg ${brand === b.brand ? 'active' : ''}`} onClick={() => chooseBrand(b.brand)}>{b.label}</button>
+        ))}
       </div>
       <div className="hscroll">
         {list.map((m) => (

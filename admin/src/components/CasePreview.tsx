@@ -89,27 +89,27 @@ export function CasePreview({
         // s26u's module is a single irregular (notched, not rectangular)
         // hardware shape — a rounded-rect zone always either clips a
         // corner of the photo or leaves extra flat black showing in the
-        // notch, whichever radius you pick. Masking the zone div with the
-        // photo's own alpha channel (scaled up slightly to the rim-
-        // inflated zone box) makes the black hug the module's real
-        // silhouette instead, confirmed with the user 2026-09-26.
+        // notch, whichever radius you pick. Hugs the module's real
+        // silhouette instead by drawing the SAME photo again (scaled up
+        // slightly to the rim-inflated zone box) blackened via a filter,
+        // confirmed with the user 2026-09-26. Originally built as a
+        // `mask-image` div instead of an `<img>` — switched 2026-10-01
+        // because Android Chrome rasterizes a scaled CSS mask with hard,
+        // jagged (not anti-aliased) edges, visibly different from desktop;
+        // an `<img>`'s alpha goes through the browser's normal image-
+        // scaling path, which anti-aliases consistently everywhere.
         if (camStyle === 's26u') {
-          const maskUrl = 'url(/camera/s26u.png)';
           return (
-            <div
+            <img
+              src="/camera/s26u.png"
+              alt=""
               style={{
                 position: 'absolute',
                 top: zone.top,
                 left: zone.left,
                 width: zone.width,
                 height: zone.height,
-                background: '#0c0c0f',
-                WebkitMaskImage: maskUrl,
-                maskImage: maskUrl,
-                WebkitMaskSize: '100% 100%',
-                maskSize: '100% 100%',
-                WebkitMaskRepeat: 'no-repeat',
-                maskRepeat: 'no-repeat',
+                filter: 'brightness(0)',
               }}
             />
           );
@@ -259,19 +259,11 @@ function LayerView({ layer, scale }: { layer: Layer; scale: number }) {
 // pre-17 iPhones keep the old cluster styles.
 type CamStyle =
   | 'ip17-plateau' | 'ip17-air' | 'ip15-square' | 'ip11pro-square' | 'ip12pro-square' | 'ip13-diag' | 'ip15-diag' | 'ip-square' | 'ip-vert' | 'ip-dual' | 'ip-dual-vert' | 'ip-single'
-  | 'samsung' | 'samsung-ultra' | 's26u' | 'zflip'
-  | 'pixel' | 'pixel-pro' | 'pixel-island'
-  | 'xiaomi' | 'oneplus' | 'oppo' | 'generic';
+  | 'samsung' | 'samsung-ultra' | 's26u'
+  | 'xiaomi' | 'oppo' | 'generic';
 
 function camStyleFor(model: PhoneModel): CamStyle {
-  if (model.brand === 'Google') {
-    // Pixel 9 moved from the edge-to-edge visor to a floating pill island.
-    if (model.id === 'pixel9p') return 'pixel-island';
-    if (model.id === 'pixel8pro') return 'pixel-pro';
-    return 'pixel';
-  }
   if (model.brand === 'Samsung') {
-    if (model.id === 'zflip5') return 'zflip';
     // S26 Ultra uses a real photo (s26u) — a shared metal backing plate
     // connecting all 4 lens housings + flash, visibly different from the
     // older Ultra generations' bare individually-mounted lenses with no
@@ -279,10 +271,9 @@ function camStyleFor(model: PhoneModel): CamStyle {
     // approximation until they get their own confirmed reference photo.
     if (model.id === 's26u') return 's26u';
     if (model.id === 's24u' || model.id === 's23u') return 'samsung-ultra';
-    return 'samsung'; // slabs + the Fold's rear cover: bare vertical lenses
+    return 'samsung'; // slabs: bare vertical lenses
   }
-  if (model.brand === 'Xiaomi') return 'xiaomi'; // Xiaomi 14 + Redmi Note: square 2x2 island
-  if (model.brand === 'OnePlus') return 'oneplus';
+  if (model.brand === 'Xiaomi') return 'xiaomi'; // square 2x2 island
   if (model.brand === 'OPPO') return 'oppo';
   if (model.brand === 'iPhone') {
     const n = model.name;
@@ -333,9 +324,9 @@ function camStyleFor(model: PhoneModel): CamStyle {
 // Checked against two real finished cases: the unprinted zone HUGS the
 // module's own footprint — the print shows through right beside it at the
 // same height, not just below a full-width band (an earlier version of this
-// wrongly assumed full-width for every style). pixel/pixel-pro and
-// ip17-air are the real exception — Apple/Google actually build those as
-// genuine edge-to-edge bars, so full width is correct there.
+// wrongly assumed full-width for every style). ip17-air is the real
+// exception — Apple actually builds that as a genuine edge-to-edge bar,
+// so full width is correct there.
 export function cameraZoneRect(style: CamStyle, W: number, H: number): { left: number; top: number; width: number; height: number } {
   // A generous safety margin, not a tight fit — this zone becomes the actual
   // print file's keep-out boundary for the vending machine. If it's cut too
@@ -475,23 +466,19 @@ export function cameraZoneRect(style: CamStyle, W: number, H: number): { left: n
       // modules) — see CameraModule below, do not touch s/px/py/sh here
       // without updating it to match. Same thin-rim treatment as the
       // compact iPhone modules.
+      // Rim padding must scale each axis by its OWN dimension (not a single
+      // width-derived rim applied to both) — this box's alpha is used as a
+      // CSS mask stretched to 100% 100%, so if its aspect ratio drifts from
+      // the photo's own aspect, the stretched mask shape no longer lines up
+      // with the real photo underneath (confirmed: a flat `s`-derived rim on
+      // both axes left a jagged black sliver along the module's edge).
       const s = W * 0.36, px = W * 0.05, py = H * 0.03, sh = s * (486 / 315);
-      const rim = s * 0.12;
-      return { left: px - rim, top: py - rim, width: s + rim * 2, height: sh + rim * 2 };
-    }
-    case 'zflip': return { left: 0, top: 0, width: 0, height: 0 }; // the closed-flip screen already dominates the top
-    case 'pixel': case 'pixel-pro': return { left: 0, top: 0, width: W, height: H * 0.065 + W * 0.17 + pad };
-    case 'pixel-island': {
-      const iw = W * 0.86, ix = (W - iw) / 2;
-      return { left: ix - pad, top: 0, width: iw + pad * 2, height: H * 0.055 + W * 0.22 + pad };
+      const rimX = s * 0.12, rimY = sh * 0.12;
+      return { left: px - rimX, top: py - rimY, width: s + rimX * 2, height: sh + rimY * 2 };
     }
     case 'xiaomi': {
       const s = W * 0.44, px = W * 0.06;
       return { left: 0, top: 0, width: px + s + pad, height: H * 0.045 + s + pad };
-    }
-    case 'oneplus': {
-      const d = W * 0.46, cx = W * 0.1;
-      return { left: 0, top: 0, width: cx + d + pad, height: H * 0.045 + d + pad };
     }
     case 'oppo': {
       const ow = W * 0.34, px = W * 0.06;
@@ -877,62 +864,6 @@ export function CameraModule({ style, width: W, height: H, tint }: { style: CamS
     const s = W * 0.36, px = W * 0.05, py = H * 0.03, sh = s * (486 / 315);
     return <img src="/camera/s26u.png" alt="" style={{ position: 'absolute', left: px, top: py, width: s, height: sh }} />;
   }
-  if (style === 'zflip') {
-    // Closed Flip: the big cover-screen glass dominates the face — real
-    // hardware, not a print cutout, so it keeps its own dark-glass look —
-    // with a small blank channel for the dual camera at bottom right.
-    const m = W * 0.045, sh = H * 0.66, ld = W * 0.15;
-    const cy = sh + (H * 0.82 - sh - ld) / 2 + H * 0.03;
-    const lensD = ld * 0.9;
-    return (
-      <>
-        <div
-          style={{
-            position: 'absolute', left: m, top: m, width: W - m * 2, height: sh, borderRadius: W * 0.1,
-            background: 'linear-gradient(145deg, #23242c 0%, #0b0c11 55%, #14151c 100%)',
-            boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.12), 0 2px 6px rgba(10,8,18,0.3)',
-          }}
-        />
-        <div
-          style={{
-            position: 'absolute', left: m, top: m, width: W - m * 2, height: sh, borderRadius: W * 0.1,
-            background: 'linear-gradient(115deg, rgba(255,255,255,0) 42%, rgba(255,255,255,0.09) 50%, rgba(255,255,255,0) 58%)',
-          }}
-        />
-        <Plate l={W * 0.52 - ld * 0.12} t={cy - ld * 0.12} w={ld * 2.9} h={ld * 1.3} r={ld * 0.4} tint={EXPOSED_METAL_TINT} caseTint={tint} />
-        <Lens size={lensD} left={W * 0.52 + ld * 0.08} top={cy + (ld * 1.3 - lensD) / 2 - ld * 0.12} />
-        <Lens size={lensD} left={W * 0.52 + ld * 1.23} top={cy + (ld * 1.3 - lensD) / 2 - ld * 0.12} />
-        <Flash size={ld * 0.28} left={W * 0.52 + ld * 2.5} top={cy + ld * 0.36} />
-      </>
-    );
-  }
-  if (style === 'pixel' || style === 'pixel-pro') {
-    // Pixel 7/8 visor: an edge-to-edge blank bar.
-    const by = H * 0.065, bh = W * 0.17;
-    const ld = bh * 0.52;
-    return (
-      <>
-        <Plate l={0} t={by} w={W} h={bh} r={0} tint={EXPOSED_METAL_TINT} caseTint={tint} />
-        <Lens size={ld} left={W * 0.15} top={by + (bh - ld) / 2} />
-        <Lens size={ld} left={W * 0.15 + ld * 1.3} top={by + (bh - ld) / 2} />
-        <Flash size={bh * 0.22} left={W * 0.88} top={by + bh * 0.39} />
-      </>
-    );
-  }
-  if (style === 'pixel-island') {
-    // Pixel 9: the visor became a floating pill island with clear margins.
-    const iw = W * 0.86, ih = W * 0.22, ix = (W - iw) / 2, iy = H * 0.055;
-    const ld = ih * 0.53;
-    return (
-      <>
-        <Plate l={ix} t={iy} w={iw} h={ih} r={ih / 2} tint={EXPOSED_METAL_TINT} caseTint={tint} />
-        {[0.2, 0.5, 0.8].map((f, i) => (
-          <Lens key={i} size={ld} left={ix + iw * f - ld / 2} top={iy + (ih - ld) / 2} />
-        ))}
-        <Flash size={ih * 0.2} left={ix + iw * 0.88} top={iy + ih * 0.4} />
-      </>
-    );
-  }
   if (style === 'xiaomi') {
     // Xiaomi 14 / Redmi Note: rounded-square island, three lenses plus the
     // flash in the fourth corner of the grid.
@@ -945,23 +876,6 @@ export function CameraModule({ style, width: W, height: H, tint }: { style: CamS
         <Lens size={ld} left={px + s * 0.54} top={py + s * 0.1} />
         <Lens size={ld} left={px + s * 0.1} top={py + s * 0.54} />
         <Flash size={ld * 0.55} left={px + s * 0.54 + ld * 0.22} top={py + s * 0.54 + ld * 0.22} />
-      </>
-    );
-  }
-  if (style === 'oneplus') {
-    // OnePlus 12: the signature big circular module joined to the left
-    // edge by a short wing, three lenses + laser AF inside, flash on the body.
-    const d = W * 0.46, cx = W * 0.1, cy = H * 0.045;
-    const ld = d * 0.32;
-    return (
-      <>
-        <div style={{ position: 'absolute', left: 0, top: cy + d * 0.36, width: cx + d * 0.3, height: d * 0.28, background: plateGradient(EXPOSED_METAL_TINT), boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.08)' }} />
-        <Plate l={cx} t={cy} w={d} h={d} r="50%" tint={EXPOSED_METAL_TINT} caseTint={tint} />
-        <Lens size={ld} left={cx + d * 0.14} top={cy + d * 0.14} />
-        <Lens size={ld} left={cx + d * 0.54} top={cy + d * 0.14} />
-        <Lens size={ld} left={cx + d * 0.14} top={cy + d * 0.54} />
-        <Dot size={ld * 0.4} left={cx + d * 0.6} top={cy + d * 0.58} />
-        <Flash size={W * 0.06} left={cx + d + W * 0.06} top={cy + d * 0.16} />
       </>
     );
   }
