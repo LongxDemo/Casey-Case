@@ -84,7 +84,7 @@ export function CasePreview({
         // every side (looked like a cartoon sticker outline instead of part
         // of the same object). Real-photo compact modules get their own
         // tighter, proportional radius instead.
-        const compactPhotoStyles: CamStyle[] = ['ip-dual-vert', 'ip11pro-square', 'ip12pro-square', 'ip13-diag', 'ip15-diag', 'ip15-square', 's26u'];
+        const compactPhotoStyles: CamStyle[] = ['ip-dual-vert', 'ip11pro-square', 'ip12pro-square', 'ip13pro-square', 'ip14pro-square', 'ip13-diag', 'ip15-diag', 'ip15-square', 's26u'];
         const zoneRadius = compactPhotoStyles.includes(camStyle) ? Math.min(zone.width, zone.height) * 0.32 : radius;
         // s26u's module is a single irregular (notched, not rectangular)
         // hardware shape — a rounded-rect zone always either clips a
@@ -258,7 +258,7 @@ export function LayerView({ layer, scale }: { layer: Layer; scale: number }) {
 // 'ip17-air' (single lens). The base 17 kept the 16-style vertical pill, and
 // pre-17 iPhones keep the old cluster styles.
 export type CamStyle =
-  | 'ip17-plateau' | 'ip17-air' | 'ip15-square' | 'ip11pro-square' | 'ip12pro-square' | 'ip13-diag' | 'ip15-diag' | 'ip-square' | 'ip-vert' | 'ip-dual' | 'ip-dual-vert'
+  | 'ip17-plateau' | 'ip17-air' | 'ip15-square' | 'ip11pro-square' | 'ip12pro-square' | 'ip13pro-square' | 'ip14pro-square' | 'ip13-diag' | 'ip15-diag' | 'ip-square' | 'ip-vert' | 'ip-dual' | 'ip-dual-vert'
   | 'samsung' | 'samsung-ultra' | 's26u'
   | 'xiaomi' | 'oppo' | 'generic';
 
@@ -296,6 +296,15 @@ export function camStyleFor(model: PhoneModel): CamStyle {
     // Pro doesn't have, plus a visibly duller/darker metallic lens-ring
     // finish.
     if (n === '12 Pro Max' || n === '12 Pro') return 'ip12pro-square';
+    // 13 Pro/Pro Max use a real photo (ip13pro-square) — cropped from the
+    // user's own print-template reference (13-PRO-T-FRAME-scaled.png).
+    if (n === '13 Pro Max' || n === '13 Pro') return 'ip13pro-square';
+    // 14 Pro/Pro Max use a real photo (ip14pro-square) — cropped from the
+    // user's own print-template reference (14-PRO-MAX-T-FRAME-scaled.png).
+    // Visibly larger module footprint than 13 Pro's (326x338 vs 306x316 in
+    // the cropped photos), matching Apple's actual bigger camera bump for
+    // this generation — kept as its own entry, not merged with 13 Pro.
+    if (n === '14 Pro Max' || n === '14 Pro') return 'ip14pro-square';
     if (n.includes('Pro')) return 'ip-square';
     if (n.startsWith('16')) return 'ip-vert';
     // 13/14/15 use the diagonal pair; 11/12 stack both lenses vertically
@@ -401,6 +410,26 @@ export function cameraZoneRect(style: CamStyle, W: number, H: number): { left: n
       // CameraModule below, do not touch s/px/py/sh here without updating
       // it to match. Same thin-rim treatment as ip-dual-vert/ip11pro-square.
       const s = W * 0.5, px = W * 0.05, py = H * 0.04, sh = s * (255 / 238);
+      const rim = s * 0.12;
+      return { left: px - rim, top: py - rim, width: s + rim * 2, height: sh + rim * 2 };
+    }
+    case 'ip13pro-square': {
+      // Matches the real photo's own footprint (306x316, ip13pro-square.png,
+      // cropped from the user's 13 Pro print-template reference the same
+      // alpha-aware connected-components way as ip11pro-square/
+      // ip12pro-square) — see CameraModule below, do not touch s/px/py/sh
+      // here without updating it to match. Same thin-rim treatment.
+      const s = W * 0.5, px = W * 0.05, py = H * 0.04, sh = s * (316 / 306);
+      const rim = s * 0.12;
+      return { left: px - rim, top: py - rim, width: s + rim * 2, height: sh + rim * 2 };
+    }
+    case 'ip14pro-square': {
+      // Matches the real photo's own footprint (326x338, ip14pro-square.png,
+      // cropped from the user's 14 Pro Max print-template reference the same
+      // alpha-aware connected-components way as ip13pro-square) — see
+      // CameraModule below, do not touch s/px/py/sh here without updating
+      // it to match. Same thin-rim treatment.
+      const s = W * 0.5, px = W * 0.05, py = H * 0.04, sh = s * (338 / 326);
       const rim = s * 0.12;
       return { left: px - rim, top: py - rim, width: s + rim * 2, height: sh + rim * 2 };
     }
@@ -756,6 +785,20 @@ export function CameraModule({ style, width: W, height: H, tint }: { style: CamS
     // (12-PRO-T-FRAME-scaled.png) the same way as ip11pro-square.
     const s = W * 0.5, px = W * 0.05, py = H * 0.04, sh = s * (255 / 238);
     return <img src="/camera/ip12pro-square.png" alt="" style={{ position: 'absolute', left: px, top: py, width: s, height: sh }} />;
+  }
+  if (style === 'ip13pro-square') {
+    // Real photo of the 13 Pro/Pro Max triple-lens module, cropped directly
+    // from the user's print-template reference (13-PRO-T-FRAME-scaled.png)
+    // the same way as ip11pro-square/ip12pro-square.
+    const s = W * 0.5, px = W * 0.05, py = H * 0.04, sh = s * (316 / 306);
+    return <img src="/camera/ip13pro-square.png" alt="" style={{ position: 'absolute', left: px, top: py, width: s, height: sh }} />;
+  }
+  if (style === 'ip14pro-square') {
+    // Real photo of the 14 Pro/Pro Max triple-lens module, cropped directly
+    // from the user's print-template reference (14-PRO-MAX-T-FRAME-scaled.png)
+    // the same way as ip13pro-square.
+    const s = W * 0.5, px = W * 0.05, py = H * 0.04, sh = s * (338 / 326);
+    return <img src="/camera/ip14pro-square.png" alt="" style={{ position: 'absolute', left: px, top: py, width: s, height: sh }} />;
   }
   if (style === 'ip13-diag') {
     // Real photo of the 13/14 diagonal dual-lens module, cropped directly

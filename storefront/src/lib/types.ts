@@ -80,6 +80,17 @@ export const MODELS: Record<string, PhoneModel> = {
   // Max above, not grouped like 16/16 Plus (which really do share a camera).
   ip15p: { id: 'ip15p', brand: 'iPhone', name: '15 Pro', heightMm: 146.6, widthMm: 70.6 },
   ip15: { id: 'ip15', brand: 'iPhone', name: '15', heightMm: 147.6, widthMm: 71.6 },
+  // 13 Pro/Pro Max and 14 Pro/Pro Max were missing entirely — only the base
+  // non-Pro "14 / 13" entry below existed. Same reasoning as 15/15 Pro and
+  // 12 Pro/11 Pro above: the Pro models have a real triple-lens square
+  // camera, not the base model's diagonal dual lens, so they need their own
+  // catalog entries (camStyleFor() routes any iPhone name containing "Pro"
+  // without a dedicated real-photo match to the generic 'ip-square' style).
+  // Dimensions from Apple's published specs.
+  ip14pm: { id: 'ip14pm', brand: 'iPhone', name: '14 Pro Max', heightMm: 160.7, widthMm: 77.6 },
+  ip14p: { id: 'ip14p', brand: 'iPhone', name: '14 Pro', heightMm: 147.5, widthMm: 71.5 },
+  ip13pm: { id: 'ip13pm', brand: 'iPhone', name: '13 Pro Max', heightMm: 160.8, widthMm: 78.1 },
+  ip13p: { id: 'ip13p', brand: 'iPhone', name: '13 Pro', heightMm: 146.7, widthMm: 71.5 },
   ip14: { id: 'ip14', brand: 'iPhone', name: '14 / 13', heightMm: 146.7, widthMm: 71.5 },
   // 12 Pro/12 Pro Max and 11 Pro/11 Pro Max were missing entirely — only the
   // base non-Pro "12 / 11" entry below existed. Same reasoning as the 15/15
