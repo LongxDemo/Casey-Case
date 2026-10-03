@@ -201,12 +201,21 @@ begin
   end loop;
 end $$;
 
--- Designs: anyone can insert (guest submissions); owner or admin can read.
--- Guest rows (user_id null) are NOT publicly readable — they carry customer
--- contact info, and only the admin needs to see them.
-create policy designs_insert on designs for insert with check (true);
+-- Designs: anyone can insert (guest submissions, or a signed-in customer
+-- inserting their own row); owner or admin can read. Guest rows (user_id
+-- null) are NOT publicly readable — they carry customer contact info, and
+-- only the admin needs to see them.
+drop policy if exists designs_insert on designs;
+create policy designs_insert on designs for insert with check (user_id is null or user_id = auth.uid());
 drop policy if exists designs_read_own on designs;
 create policy designs_read_own on designs for select using (auth.uid() is not null and user_id = auth.uid());
+-- Lets a signed-in customer autosave/update their own design (drafts, and
+-- flipping a draft to a real "Send to Casey" submission) without going
+-- through the admin-only designs_admin_all policy.
+drop policy if exists designs_update_own on designs;
+create policy designs_update_own on designs for update
+  using (auth.uid() is not null and user_id = auth.uid())
+  with check (auth.uid() is not null and user_id = auth.uid());
 create policy designs_admin_all on designs for all using (is_admin()) with check (is_admin());
 
 -- Orders: customer can create + see their own; admin sees all

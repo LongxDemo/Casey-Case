@@ -53,7 +53,7 @@ export default function App() {
   return (
     <div className="app">
       <aside className="sidebar">
-        <div className="brand"><span className="logo">🐰</span><span className="word">casey</span></div>
+        <div className="brand"><img className="logo" src="/logo.jpg" alt="Casey" /><span className="word">casey</span></div>
         <NavItem icon="📊" label="Overview" active={page === 'overview'} onClick={() => setPage('overview')} />
         <NavItem icon="🏠" label="Front Page" active={page === 'front'} onClick={() => setPage('front')} />
         <NavItem icon="🎨" label="Designs" active={page === 'designs'} onClick={() => setPage('designs')} />
@@ -118,7 +118,7 @@ function Overview() {
 
   useEffect(() => {
     if (!supabase) return;
-    supabase.from('designs').select('*').then(({ data }) => data && setDesigns(data as DesignRow[]));
+    supabase.from('designs').select('*').neq('status', 'draft').then(({ data }) => data && setDesigns(data as DesignRow[]));
     supabase.from('orders').select('*').then(({ data }) => data && setOrders(data as OrderRow[]));
   }, []);
 
@@ -215,7 +215,7 @@ function Designs() {
   const [designs, setDesigns] = useState<DesignRow[]>(mockDesigns);
   useEffect(() => {
     if (!supabase) return;
-    supabase.from('designs').select('*').order('created_at', { ascending: false }).then(({ data }) => data && setDesigns(data as DesignRow[]));
+    supabase.from('designs').select('*').neq('status', 'draft').order('created_at', { ascending: false }).then(({ data }) => data && setDesigns(data as DesignRow[]));
   }, []);
 
   const setStatus = async (id: string, status: string) => {
@@ -301,7 +301,7 @@ async function promoteDesign(d: DesignRow) {
     layers: d.layers,
     active: true,
   });
-  window.alert(error ? `Failed: ${error.message}` : `"${name.trim()}" added to the Casey Case Gallery ✨`);
+  window.alert(error ? `Failed: ${error.message}` : `"${name.trim()}" added to Already Made Template ✨`);
 }
 
 /* ───────────────────────── Gallery ───────────────────────── */
@@ -342,7 +342,7 @@ function Gallery() {
 
   return (
     <>
-      <h1 className="page-title">Casey Case Gallery</h1>
+      <h1 className="page-title">Already Made Template</h1>
       <p className="page-sub">
         Styles customers browse on the home screen — promoted from a customer design in the Designs tab. {templates.length} total.
       </p>

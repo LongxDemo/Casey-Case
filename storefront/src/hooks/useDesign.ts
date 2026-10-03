@@ -28,16 +28,28 @@ export function useDesign(initialModelId: string) {
   // saved/duplicated/templated design should never come back "stuck" in
   // adjust mode.
   const [adjustFrameId, setAdjustFrameId] = useState<string | null>(null);
+  // The Supabase `designs` row this design is already saved as, once
+  // autosaved or sent at least once — null means "not saved yet" (insert on
+  // next save), non-null means "update that row" (never duplicate rows).
+  const [supabaseId, setSupabaseId] = useState<string | null>(null);
 
   const startBlank = (modelId?: string) => {
     setDesign(blankDesign(modelId ?? design.modelId));
     setSelectedId(null);
     setAdjustFrameId(null);
+    setSupabaseId(null);
   };
   const startFromTemplate = (t: Template, modelId?: string) => {
     setDesign(fromTemplate(t, modelId ?? design.modelId));
     setSelectedId(null);
     setAdjustFrameId(null);
+    setSupabaseId(null);
+  };
+  const loadDesign = (row: { id: string; model_id: string; background: CaseBackground; layers: Layer[] }) => {
+    setDesign({ id: uid('d'), modelId: row.model_id, background: row.background, layers: row.layers });
+    setSelectedId(null);
+    setAdjustFrameId(null);
+    setSupabaseId(row.id);
   };
   const setModel = (modelId: string) => setDesign((d) => ({ ...d, modelId }));
   const setBackground = (bg: CaseBackground) => setDesign((d) => ({ ...d, background: bg }));
@@ -113,7 +125,7 @@ export function useDesign(initialModelId: string) {
     setDesign((d) => ({ ...d, layers: d.layers.map((l) => (l.id === id ? { ...l, z: nextZ(d.layers) } : l)) }));
 
   return {
-    design, selectedId, adjustFrameId, startBlank, startFromTemplate, setModel, setBackground, select,
+    design, selectedId, adjustFrameId, supabaseId, setSupabaseId, startBlank, startFromTemplate, loadDesign, setModel, setBackground, select,
     enterAdjustMode, exitAdjustMode,
     addSticker, addText, addImage, fitImageToCase, addFrame, setFramePhoto, setImageUri, updateLayer, removeLayer, duplicateLayer, bringToFront,
   };

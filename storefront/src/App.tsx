@@ -8,8 +8,9 @@ import { CANVAS_BASE, MODELS, phoneModels, sizeForModel } from './lib/types';
 import type { FrontPage, Layer, Template, TextLayer } from './lib/types';
 import { FRAME_DEFS, frameOrder } from './lib/frames';
 import { supabase } from './lib/supabase';
+import type { Session } from '@supabase/supabase-js';
 
-type View = 'home' | 'editor';
+type View = 'home' | 'pickModel' | 'editor';
 
 // html-to-image's very first capture call in a fresh page load reliably
 // drops embedded raster images (confirmed 2026-09-26 via ~10 real trials
@@ -88,8 +89,17 @@ function loadAndResizeImage(file: File): Promise<{ uri: string; width: number; h
 export default function App() {
   const [view, setView] = useState<View>('home');
   const design = useDesign(phoneModels[0].id);
+  const [session, setSession] = useState<Session | null>(null);
 
-  const openBlank = (modelId?: string) => {
+  useEffect(() => {
+    if (!supabase) return;
+    supabase.auth.getSession().then(({ data }) => setSession(data.session));
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => setSession(s));
+    return () => sub.subscription.unsubscribe();
+  }, []);
+
+  const openBlank = () => setView('pickModel');
+  const confirmModel = (modelId: string) => {
     design.startBlank(modelId);
     setView('editor');
   };
@@ -99,17 +109,57 @@ export default function App() {
     supabase?.rpc('increment_template_uses', { p_template_id: t.id }).then(() => undefined);
     setView('editor');
   };
+  const openSaved = (row: SavedDesignRow) => {
+    design.loadDesign(row);
+    setView('editor');
+  };
+
+  // Fire-and-forget autosave of the current in-progress design as a draft —
+  // only for logged-in customers (guest designs stay exactly as ephemeral as
+  // before) and only once there's something worth keeping. Never blocks
+  // navigation: same low-stakes try/catch-and-warn pattern as SendModal's
+  // own backup insert.
+  const autosaveDraft = async () => {
+    if (!supabase || !session || design.design.layers.length === 0) return;
+    try {
+      if (design.supabaseId) {
+        await supabase.from('designs').update({
+          model_id: design.design.modelId,
+          background: design.design.background,
+          layers: design.design.layers,
+        }).eq('id', design.supabaseId);
+      } else {
+        const { data, error } = await supabase.from('designs').insert({
+          user_id: session.user.id,
+          model_id: design.design.modelId,
+          background: design.design.background,
+          layers: design.design.layers,
+          status: 'draft',
+        }).select('id').single();
+        if (!error && data) design.setSupabaseId(data.id);
+      }
+    } catch (err) {
+      console.warn('Autosave failed', err);
+    }
+  };
+
+  const leaveEditor = () => {
+    void autosaveDraft();
+    setView('home');
+  };
 
   return (
     <div className="page">
-      {view === 'home' ? (
-        <Home onBlank={openBlank} onTemplate={openTemplate} onModel={openBlank} />
-      ) : (
-        <Editor design={design} onBack={() => setView('home')} />
+      {view === 'home' && (
+        <Home onBlank={openBlank} onTemplate={openTemplate} onOpenSaved={openSaved} session={session} />
       )}
+      {view === 'pickModel' && <PickModel onBack={() => setView('home')} onPick={confirmModel} />}
+      {view === 'editor' && <Editor design={design} onBack={leaveEditor} session={session} />}
     </div>
   );
 }
+
+type SavedDesignRow = { id: string; model_id: string; background: import('./lib/types').CaseBackground; layers: Layer[]; status?: string; created_at?: string };
 
 /* ───────────────────────── Home ───────────────────────── */
 
@@ -134,16 +184,18 @@ const DEFAULT_FRONT_PAGE: FrontPage = {
 function Home({
   onBlank,
   onTemplate,
-  onModel,
+  onOpenSaved,
+  session,
 }: {
   onBlank: () => void;
   onTemplate: (t: Template) => void;
-  onModel: (modelId: string) => void;
+  onOpenSaved: (row: SavedDesignRow) => void;
+  session: Session | null;
 }) {
-  const [brand, setBrand] = useState<string>('iPhone');
-  const modelsForBrand = phoneModels.filter((m) => m.brand === brand);
   const [galleryTemplates, setGalleryTemplates] = useState<Template[]>(staticTemplates);
   const [fp, setFp] = useState<FrontPage>(DEFAULT_FRONT_PAGE);
+  const [myDesigns, setMyDesigns] = useState<SavedDesignRow[]>([]);
+  const [loginOpen, setLoginOpen] = useState(false);
 
   useEffect(() => {
     if (!supabase) return;
@@ -163,6 +215,19 @@ function Home({
       .then(({ data }) => data && setFp(data as FrontPage));
   }, []);
 
+  useEffect(() => {
+    if (!supabase || !session) {
+      setMyDesigns([]);
+      return;
+    }
+    supabase
+      .from('designs')
+      .select('id,model_id,background,layers,status,created_at')
+      .eq('user_id', session.user.id)
+      .order('created_at', { ascending: false })
+      .then(({ data }) => setMyDesigns((data as SavedDesignRow[]) ?? []));
+  }, [session]);
+
   // Admin-picked featured templates lead the gallery, in the admin's order.
   const rank = (t: Template) => {
     const i = fp.featured_template_ids.indexOf(t.id);
@@ -174,37 +239,56 @@ function Home({
     <>
       <div className="topbar">
         <div className="brand">
-          <div className="logo-dot">🐰</div>
+          <img className="logo-dot" src="/logo.jpg" alt="Casey" />
           <span className="wordmark">casey</span>
-        </div>
-      </div>
-
-      <div className="explainer">
-        <h2 className="explainer-title">How It Works ✨</h2>
-        <div className="explainer-list">
-          {[
-            { icon: '📱', title: 'Choose your phone', desc: 'Pick from iPhone, Samsung, Xiaomi, or OPPO models for a perfect fit.' },
-            { icon: '🖼️', title: 'Design your case', desc: 'Add photos, stickers, text, or start from a template.' },
-            { icon: '📩', title: 'Send to Casey', desc: 'Share your design and contact info — no payment needed yet.' },
-            { icon: '📦', title: "We'll reach out", desc: "Casey confirms the details and gets your case made." },
-          ].map((s, i) => (
-            <div className="explainer-item" key={s.title}>
-              <div className="explainer-num">{i + 1}</div>
-              <div className="explainer-body">
-                <div className="explainer-item-title">{s.icon} {s.title}</div>
-                <div className="explainer-item-desc">{s.desc}</div>
-              </div>
-            </div>
-          ))}
         </div>
       </div>
 
       <div className="section">
         <div className="section-header">
-          <h2 className="section-title">Casey Case Gallery ✨</h2>
-          <button className="section-action" onClick={onBlank}>Blank case</button>
+          <h2 className="section-title">Your Design ✨</h2>
         </div>
         <div className="hscroll">
+          <button className="tpl-card" onClick={onBlank}>
+            <div className="tpl-blank" style={{ width: 126, height: sizeForModel(phoneModels[0], 126).height }}>
+              <span className="tpl-blank-plus">+</span>
+            </div>
+            <div>
+              <div className="tpl-name">New design</div>
+            </div>
+          </button>
+          {session
+            ? myDesigns.map((d) => (
+                <button key={d.id} className="tpl-card" onClick={() => onOpenSaved(d)}>
+                  <CasePreview modelId={d.model_id} background={d.background} layers={d.layers} width={126} />
+                  <div>
+                    <span className="pill" style={{ background: d.status === 'draft' ? '#a78bfa' : '#ff4fa3' }}>
+                      {d.status === 'draft' ? 'Draft' : 'Sent'}
+                    </span>
+                    <div className="tpl-name">{MODELS[d.model_id ?? '']?.name ?? d.model_id}</div>
+                  </div>
+                </button>
+              ))
+            : (
+                <button className="tpl-card tpl-login-hint" onClick={() => setLoginOpen(true)}>
+                  <div className="tpl-blank" style={{ width: 126, height: sizeForModel(phoneModels[0], 126).height, border: 'none' }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--pink)', textAlign: 'center', padding: '0 10px' }}>
+                      Log in to save &amp; revisit your designs
+                    </span>
+                  </div>
+                </button>
+              )}
+        </div>
+      </div>
+
+      {loginOpen && <LoginModal onClose={() => setLoginOpen(false)} />}
+
+      <div className="section">
+        <div className="section-header">
+          <h2 className="section-title">Already Made Template ✨</h2>
+          <button className="section-action" onClick={onBlank}>Blank case</button>
+        </div>
+        <div className="hscroll-2row">
           {orderedTemplates.map((t) => (
             <button key={t.id} className="tpl-card" onClick={() => onTemplate(t)}>
               <CasePreview
@@ -235,27 +319,21 @@ function Home({
         </div>
       </div>
 
-      <div className="section">
-        <div className="section-header"><h2 className="section-title">Pick your phone 📱</h2></div>
-        <div className="seg-row">
-          {BRAND_TABS.map((b) => (
-            <button key={b.brand} className={`seg ${brand === b.brand ? 'active' : ''}`} onClick={() => setBrand(b.brand)}>{b.label}</button>
-          ))}
-        </div>
-        <div className="chip-row">
-          {modelsForBrand.map((m) => (
-            <button key={m.id} className="chip" onClick={() => onModel(m.id)}>{m.brand} {m.name}</button>
-          ))}
-        </div>
-      </div>
-
-      <div className="section">
-        <div className="section-header"><h2 className="section-title">Base colors 🎨</h2></div>
-        <div className="swatch-row">
-          {backgrounds.map((b) => (
-            <div className="swatch-col" key={b.id}>
-              <div className="swatch" style={{ background: `linear-gradient(135deg, ${b.colors[0]}, ${b.colors[b.colors.length - 1]})` }} />
-              <span className="swatch-name">{b.name}</span>
+      <div className="explainer">
+        <h2 className="explainer-title">How It Works ✨</h2>
+        <div className="explainer-list">
+          {[
+            { icon: '📱', title: 'Choose your phone', desc: 'Pick from iPhone, Samsung, Xiaomi, or OPPO models for a perfect fit.' },
+            { icon: '🖼️', title: 'Design your case', desc: 'Add photos, stickers, text, or start from a template.' },
+            { icon: '📩', title: 'Send to Casey', desc: 'Share your design and contact info — no payment needed yet.' },
+            { icon: '📦', title: "We'll reach out", desc: "Casey confirms the details and gets your case made." },
+          ].map((s, i) => (
+            <div className="explainer-item" key={s.title}>
+              <div className="explainer-num">{i + 1}</div>
+              <div className="explainer-body">
+                <div className="explainer-item-title">{s.icon} {s.title}</div>
+                <div className="explainer-item-desc">{s.desc}</div>
+              </div>
             </div>
           ))}
         </div>
@@ -270,14 +348,42 @@ function Home({
   );
 }
 
+/* ───────────────────────── Pick model ───────────────────────── */
+
+function PickModel({ onBack, onPick }: { onBack: () => void; onPick: (modelId: string) => void }) {
+  const [brand, setBrand] = useState<string>('iPhone');
+  const modelsForBrand = phoneModels.filter((m) => m.brand === brand);
+
+  return (
+    <>
+      <div className="topbar">
+        <button className="section-action" onClick={onBack}>← Back</button>
+      </div>
+      <div className="section">
+        <div className="section-header"><h2 className="section-title">Pick your phone 📱</h2></div>
+        <div className="seg-row">
+          {BRAND_TABS.map((b) => (
+            <button key={b.brand} className={`seg ${brand === b.brand ? 'active' : ''}`} onClick={() => setBrand(b.brand)}>{b.label}</button>
+          ))}
+        </div>
+        <div className="chip-row">
+          {modelsForBrand.map((m) => (
+            <button key={m.id} className="chip" onClick={() => onPick(m.id)}>{m.brand} {m.name}</button>
+          ))}
+        </div>
+      </div>
+    </>
+  );
+}
+
 /* ───────────────────────── Editor ───────────────────────── */
 
 type Tool = 'photo' | 'text' | 'stickers' | 'frames' | 'color' | 'model';
 const TEXT_COLORS = ['#FFFFFF', '#141018', '#FF3E9A', '#D6006E', '#FFD400', '#7B61FF', '#3EC8A0', '#FF5470'];
 
-function Editor({ design, onBack }: { design: ReturnType<typeof useDesign>; onBack: () => void }) {
+function Editor({ design, onBack, session }: { design: ReturnType<typeof useDesign>; onBack: () => void; session: Session | null }) {
   const {
-    design: d, selectedId, adjustFrameId, select, setBackground, setModel,
+    design: d, selectedId, adjustFrameId, supabaseId, setSupabaseId, select, setBackground, setModel,
     enterAdjustMode, exitAdjustMode,
     addSticker, addText, addImage, fitImageToCase, addFrame, setFramePhoto, setImageUri, updateLayer, removeLayer, duplicateLayer, bringToFront,
   } = design;
@@ -609,6 +715,9 @@ function Editor({ design, onBack }: { design: ReturnType<typeof useDesign>; onBa
           design={d}
           modelLabel={`${model.brand} ${model.name}`}
           canvasRef={canvasRef}
+          session={session}
+          supabaseId={supabaseId}
+          onSaved={setSupabaseId}
           onClose={() => setSendModal(false)}
           onSent={onBack}
         />
@@ -688,12 +797,18 @@ function SendModal({
   design,
   modelLabel,
   canvasRef,
+  session,
+  supabaseId,
+  onSaved,
   onClose,
   onSent,
 }: {
   design: ReturnType<typeof useDesign>['design'];
   modelLabel: string;
   canvasRef: React.RefObject<HTMLDivElement | null>;
+  session: Session | null;
+  supabaseId: string | null;
+  onSaved: (id: string) => void;
   onClose: () => void;
   onSent: () => void;
 }) {
@@ -749,11 +864,13 @@ function SendModal({
       }
 
       // Backup copy into Supabase when configured — Telegram already has the
-      // design, so a failure here shouldn't fail the customer's send.
+      // design, so a failure here shouldn't fail the customer's send. If this
+      // design was already autosaved as a draft (logged-in customer), update
+      // that same row instead of inserting a duplicate.
       if (supabase) {
         try {
           const layers = await uploadPhotoLayers(design.layers);
-          await supabase.from('designs').insert({
+          const row = {
             model_id: design.modelId,
             background: design.background,
             layers,
@@ -762,7 +879,16 @@ function SendModal({
             contact_phone: phone.trim() || null,
             note: note.trim() || null,
             status: 'new',
-          });
+          };
+          if (supabaseId) {
+            await supabase.from('designs').update(row).eq('id', supabaseId);
+          } else {
+            const { data, error } = await supabase.from('designs').insert({
+              ...row,
+              user_id: session?.user.id ?? null,
+            }).select('id').single();
+            if (!error && data) onSaved(data.id);
+          }
         } catch (e) {
           console.warn('Supabase backup failed:', e);
         }
@@ -809,6 +935,60 @@ function SendModal({
             <textarea className="f" rows={2} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Ship or pickup? Any special request?" />
             <button className="btn" style={{ width: '100%', marginTop: 14, opacity: valid ? 1 : 0.5 }} disabled={!valid || sending} onClick={submit}>
               {sending ? 'Sending…' : '📩 Send to Casey'}
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ───────────────────────── Login ───────────────────────── */
+
+function LoginModal({ onClose }: { onClose: () => void }) {
+  const [email, setEmail] = useState('');
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [error, setError] = useState('');
+
+  const valid = email.includes('@');
+
+  const submit = async () => {
+    if (!supabase) return;
+    setSending(true);
+    setError('');
+    const { error: err } = await supabase.auth.signInWithOtp({
+      email: email.trim(),
+      options: { emailRedirectTo: window.location.origin },
+    });
+    setSending(false);
+    if (err) setError(err.message);
+    else setSent(true);
+  };
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+        {sent ? (
+          <div className="success-box">
+            <div className="success-emoji">✨</div>
+            <h3 className="modal-title">Check your inbox!</h3>
+            <p className="modal-sub">We sent a login link to {email}. Tap it to come back here signed in.</p>
+            <button className="btn" style={{ width: '100%' }} onClick={onClose}>Done</button>
+          </div>
+        ) : (
+          <>
+            <h3 className="modal-title">Log in ✨</h3>
+            <p className="modal-sub">No password needed — we'll email you a link to sign in.</p>
+            {error && (
+              <div className="notice" style={{ margin: '0 0 10px', color: 'var(--danger)' }}>
+                ⚠️ {error}
+              </div>
+            )}
+            <label>Email</label>
+            <input className="f" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@email.com" />
+            <button className="btn" style={{ width: '100%', marginTop: 14, opacity: valid ? 1 : 0.5 }} disabled={!valid || sending} onClick={submit}>
+              {sending ? 'Sending…' : '✉️ Send login link'}
             </button>
           </>
         )}
