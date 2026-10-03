@@ -427,6 +427,23 @@ function Editor({ design, onBack, session }: { design: ReturnType<typeof useDesi
       });
   }, []);
 
+  // Pre-warms the background-removal model the moment someone opens the
+  // Photo or Frames tab — not on every editor visit, since most customers
+  // never touch a photo at all and eagerly downloading a multi-MB model for
+  // them would waste their data for nothing. Opening one of these tabs is a
+  // strong enough signal of intent that it's worth a head start: by the time
+  // they actually tap "Remove BG" the slow part (the download) is likely
+  // already done in the background instead of only starting on that tap.
+  const bgModelPreloaded = useRef(false);
+  useEffect(() => {
+    if (bgModelPreloaded.current) return;
+    if (tool !== 'photo' && tool !== 'frames') return;
+    bgModelPreloaded.current = true;
+    import('@imgly/background-removal').then(({ preload }) => {
+      void preload({ model: 'isnet_quint8' });
+    });
+  }, [tool]);
+
   const { width: canvasW, height: canvasH } = sizeForModel(model, 300);
   const scale = canvasW / CANVAS_BASE;
   const radius = canvasW * 0.2;
@@ -464,7 +481,9 @@ function Editor({ design, onBack, session }: { design: ReturnType<typeof useDesi
   // on this device taps the button; the browser caches it after that.
   const handleRemoveBackground = async (id: string) => {
     const layer = d.layers.find((l) => l.id === id);
-    if (!layer || layer.kind !== 'image' || !layer.uri) return;
+    if (!layer) return;
+    const sourceUri = layer.kind === 'image' ? layer.uri : layer.kind === 'frame' ? layer.photoUri : null;
+    if (!sourceUri) return;
     setBgRemoving(id);
     setBgProgress(0);
     try {
@@ -472,12 +491,15 @@ function Editor({ design, onBack, session }: { design: ReturnType<typeof useDesi
       // WASM model, so it must stay out of the main bundle and only load
       // for customers who actually tap this button.
       const { removeBackground: imglyRemoveBackground } = await import('@imgly/background-removal');
-      const resultBlob = await imglyRemoveBackground(layer.uri, {
+      const resultBlob = await imglyRemoveBackground(sourceUri, {
         model: 'isnet_quint8',
         progress: (_key: string, current: number, total: number) => setBgProgress(total ? Math.round((current / total) * 100) : 0),
       });
       const resultUri = await blobToDataUri(resultBlob);
-      setImageUri(id, resultUri);
+      // updateLayer (not setFramePhoto) for frames — swaps just the photo in
+      // place, keeping whatever crop/zoom position the customer already set.
+      if (layer.kind === 'image') setImageUri(id, resultUri);
+      else updateLayer(id, { photoUri: resultUri });
     } catch (err) {
       console.warn('Background removal failed', err);
       window.alert("Couldn't remove the background — try a clearer or smaller photo.");
@@ -650,6 +672,9 @@ function Editor({ design, onBack, session }: { design: ReturnType<typeof useDesi
             <>
               <button className="action-btn" onClick={() => enterAdjustMode(selected.id)}>🎯 Adjust Face</button>
               <button className="action-btn" onClick={() => pickImage(selected.id)}>🔁 Replace Photo</button>
+              <button className="action-btn" disabled={bgRemoving === selected.id} onClick={() => handleRemoveBackground(selected.id)}>
+                {bgRemoving === selected.id ? `⏳ ${bgProgress}%` : '✂️ Remove BG'}
+              </button>
             </>
           )}
           {selected.kind === 'image' && (
