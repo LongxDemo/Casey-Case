@@ -11,8 +11,10 @@
     "deploy": "npm run build && wrangler deploy"
   },
   "dependencies": {
+    "@imgly/background-removal": "^1.7.0",
     "@supabase/supabase-js": "^2.110.0",
     "html-to-image": "^1.11.13",
+    "onnxruntime-web": "^1.21.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7"
   },

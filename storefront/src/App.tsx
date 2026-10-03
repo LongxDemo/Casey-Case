@@ -86,6 +86,18 @@ function loadAndResizeImage(file: File): Promise<{ uri: string; width: number; h
   });
 }
 
+// Keeping the result a data: URI (not a blob: object URL) matches every other
+// photo layer's uri — html-to-image's print capture and uploadPhotoLayers'
+// "is this a data: URI" check both already assume that shape.
+function blobToDataUri(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(reader.error);
+    reader.onload = () => resolve(reader.result as string);
+    reader.readAsDataURL(blob);
+  });
+}
+
 export default function App() {
   const [view, setView] = useState<View>('home');
   const design = useDesign(phoneModels[0].id);
@@ -400,6 +412,8 @@ function Editor({ design, onBack, session }: { design: ReturnType<typeof useDesi
   const [draftText, setDraftText] = useState('');
   const [sendModal, setSendModal] = useState(false);
   const [paletteBackgrounds, setPaletteBackgrounds] = useState(backgrounds);
+  const [bgRemoving, setBgRemoving] = useState<string | null>(null);
+  const [bgProgress, setBgProgress] = useState(0);
 
   useEffect(() => {
     if (!supabase) return;
@@ -441,6 +455,35 @@ function Editor({ design, onBack, session }: { design: ReturnType<typeof useDesi
       }
       addImage(uri, width, height);
     });
+  };
+
+  // Runs entirely on-device (no photo ever leaves the customer's phone) via
+  // a small open-source ML model — the smallest ("quint8") variant trades a
+  // little quality for a much smaller one-time download, since this has to
+  // work over mobile data. That download only happens the first time anyone
+  // on this device taps the button; the browser caches it after that.
+  const handleRemoveBackground = async (id: string) => {
+    const layer = d.layers.find((l) => l.id === id);
+    if (!layer || layer.kind !== 'image' || !layer.uri) return;
+    setBgRemoving(id);
+    setBgProgress(0);
+    try {
+      // Dynamically imported — this pulls in the ONNX runtime + a multi-MB
+      // WASM model, so it must stay out of the main bundle and only load
+      // for customers who actually tap this button.
+      const { removeBackground: imglyRemoveBackground } = await import('@imgly/background-removal');
+      const resultBlob = await imglyRemoveBackground(layer.uri, {
+        model: 'isnet_quint8',
+        progress: (_key: string, current: number, total: number) => setBgProgress(total ? Math.round((current / total) * 100) : 0),
+      });
+      const resultUri = await blobToDataUri(resultBlob);
+      setImageUri(id, resultUri);
+    } catch (err) {
+      console.warn('Background removal failed', err);
+      window.alert("Couldn't remove the background — try a clearer or smaller photo.");
+    } finally {
+      setBgRemoving(null);
+    }
   };
 
   const [downloading, setDownloading] = useState(false);
@@ -610,7 +653,12 @@ function Editor({ design, onBack, session }: { design: ReturnType<typeof useDesi
             </>
           )}
           {selected.kind === 'image' && (
-            <button className="action-btn" onClick={() => fitImageToCase(selected.id)}>🖼️ Fit to Case</button>
+            <>
+              <button className="action-btn" onClick={() => fitImageToCase(selected.id)}>🖼️ Fit to Case</button>
+              <button className="action-btn" disabled={bgRemoving === selected.id} onClick={() => handleRemoveBackground(selected.id)}>
+                {bgRemoving === selected.id ? `⏳ ${bgProgress}%` : '✂️ Remove BG'}
+              </button>
+            </>
           )}
           <button className="action-btn" onClick={() => updateLayer(selected.id, { scale: Math.max(0.3, selected.scale / 1.15) })}>➖ Smaller</button>
           <button className="action-btn" onClick={() => updateLayer(selected.id, { scale: Math.min(6, selected.scale * 1.15) })}>➕ Bigger</button>
