@@ -55,6 +55,15 @@ export type TemplateRow = {
   created_at: string;
 };
 
+export type BackgroundRow = {
+  id: string;
+  name: string;
+  colors: string[];
+  pattern: 'gingham' | null;
+  active: boolean;
+  sort: number;
+};
+
 export type FrontPage = {
   id: number;
   hero_title: string;

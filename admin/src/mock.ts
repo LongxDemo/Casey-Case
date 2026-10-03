@@ -1,4 +1,10 @@
-import type { DesignRow, FrontPage, OrderRow, TemplateRow } from './lib/types';
+import type { BackgroundRow, DesignRow, FrontPage, OrderRow, TemplateRow } from './lib/types';
+
+export const mockBackgrounds: BackgroundRow[] = [
+  { id: 'bubblegum', name: 'Bubblegum', colors: ['#FF7EC0', '#FF3E9A'], pattern: null, active: true, sort: 0 },
+  { id: 'cotton', name: 'Cotton Candy', colors: ['#FFD6EC', '#C8B6FF'], pattern: null, active: true, sort: 1 },
+  { id: 'midnight', name: 'Midnight Stan', colors: ['#2B1B3D', '#141018'], pattern: null, active: true, sort: 2 },
+];
 
 export const mockFrontPage: FrontPage = {
   id: 1,

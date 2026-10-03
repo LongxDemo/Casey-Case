@@ -49,9 +49,11 @@ create table if not exists backgrounds (
   id          text primary key,
   name        text not null,
   colors      jsonb not null,              -- ["#FF7EC0", "#FF3E9A"]
+  pattern     text,                        -- e.g. 'gingham', or null for a plain gradient
   active      boolean not null default true,
   sort        int not null default 0
 );
+alter table backgrounds add column if not exists pattern text;
 
 create table if not exists templates (
   id          text primary key,

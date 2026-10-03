@@ -399,6 +399,19 @@ function Editor({ design, onBack, session }: { design: ReturnType<typeof useDesi
   const [textModal, setTextModal] = useState(false);
   const [draftText, setDraftText] = useState('');
   const [sendModal, setSendModal] = useState(false);
+  const [paletteBackgrounds, setPaletteBackgrounds] = useState(backgrounds);
+
+  useEffect(() => {
+    if (!supabase) return;
+    supabase
+      .from('backgrounds')
+      .select('*')
+      .eq('active', true)
+      .order('sort', { ascending: true })
+      .then(({ data }) => {
+        if (data && data.length) setPaletteBackgrounds(data as unknown as typeof backgrounds);
+      });
+  }, []);
 
   const { width: canvasW, height: canvasH } = sizeForModel(model, 300);
   const scale = canvasW / CANVAS_BASE;
@@ -644,7 +657,7 @@ function Editor({ design, onBack, session }: { design: ReturnType<typeof useDesi
         {tool === 'color' && (
           <div className="panel">
             <div className="hscroll">
-              {backgrounds.map((b) => (
+              {paletteBackgrounds.map((b) => (
                 <button key={b.id} className="swatch-col" style={{ background: 'none', border: 'none' }} onClick={() => setBackground(b)}>
                   <div className={`bg-swatch ${d.background.id === b.id ? 'active' : ''}`} style={{ background: `linear-gradient(135deg, ${b.colors[0]}, ${b.colors[b.colors.length - 1]})` }} />
                   <span className="swatch-name">{b.name}</span>

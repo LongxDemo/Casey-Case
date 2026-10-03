@@ -3,10 +3,10 @@ import type { Session } from '@supabase/supabase-js';
 import { CasePreview } from './components/CasePreview';
 import { hasSupabase, supabase } from './lib/supabase';
 import { MODELS } from './lib/types';
-import type { DesignRow, FrontPage, OrderRow, TemplateRow } from './lib/types';
-import { mockDesigns, mockFrontPage, mockOrders, mockTemplates } from './mock';
+import type { BackgroundRow, DesignRow, FrontPage, OrderRow, TemplateRow } from './lib/types';
+import { mockBackgrounds, mockDesigns, mockFrontPage, mockOrders, mockTemplates } from './mock';
 
-type Page = 'overview' | 'front' | 'designs' | 'orders' | 'gallery';
+type Page = 'overview' | 'front' | 'designs' | 'orders' | 'gallery' | 'backgrounds';
 const ORDER_STATUSES = ['pending', 'paid', 'printing', 'shipped', 'ready_pickup', 'completed', 'cancelled'];
 const money = (c: number) => `$${(c / 100).toFixed(2)}`;
 
@@ -58,6 +58,7 @@ export default function App() {
         <NavItem icon="🏠" label="Front Page" active={page === 'front'} onClick={() => setPage('front')} />
         <NavItem icon="🎨" label="Designs" active={page === 'designs'} onClick={() => setPage('designs')} />
         <NavItem icon="✨" label="Gallery" active={page === 'gallery'} onClick={() => setPage('gallery')} />
+        <NavItem icon="🌈" label="Colors" active={page === 'backgrounds'} onClick={() => setPage('backgrounds')} />
         <NavItem icon="📦" label="Orders" active={page === 'orders'} onClick={() => setPage('orders')} />
         <div className="nav-spacer" />
         <div className="nav-user">{email}</div>
@@ -69,6 +70,7 @@ export default function App() {
         {page === 'front' && <FrontPageEditor />}
         {page === 'designs' && <Designs />}
         {page === 'gallery' && <Gallery />}
+        {page === 'backgrounds' && <Backgrounds />}
         {page === 'orders' && <Orders />}
       </main>
     </div>
@@ -383,6 +385,102 @@ function Gallery() {
                   <button className="tpl-delete" onClick={() => remove(t.id)} title="Remove from gallery">🗑️</button>
                 </div>
               </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </>
+  );
+}
+
+/* ───────────────────────── Backgrounds ───────────────────────── */
+function Backgrounds() {
+  const [rows, setRows] = useState<BackgroundRow[]>(mockBackgrounds);
+  const [name, setName] = useState('');
+  const [color1, setColor1] = useState('#FF7EC0');
+  const [color2, setColor2] = useState('#FF3E9A');
+  const [gingham, setGingham] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!supabase) return;
+    supabase.from('backgrounds').select('*').order('sort', { ascending: true }).then(({ data }) => data && setRows(data as BackgroundRow[]));
+  }, []);
+
+  const add = async () => {
+    if (!name.trim()) return;
+    const id = `${name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')}-${Math.random().toString(36).slice(2, 6)}`;
+    const row: BackgroundRow = { id, name: name.trim(), colors: [color1, color2], pattern: gingham ? 'gingham' : null, active: true, sort: rows.length };
+    setSaving(true);
+    if (supabase) {
+      const { error } = await supabase.from('backgrounds').insert(row);
+      setSaving(false);
+      if (error) {
+        window.alert(`Couldn't add: ${error.message}`);
+        return;
+      }
+    } else {
+      setSaving(false);
+    }
+    setRows((rs) => [...rs, row]);
+    setName('');
+  };
+
+  const remove = async (id: string) => {
+    if (!window.confirm('Delete this color? Customers will no longer be able to pick it.')) return;
+    const prev = rows;
+    setRows((rs) => rs.filter((r) => r.id !== id));
+    if (supabase) {
+      const { error } = await supabase.from('backgrounds').delete().eq('id', id);
+      if (error) {
+        setRows(prev);
+        window.alert(`Couldn't delete: ${error.message}`);
+      }
+    }
+  };
+
+  const sorted = [...rows].sort((a, b) => a.sort - b.sort);
+
+  return (
+    <>
+      <h1 className="page-title">Base Colors</h1>
+      <p className="page-sub">The color options customers can pick when designing a blank case. {rows.length} total.</p>
+
+      <div className="card" style={{ maxWidth: 480, marginBottom: 24 }}>
+        <div style={{ display: 'grid', gap: 14 }}>
+          <div>
+            <label>Name</label>
+            <input className="bg-field" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Berry Fizz" />
+          </div>
+          <div style={{ display: 'flex', gap: 20, alignItems: 'center' }}>
+            <div>
+              <label>Color 1</label><br />
+              <input type="color" value={color1} onChange={(e) => setColor1(e.target.value)} />
+            </div>
+            <div>
+              <label>Color 2</label><br />
+              <input type="color" value={color2} onChange={(e) => setColor2(e.target.value)} />
+            </div>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 18 }}>
+              <input type="checkbox" checked={gingham} onChange={(e) => setGingham(e.target.checked)} /> Gingham
+            </label>
+          </div>
+          <div className="bg-swatch-lg" style={{ background: `linear-gradient(135deg, ${color1}, ${color2})` }} />
+          <button className="btn cool" style={{ width: 160, opacity: name.trim() ? 1 : 0.5 }} disabled={!name.trim() || saving} onClick={add}>
+            {saving ? 'Adding…' : '+ Add color'}
+          </button>
+        </div>
+      </div>
+
+      {sorted.length === 0 ? (
+        <div className="empty">No colors yet 🐰</div>
+      ) : (
+        <div className="tpl-grid">
+          {sorted.map((b) => (
+            <div className="card tpl-card" key={b.id}>
+              <div className="bg-swatch-lg" style={{ background: `linear-gradient(135deg, ${b.colors[0]}, ${b.colors[b.colors.length - 1]})` }} />
+              <div className="tpl-info"><strong>{b.name}</strong></div>
+              <button className="tpl-delete" onClick={() => remove(b.id)} title="Delete color">🗑️</button>
             </div>
           ))}
         </div>
