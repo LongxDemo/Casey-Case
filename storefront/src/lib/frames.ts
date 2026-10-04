@@ -141,6 +141,18 @@ export const FRAME_DEFS: Record<string, FrameDef> = {
     // keeps the full top-to-bottom composition instead of cropping it.
     defaultScale: 0.37,
   },
+  // Strawberry-and-bows pattern template — hole position measured from a
+  // solid-green placeholder circle the user drew in their own design
+  // (detected and cut to transparent programmatically, not eyeballed).
+  'strawberry-bow': {
+    id: 'strawberry-bow',
+    name: 'Strawberry Bows',
+    image: '/frames/strawberry-bow.png',
+    width: 1414,
+    height: 2000,
+    hole: { xPct: 30.06, yPct: 42.75, wPct: 38.9, hPct: 27.55 },
+    defaultScale: 0.33,
+  },
 };
 
-export const frameOrder: string[] = ['strawberry', 'cherry', 'peach', 'watermelon', 'orange', 'donut', 'bear', 'bunny', 'dog', 'cat', 'strawberry-photo', 'burger-cat'];
+export const frameOrder: string[] = ['strawberry', 'cherry', 'peach', 'watermelon', 'orange', 'donut', 'bear', 'bunny', 'dog', 'cat', 'strawberry-photo', 'burger-cat', 'strawberry-bow'];

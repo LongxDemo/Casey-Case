@@ -130,4 +130,15 @@ export const FRAME_DEFS: Record<string, FrameDef> = {
     hole: { xPct: 50.46, yPct: 39.44, wPct: 31.94, hPct: 15 },
     hole2: { xPct: 15.28, yPct: 27.5, wPct: 31.94, hPct: 15.28 },
   },
+  // Strawberry-and-bows pattern template — hole position measured from a
+  // solid-green placeholder circle the user drew in their own design
+  // (detected and cut to transparent programmatically, not eyeballed).
+  'strawberry-bow': {
+    id: 'strawberry-bow',
+    name: 'Strawberry Bows',
+    image: `${import.meta.env.BASE_URL}frames/strawberry-bow.png`,
+    width: 1414,
+    height: 2000,
+    hole: { xPct: 30.06, yPct: 42.75, wPct: 38.9, hPct: 27.55 },
+  },
 };
