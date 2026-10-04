@@ -50,26 +50,62 @@ export function LocationPicker({
   const mapElRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<L.Map | null>(null);
   const markerRef = useRef<L.Marker | null>(null);
+  // Tracks whether a real location has been set (geolocation, search, or
+  // drag) — guards against a slow geolocation response clobbering a location
+  // the customer already picked another way in the meantime.
+  const hasLocationRef = useRef(lat != null && lng != null);
   const [searching, setSearching] = useState(false);
+  const [locating, setLocating] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
     if (!mapElRef.current || mapRef.current) return;
     const start = lat != null && lng != null ? ([lat, lng] as [number, number]) : DEFAULT_CENTER;
-    const map = L.map(mapElRef.current).setView(start, 14);
+    const map = L.map(mapElRef.current).setView(start, lat != null ? 16 : 14);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
       maxZoom: 19,
     }).addTo(map);
     const marker = L.marker(start, { draggable: true, icon: markerIcon }).addTo(map);
     marker.on('dragend', () => {
+      hasLocationRef.current = true;
       const pos = marker.getLatLng();
       onLocationChange(pos.lat, pos.lng);
       reverseGeocode(pos.lat, pos.lng).then((label) => label && onAddressChange(label));
     });
     mapRef.current = map;
     markerRef.current = marker;
+
+    // getCurrentPosition can't be cancelled, and the customer may close the
+    // modal (unmounting this map) before the browser's permission prompt is
+    // even answered — this flag stops the callback from touching a map
+    // that's already been torn down.
+    let cancelled = false;
+
+    // Default the pin to the customer's actual location instead of the
+    // Phnom Penh fallback, as long as they haven't already searched/dragged
+    // to somewhere else while the browser's permission prompt was pending.
+    if (!hasLocationRef.current && navigator.geolocation) {
+      setLocating(true);
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          if (cancelled) return;
+          setLocating(false);
+          if (hasLocationRef.current) return;
+          hasLocationRef.current = true;
+          const { latitude, longitude } = pos.coords;
+          map.setView([latitude, longitude], 16);
+          marker.setLatLng([latitude, longitude]);
+          onLocationChange(latitude, longitude);
+          reverseGeocode(latitude, longitude).then((label) => !cancelled && label && onAddressChange(label));
+        },
+        () => !cancelled && setLocating(false),
+        { timeout: 8000 },
+      );
+    }
+
     return () => {
+      cancelled = true;
       map.remove();
       mapRef.current = null;
       markerRef.current = null;
@@ -98,6 +134,7 @@ export function LocationPicker({
         setError("Couldn't find that address — try dragging the pin instead");
         return;
       }
+      hasLocationRef.current = true;
       onLocationChange(found.lat, found.lng);
     } catch {
       setError('Search failed — try dragging the pin instead');
@@ -121,7 +158,7 @@ export function LocationPicker({
         </button>
       </div>
       {error && <p className="location-error">{error}</p>}
-      <p className="location-hint">Or drag the pin to your exact location</p>
+      <p className="location-hint">{locating ? 'Finding your location…' : 'Or drag the pin to your exact location'}</p>
       <div ref={mapElRef} className="location-map" />
     </div>
   );
