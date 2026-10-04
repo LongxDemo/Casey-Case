@@ -65,6 +65,9 @@ input, textarea, select { font-family: inherit; }
 .hscroll-2row::-webkit-scrollbar { display: none; }
 
 .tpl-card { width: 128px; flex: none; background: none; border: none; text-align: left; padding: 0; }
+.tpl-mine { position: relative; }
+.tpl-card-open { display: block; width: 100%; background: none; border: none; text-align: left; padding: 0; }
+.tpl-delete { position: absolute; top: 4px; right: 4px; z-index: 1; width: 22px; height: 22px; border-radius: 50%; border: none; background: rgba(30,20,32,0.55); color: #fff; font-size: 12px; font-weight: 700; display: grid; place-items: center; }
 .tpl-blank { border-radius: 24px; border: 2px dashed var(--pink); background: var(--blush); display: grid; place-items: center; }
 .tpl-blank-plus { font-size: 36px; font-weight: 300; line-height: 1; color: var(--pink); width: 48px; height: 48px; border-radius: 50%; border: 2px solid var(--pink); display: grid; place-items: center; }
 .tpl-name { font-size: 13px; font-weight: 800; margin-top: 6px; }

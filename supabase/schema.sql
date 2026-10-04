@@ -224,6 +224,11 @@ drop policy if exists designs_update_own on designs;
 create policy designs_update_own on designs for update
   using (auth.uid() is not null and user_id = auth.uid())
   with check (auth.uid() is not null and user_id = auth.uid());
+-- Lets a signed-in customer remove a design (draft or already-sent) from
+-- their own "Your Design" list.
+drop policy if exists designs_delete_own on designs;
+create policy designs_delete_own on designs for delete
+  using (auth.uid() is not null and user_id = auth.uid());
 create policy designs_admin_all on designs for all using (is_admin()) with check (is_admin());
 
 -- Orders: customer can create + see their own; admin sees all

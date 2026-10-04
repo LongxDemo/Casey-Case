@@ -241,6 +241,17 @@ function Home({
       .then(({ data }) => setMyDesigns((data as SavedDesignRow[]) ?? []));
   }, [session]);
 
+  const deleteDesign = async (id: string) => {
+    if (!supabase) return;
+    if (!window.confirm("Delete this design? This can't be undone.")) return;
+    const { error } = await supabase.from('designs').delete().eq('id', id);
+    if (error) {
+      window.alert(`Couldn't delete: ${error.message}`);
+      return;
+    }
+    setMyDesigns((ds) => ds.filter((d) => d.id !== id));
+  };
+
   // Admin-picked featured templates lead the gallery, in the admin's order.
   const rank = (t: Template) => {
     const i = fp.featured_template_ids.indexOf(t.id);
@@ -272,15 +283,18 @@ function Home({
           </button>
           {session
             ? myDesigns.map((d) => (
-                <button key={d.id} className="tpl-card" onClick={() => onOpenSaved(d)}>
-                  <CasePreview modelId={d.model_id} background={d.background} layers={d.layers} width={126} />
-                  <div>
-                    <span className="pill" style={{ background: d.status === 'draft' ? '#a78bfa' : '#ff4fa3' }}>
-                      {d.status === 'draft' ? 'Draft' : 'Sent'}
-                    </span>
-                    <div className="tpl-name">{MODELS[d.model_id ?? '']?.name ?? d.model_id}</div>
-                  </div>
-                </button>
+                <div key={d.id} className="tpl-card tpl-mine">
+                  <button className="tpl-delete" onClick={() => deleteDesign(d.id)} aria-label="Delete design">✕</button>
+                  <button className="tpl-card-open" onClick={() => onOpenSaved(d)}>
+                    <CasePreview modelId={d.model_id} background={d.background} layers={d.layers} width={126} />
+                    <div>
+                      <span className="pill" style={{ background: d.status === 'draft' ? '#a78bfa' : '#ff4fa3' }}>
+                        {d.status === 'draft' ? 'Draft' : 'Sent'}
+                      </span>
+                      <div className="tpl-name">{MODELS[d.model_id ?? '']?.name ?? d.model_id}</div>
+                    </div>
+                  </button>
+                </div>
               ))
             : (
                 <button className="tpl-card tpl-login-hint" onClick={() => setLoginOpen(true)}>
