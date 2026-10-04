@@ -43,11 +43,17 @@ export function LocationPicker({
   const mapElRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<L.Map | null>(null);
   const markerRef = useRef<L.Marker | null>(null);
+  // Shaded circle showing the GPS fix's uncertainty radius — without it, an
+  // auto-placed pin looks exactly as trustworthy as one the customer dragged
+  // themselves, even when the browser is only estimating from WiFi/cell
+  // towers (desktop, no GPS chip) and could be hundreds of meters off.
+  const circleRef = useRef<L.Circle | null>(null);
   // Tracks whether a real location has been set (GPS or drag) — guards the
   // on-mount auto-detect from firing again once one has.
   const hasLocationRef = useRef(lat != null && lng != null);
   const [locating, setLocating] = useState(false);
   const [error, setError] = useState('');
+  const [accuracy, setAccuracy] = useState<number | null>(null);
 
   // Reads/writes the map only through mapRef/markerRef (never a closed-over
   // `map`/`marker`), so a pending request that resolves after this component
@@ -63,9 +69,15 @@ export function LocationPicker({
       (pos) => {
         setLocating(false);
         hasLocationRef.current = true;
-        const { latitude, longitude } = pos.coords;
-        mapRef.current?.setView([latitude, longitude], 16);
-        markerRef.current?.setLatLng([latitude, longitude]);
+        const { latitude, longitude, accuracy: acc } = pos.coords;
+        const point: [number, number] = [latitude, longitude];
+        mapRef.current?.setView(point, 16);
+        markerRef.current?.setLatLng(point);
+        setAccuracy(acc);
+        if (mapRef.current) {
+          if (circleRef.current) circleRef.current.setLatLng(point).setRadius(acc);
+          else circleRef.current = L.circle(point, { radius: acc, color: '#ff3e9a', weight: 1, fillOpacity: 0.12 }).addTo(mapRef.current);
+        }
         onLocationChange(latitude, longitude);
         reverseGeocode(latitude, longitude).then((label) => label && onAddressChange(label));
       },
@@ -85,6 +97,11 @@ export function LocationPicker({
     const marker = L.marker(start, { draggable: true, icon: markerIcon }).addTo(map);
     marker.on('dragend', () => {
       hasLocationRef.current = true;
+      // A manual drag is the customer confirming the exact spot — the old
+      // GPS uncertainty circle no longer applies.
+      circleRef.current?.remove();
+      circleRef.current = null;
+      setAccuracy(null);
       const pos = marker.getLatLng();
       onLocationChange(pos.lat, pos.lng);
       reverseGeocode(pos.lat, pos.lng).then((label) => label && onAddressChange(label));
@@ -128,7 +145,13 @@ export function LocationPicker({
         </button>
       </div>
       {error && <p className="location-error">{error}</p>}
-      <p className="location-hint">{locating ? 'Finding your location…' : 'Or drag the pin to your exact location'}</p>
+      <p className="location-hint">
+        {locating
+          ? 'Finding your location…'
+          : accuracy != null
+            ? `📍 Accurate to within ~${Math.round(accuracy)}m — drag the pin for your exact spot`
+            : 'Or drag the pin to your exact location'}
+      </p>
       <div ref={mapElRef} className="location-map" />
     </div>
   );
