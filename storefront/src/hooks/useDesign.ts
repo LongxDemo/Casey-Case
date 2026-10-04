@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { backgrounds } from '../mock';
 import { aspectOf, CANVAS_BASE, MODELS } from '../lib/types';
 import type { CaseBackground, Design, Layer, Template } from '../lib/types';
+import { FRAME_DEFS } from '../lib/frames';
 
 let counter = 0;
 const uid = (p = 'l') => `${p}_${Date.now().toString(36)}_${(counter++).toString(36)}`;
@@ -28,6 +29,9 @@ export function useDesign(initialModelId: string) {
   // saved/duplicated/templated design should never come back "stuck" in
   // adjust mode.
   const [adjustFrameId, setAdjustFrameId] = useState<string | null>(null);
+  // Which hole (1 or 2) is being adjusted — only meaningful alongside
+  // adjustFrameId, and only for the one frame ('burger-cat') with a hole2.
+  const [adjustHole, setAdjustHole] = useState<1 | 2>(1);
   // The Supabase `designs` row this design is already saved as, once
   // autosaved or sent at least once — null means "not saved yet" (insert on
   // next save), non-null means "update that row" (never duplicate rows).
@@ -57,7 +61,10 @@ export function useDesign(initialModelId: string) {
     setSelectedId(id);
     setAdjustFrameId((a) => (a === id ? a : null));
   };
-  const enterAdjustMode = (id: string) => setAdjustFrameId(id);
+  const enterAdjustMode = (id: string, hole: 1 | 2 = 1) => {
+    setAdjustFrameId(id);
+    setAdjustHole(hole);
+  };
   const exitAdjustMode = () => setAdjustFrameId(null);
 
   const addSticker = (emoji: string) => {
@@ -88,17 +95,23 @@ export function useDesign(initialModelId: string) {
     updateLayer(id, { width: CANVAS_BASE, height: canvasH, radius: 0, tx: 0, ty: 0, scale: 1, rotation: 0 });
   };
   const addFrame = (frameId: string) => {
+    const def = FRAME_DEFS[frameId];
     const layer: Layer = {
       id: uid(), kind: 'frame', frameId, photoUri: null, photoTx: 0, photoTy: 0, photoScale: 1,
-      tx: 0, ty: 0, scale: 1, rotation: 0, z: nextZ(design.layers),
+      ...(def?.hole2 ? { photo2Uri: null, photo2Tx: 0, photo2Ty: 0, photo2Scale: 1 } : {}),
+      tx: 0, ty: 0, scale: def?.defaultScale ?? 1, rotation: 0, z: nextZ(design.layers),
     };
     setDesign((d) => ({ ...d, layers: [...d.layers, layer] }));
     setSelectedId(layer.id);
   };
-  const setFramePhoto = (id: string, uri: string) =>
+  const setFramePhoto = (id: string, uri: string, hole: 1 | 2 = 1) =>
     setDesign((d) => ({
       ...d,
-      layers: d.layers.map((l) => (l.id === id && l.kind === 'frame' ? { ...l, photoUri: uri, photoTx: 0, photoTy: 0, photoScale: 1 } : l)),
+      layers: d.layers.map((l) => (l.id === id && l.kind === 'frame'
+        ? hole === 2
+          ? { ...l, photo2Uri: uri, photo2Tx: 0, photo2Ty: 0, photo2Scale: 1 }
+          : { ...l, photoUri: uri, photoTx: 0, photoTy: 0, photoScale: 1 }
+        : l)),
     }));
   // Fills an empty "tap to add your photo" image-layer placeholder (full-
   // case-wrap templates) — mirrors setFramePhoto's role for frame layers.
@@ -125,7 +138,7 @@ export function useDesign(initialModelId: string) {
     setDesign((d) => ({ ...d, layers: d.layers.map((l) => (l.id === id ? { ...l, z: nextZ(d.layers) } : l)) }));
 
   return {
-    design, selectedId, adjustFrameId, supabaseId, setSupabaseId, startBlank, startFromTemplate, loadDesign, setModel, setBackground, select,
+    design, selectedId, adjustFrameId, adjustHole, supabaseId, setSupabaseId, startBlank, startFromTemplate, loadDesign, setModel, setBackground, select,
     enterAdjustMode, exitAdjustMode,
     addSticker, addText, addImage, fitImageToCase, addFrame, setFramePhoto, setImageUri, updateLayer, removeLayer, duplicateLayer, bringToFront,
   };

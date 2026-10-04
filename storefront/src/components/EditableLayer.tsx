@@ -1,6 +1,18 @@
 import React from 'react';
 import type { Layer } from '../lib/types';
 import { FRAME_DEFS } from '../lib/frames';
+import type { FrameDef } from '../lib/frames';
+
+// Which hole (if any) a local point (in % of the frame's own box) falls
+// inside — used only to disambiguate hole1 vs hole2 on a two-hole frame;
+// single-hole frames keep their old "any tap on the frame" behavior.
+function holeAt(def: FrameDef, xPct: number, yPct: number): 1 | 2 | null {
+  const inside = (h: { xPct: number; yPct: number; wPct: number; hPct: number }) =>
+    xPct >= h.xPct && xPct <= h.xPct + h.wPct && yPct >= h.yPct && yPct <= h.yPct + h.hPct;
+  if (def.hole2 && inside(def.hole2)) return 2;
+  if (inside(def.hole)) return 1;
+  return null;
+}
 
 export function layerBaseSize(l: Layer): { w: number; h: number } {
   if (l.kind === 'sticker') return { w: l.size, h: l.size };
@@ -23,7 +35,7 @@ export function EditableLayer({
   canvasRef,
   onSelect,
   onChange,
-  adjustMode = false,
+  adjustHole = null,
   onRequestPhoto,
 }: {
   layer: Layer;
@@ -32,9 +44,9 @@ export function EditableLayer({
   canvasRef: React.RefObject<HTMLDivElement | null>;
   onSelect: (id: string) => void;
   onChange: (id: string, patch: Partial<Layer>) => void;
-  /** True while this specific frame layer's photo is being repositioned/zoomed. */
-  adjustMode?: boolean;
-  onRequestPhoto?: (id: string) => void;
+  /** Which hole (1 or 2) is being repositioned/zoomed on this frame layer, or null if none. */
+  adjustHole?: 1 | 2 | null;
+  onRequestPhoto?: (id: string, hole: 1 | 2) => void;
 }) {
   const base = layerBaseSize(layer);
   const dw = base.w * scale;
@@ -49,9 +61,9 @@ export function EditableLayer({
     e.stopPropagation();
     onSelect(layer.id);
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
-    const useAdjust = adjustMode && layer.kind === 'frame';
-    const startTx = useAdjust ? layer.photoTx : layer.tx;
-    const startTy = useAdjust ? layer.photoTy : layer.ty;
+    const useAdjust = adjustHole && layer.kind === 'frame';
+    const startTx = useAdjust ? (adjustHole === 2 ? (layer.photo2Tx ?? 0) : layer.photoTx) : layer.tx;
+    const startTy = useAdjust ? (adjustHole === 2 ? (layer.photo2Ty ?? 0) : layer.photoTy) : layer.ty;
     dragState.current = { startTx, startTy, startX: e.clientX, startY: e.clientY, moved: false };
   };
   const onBodyPointerMove = (e: React.PointerEvent) => {
@@ -60,12 +72,13 @@ export function EditableLayer({
     const dx = e.clientX - startX;
     const dy = e.clientY - startY;
     if (Math.abs(dx) > TAP_THRESHOLD_PX || Math.abs(dy) > TAP_THRESHOLD_PX) dragState.current.moved = true;
-    if (adjustMode && layer.kind === 'frame') {
+    if (adjustHole && layer.kind === 'frame') {
       // photoTx/Ty live inside a box that's already scaled by both the
       // canvas scale and this layer's own scale, so undo both to keep the
       // drag tracking the pointer 1:1.
       const divisor = scale * layer.scale;
-      onChange(layer.id, { photoTx: startTx + dx / divisor, photoTy: startTy + dy / divisor });
+      if (adjustHole === 2) onChange(layer.id, { photo2Tx: startTx + dx / divisor, photo2Ty: startTy + dy / divisor });
+      else onChange(layer.id, { photoTx: startTx + dx / divisor, photoTy: startTy + dy / divisor });
     } else {
       onChange(layer.id, { tx: startTx + dx / scale, ty: startTy + dy / scale });
     }
@@ -74,8 +87,21 @@ export function EditableLayer({
     const wasTap = dragState.current && !dragState.current.moved;
     dragState.current = null;
     (e.target as HTMLElement).releasePointerCapture(e.pointerId);
-    if (wasTap && layer.kind === 'frame' && !layer.photoUri && !adjustMode) onRequestPhoto?.(layer.id);
-    if (wasTap && layer.kind === 'image' && !layer.uri) onRequestPhoto?.(layer.id);
+    if (wasTap && layer.kind === 'frame' && !adjustHole) {
+      const def = FRAME_DEFS[layer.frameId];
+      if (def?.hole2) {
+        // Two-hole frame — precisely test which hole was actually tapped.
+        const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+        const xPct = ((e.clientX - rect.left) / rect.width) * 100;
+        const yPct = ((e.clientY - rect.top) / rect.height) * 100;
+        const tappedHole = holeAt(def, xPct, yPct);
+        if (tappedHole === 2 && !layer.photo2Uri) onRequestPhoto?.(layer.id, 2);
+        else if (tappedHole === 1 && !layer.photoUri) onRequestPhoto?.(layer.id, 1);
+      } else if (!layer.photoUri) {
+        onRequestPhoto?.(layer.id, 1);
+      }
+    }
+    if (wasTap && layer.kind === 'image' && !layer.uri) onRequestPhoto?.(layer.id, 1);
   };
 
   const onHandlePointerDown = (e: React.PointerEvent) => {
@@ -184,6 +210,37 @@ export function EditableLayer({
                   </div>
                 )}
               </div>
+              {def.hole2 && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    left: `${def.hole2.xPct}%`,
+                    top: `${def.hole2.yPct}%`,
+                    width: `${def.hole2.wPct}%`,
+                    height: `${def.hole2.hPct}%`,
+                    borderRadius: '50%',
+                    overflow: 'hidden',
+                    background: layer.photo2Uri ? undefined : '#f0e6ea',
+                  }}
+                >
+                  {layer.photo2Uri ? (
+                    <img
+                      src={layer.photo2Uri}
+                      alt=""
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover',
+                        transform: `translate(${layer.photo2Tx ?? 0}px, ${layer.photo2Ty ?? 0}px) scale(${layer.photo2Scale ?? 1})`,
+                      }}
+                    />
+                  ) : (
+                    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: dw * 0.14 }}>
+                      📷
+                    </div>
+                  )}
+                </div>
+              )}
               {def.image ? <img src={def.image} alt="" style={overlayStyle} /> : FrameSvg ? <FrameSvg style={overlayStyle} /> : null}
             </>
           );
@@ -205,7 +262,7 @@ export function EditableLayer({
         )}
       </div>
 
-      {selected && !adjustMode && (
+      {selected && !adjustHole && (
         <div
           onPointerDown={onHandlePointerDown}
           onPointerMove={onHandlePointerMove}

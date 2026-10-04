@@ -406,16 +406,16 @@ const TEXT_COLORS = ['#FFFFFF', '#141018', '#FF3E9A', '#D6006E', '#FFD400', '#7B
 
 function Editor({ design, onBack, session }: { design: ReturnType<typeof useDesign>; onBack: () => void; session: Session | null }) {
   const {
-    design: d, selectedId, adjustFrameId, supabaseId, setSupabaseId, select, setBackground, setModel,
+    design: d, selectedId, adjustFrameId, adjustHole, supabaseId, setSupabaseId, select, setBackground, setModel,
     enterAdjustMode, exitAdjustMode,
     addSticker, addText, addImage, fitImageToCase, addFrame, setFramePhoto, setImageUri, updateLayer, removeLayer, duplicateLayer, bringToFront,
   } = design;
   const model = MODELS[d.modelId] ?? phoneModels[0];
   const canvasRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  // When set, the next file picked goes to that frame layer's photo instead
-  // of creating a new standalone image layer.
-  const uploadTargetFrameId = useRef<string | null>(null);
+  // When set, the next file picked goes to that frame layer's photo (in the
+  // given hole) instead of creating a new standalone image layer.
+  const uploadTarget = useRef<{ id: string; hole: 1 | 2 } | null>(null);
 
   const [tool, setTool] = useState<Tool>('stickers');
   const [activePack, setActivePack] = useState(stickerPacks[0].id);
@@ -461,23 +461,23 @@ function Editor({ design, onBack, session }: { design: ReturnType<typeof useDesi
   const selected = d.layers.find((l) => l.id === selectedId) ?? null;
   const ordered = [...d.layers].sort((a, b) => a.z - b.z);
 
-  const pickImage = (frameId?: string) => {
-    uploadTargetFrameId.current = frameId ?? null;
+  const pickImage = (frameId?: string, hole: 1 | 2 = 1) => {
+    uploadTarget.current = frameId ? { id: frameId, hole } : null;
     fileInputRef.current?.click();
   };
   const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    const targetFrameId = uploadTargetFrameId.current;
-    uploadTargetFrameId.current = null;
+    const target = uploadTarget.current;
+    uploadTarget.current = null;
     e.target.value = '';
     if (!file) return;
     loadAndResizeImage(file).then(({ uri, width, height }) => {
-      if (targetFrameId) {
-        const target = d.layers.find((l) => l.id === targetFrameId);
-        if (target?.kind === 'image') {
-          setImageUri(targetFrameId, uri);
+      if (target) {
+        const targetLayer = d.layers.find((l) => l.id === target.id);
+        if (targetLayer?.kind === 'image') {
+          setImageUri(target.id, uri);
         } else {
-          setFramePhoto(targetFrameId, uri);
+          setFramePhoto(target.id, uri, target.hole);
         }
         return;
       }
@@ -490,10 +490,10 @@ function Editor({ design, onBack, session }: { design: ReturnType<typeof useDesi
   // little quality for a much smaller one-time download, since this has to
   // work over mobile data. That download only happens the first time anyone
   // on this device taps the button; the browser caches it after that.
-  const handleRemoveBackground = async (id: string) => {
+  const handleRemoveBackground = async (id: string, hole: 1 | 2 = 1) => {
     const layer = d.layers.find((l) => l.id === id);
     if (!layer) return;
-    const sourceUri = layer.kind === 'image' ? layer.uri : layer.kind === 'frame' ? layer.photoUri : null;
+    const sourceUri = layer.kind === 'image' ? layer.uri : layer.kind === 'frame' ? (hole === 2 ? layer.photo2Uri : layer.photoUri) : null;
     if (!sourceUri) return;
     setBgRemoving(id);
     setBgProgress(0);
@@ -510,6 +510,7 @@ function Editor({ design, onBack, session }: { design: ReturnType<typeof useDesi
       // updateLayer (not setFramePhoto) for frames — swaps just the photo in
       // place, keeping whatever crop/zoom position the customer already set.
       if (layer.kind === 'image') setImageUri(id, resultUri);
+      else if (hole === 2) updateLayer(id, { photo2Uri: resultUri });
       else updateLayer(id, { photoUri: resultUri });
     } catch (err) {
       console.warn('Background removal failed', err);
@@ -601,7 +602,7 @@ function Editor({ design, onBack, session }: { design: ReturnType<typeof useDesi
               canvasRef={canvasRef}
               onSelect={select}
               onChange={updateLayer}
-              adjustMode={l.id === adjustFrameId}
+              adjustHole={l.id === adjustFrameId ? adjustHole : null}
               onRequestPhoto={pickImage}
             />
           ))}
@@ -668,24 +669,60 @@ function Editor({ design, onBack, session }: { design: ReturnType<typeof useDesi
 
       {selected && selected.kind === 'frame' && adjustFrameId === selected.id && (
         <div className="actions-row">
-          <button className="action-btn" onClick={() => updateLayer(selected.id, { photoScale: Math.max(0.5, selected.photoScale / 1.15) })}>➖ Zoom out</button>
-          <button className="action-btn" onClick={() => updateLayer(selected.id, { photoScale: Math.min(4, selected.photoScale * 1.15) })}>➕ Zoom in</button>
+          <button
+            className="action-btn"
+            onClick={() => (adjustHole === 2
+              ? updateLayer(selected.id, { photo2Scale: Math.max(0.5, (selected.photo2Scale ?? 1) / 1.15) })
+              : updateLayer(selected.id, { photoScale: Math.max(0.5, selected.photoScale / 1.15) }))}
+          >➖ Zoom out</button>
+          <button
+            className="action-btn"
+            onClick={() => (adjustHole === 2
+              ? updateLayer(selected.id, { photo2Scale: Math.min(4, (selected.photo2Scale ?? 1) * 1.15) })
+              : updateLayer(selected.id, { photoScale: Math.min(4, selected.photoScale * 1.15) }))}
+          >➕ Zoom in</button>
           <button className="action-btn" onClick={exitAdjustMode}>✓ Done</button>
         </div>
       )}
       {selected && !(selected.kind === 'frame' && adjustFrameId === selected.id) && (
         <div className="actions-row">
           {selected.kind === 'text' && <button className="action-btn" onClick={openTextEditor}>✏️ Edit</button>}
-          {selected.kind === 'frame' && !selected.photoUri && (
+          {selected.kind === 'frame' && !FRAME_DEFS[selected.frameId]?.hole2 && !selected.photoUri && (
             <button className="action-btn" onClick={() => pickImage(selected.id)}>📷 Add Photo</button>
           )}
-          {selected.kind === 'frame' && selected.photoUri && (
+          {selected.kind === 'frame' && !FRAME_DEFS[selected.frameId]?.hole2 && selected.photoUri && (
             <>
               <button className="action-btn" onClick={() => enterAdjustMode(selected.id)}>🎯 Adjust Face</button>
               <button className="action-btn" onClick={() => pickImage(selected.id)}>🔁 Replace Photo</button>
               <button className="action-btn" disabled={bgRemoving === selected.id} onClick={() => handleRemoveBackground(selected.id)}>
                 {bgRemoving === selected.id ? `⏳ ${bgProgress}%` : '✂️ Remove BG'}
               </button>
+            </>
+          )}
+          {selected.kind === 'frame' && FRAME_DEFS[selected.frameId]?.hole2 && (
+            <>
+              {!selected.photoUri ? (
+                <button className="action-btn" onClick={() => pickImage(selected.id, 1)}>📷 Photo 1</button>
+              ) : (
+                <>
+                  <button className="action-btn" onClick={() => enterAdjustMode(selected.id, 1)}>🎯 Adjust 1</button>
+                  <button className="action-btn" onClick={() => pickImage(selected.id, 1)}>🔁 Replace 1</button>
+                  <button className="action-btn" disabled={bgRemoving === selected.id} onClick={() => handleRemoveBackground(selected.id, 1)}>
+                    {bgRemoving === selected.id ? `⏳ ${bgProgress}%` : '✂️ BG 1'}
+                  </button>
+                </>
+              )}
+              {!selected.photo2Uri ? (
+                <button className="action-btn" onClick={() => pickImage(selected.id, 2)}>📷 Photo 2</button>
+              ) : (
+                <>
+                  <button className="action-btn" onClick={() => enterAdjustMode(selected.id, 2)}>🎯 Adjust 2</button>
+                  <button className="action-btn" onClick={() => pickImage(selected.id, 2)}>🔁 Replace 2</button>
+                  <button className="action-btn" disabled={bgRemoving === selected.id} onClick={() => handleRemoveBackground(selected.id, 2)}>
+                    {bgRemoving === selected.id ? `⏳ ${bgProgress}%` : '✂️ BG 2'}
+                  </button>
+                </>
+              )}
             </>
           )}
           {selected.kind === 'image' && (
@@ -881,8 +918,12 @@ async function uploadPhotoLayers(layers: Layer[]): Promise<Layer[]> {
   for (const l of layers) {
     if (l.kind === 'image' && l.uri?.startsWith('data:')) {
       out.push({ ...l, uri: await uploadDataUri(l.uri) });
-    } else if (l.kind === 'frame' && l.photoUri?.startsWith('data:')) {
-      out.push({ ...l, photoUri: await uploadDataUri(l.photoUri) });
+    } else if (l.kind === 'frame' && (l.photoUri?.startsWith('data:') || l.photo2Uri?.startsWith('data:'))) {
+      out.push({
+        ...l,
+        photoUri: l.photoUri?.startsWith('data:') ? await uploadDataUri(l.photoUri) : l.photoUri,
+        photo2Uri: l.photo2Uri?.startsWith('data:') ? await uploadDataUri(l.photo2Uri) : l.photo2Uri,
+      });
     } else {
       out.push(l);
     }
@@ -958,6 +999,10 @@ function SendModal({
           n++;
         } else if (l.kind === 'frame' && l.photoUri?.startsWith('data:')) {
           form.append(`photo_${n}`, await (await fetch(l.photoUri)).blob(), `photo-${n + 1}.png`);
+          n++;
+        }
+        if (l.kind === 'frame' && l.photo2Uri?.startsWith('data:')) {
+          form.append(`photo_${n}`, await (await fetch(l.photo2Uri)).blob(), `photo-${n + 1}.png`);
           n++;
         }
       }

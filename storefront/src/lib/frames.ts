@@ -23,6 +23,15 @@ export type FrameDef = {
   /** Face-hole rect as % of width/height — must match the cutout each SVG
    *  actually draws, or the transparent hole cut into the photo. */
   hole: { xPct: number; yPct: number; wPct: number; hPct: number };
+  /** Second face-hole, for the one frame ('burger-cat') cut from a source
+   *  photo with two faces in it — every other frame has just the one. */
+  hole2?: { xPct: number; yPct: number; wPct: number; hPct: number };
+  /** Initial layer scale when this frame is added — defaults to 1 (the
+   *  SVG frames' 200x220 artboard already roughly matches case size at
+   *  scale 1). A frame whose source photo is much larger than that (like
+   *  'burger-cat' at 1080x1800) needs a smaller starting scale so it isn't
+   *  added wildly oversized relative to the case. */
+  defaultScale?: number;
 };
 
 export const FRAME_DEFS: Record<string, FrameDef> = {
@@ -117,6 +126,21 @@ export const FRAME_DEFS: Record<string, FrameDef> = {
     height: 655,
     hole: { xPct: 16.15, yPct: 33.48, wPct: 67.62, hPct: 66.09 },
   },
+  // Two-face real photo (cat-in-burger-costume + star + strawberry hood) —
+  // the only frame with a second hole (hole2), cut from the cat's face.
+  'burger-cat': {
+    id: 'burger-cat',
+    name: 'Burger Cat',
+    image: '/frames/burger-cat.png',
+    width: 1080,
+    height: 1800,
+    hole: { xPct: 50.46, yPct: 39.44, wPct: 31.94, hPct: 15 },
+    hole2: { xPct: 15.28, yPct: 27.5, wPct: 31.94, hPct: 15.28 },
+    // Matches the image's height to a typical case's rendered height —
+    // width ends up a bit wider than the case (clipped at the edges), which
+    // keeps the full top-to-bottom composition instead of cropping it.
+    defaultScale: 0.37,
+  },
 };
 
-export const frameOrder: string[] = ['strawberry', 'cherry', 'peach', 'watermelon', 'orange', 'donut', 'bear', 'bunny', 'dog', 'cat', 'strawberry-photo'];
+export const frameOrder: string[] = ['strawberry', 'cherry', 'peach', 'watermelon', 'orange', 'donut', 'bear', 'bunny', 'dog', 'cat', 'strawberry-photo', 'burger-cat'];

@@ -22,6 +22,9 @@ export type FrameDef = {
   width: number;
   height: number;
   hole: { xPct: number; yPct: number; wPct: number; hPct: number };
+  /** Second face-hole, for the one frame ('burger-cat') cut from a source
+   *  photo with two faces in it — every other frame has just the one. */
+  hole2?: { xPct: number; yPct: number; wPct: number; hPct: number };
 };
 
 export const FRAME_DEFS: Record<string, FrameDef> = {
@@ -115,5 +118,16 @@ export const FRAME_DEFS: Record<string, FrameDef> = {
     width: 640,
     height: 655,
     hole: { xPct: 16.15, yPct: 33.48, wPct: 67.62, hPct: 66.09 },
+  },
+  // Two-face real photo (cat-in-burger-costume + star + strawberry hood) —
+  // the only frame with a second hole (hole2), cut from the cat's face.
+  'burger-cat': {
+    id: 'burger-cat',
+    name: 'Burger Cat',
+    image: `${import.meta.env.BASE_URL}frames/burger-cat.png`,
+    width: 1080,
+    height: 1800,
+    hole: { xPct: 50.46, yPct: 39.44, wPct: 31.94, hPct: 15 },
+    hole2: { xPct: 15.28, yPct: 27.5, wPct: 31.94, hPct: 15.28 },
   },
 };

@@ -228,6 +228,33 @@ export function LayerView({ layer, scale }: { layer: Layer; scale: number }) {
             />
           )}
         </div>
+        {def.hole2 && (
+          <div
+            style={{
+              position: 'absolute',
+              left: `${def.hole2.xPct}%`,
+              top: `${def.hole2.yPct}%`,
+              width: `${def.hole2.wPct}%`,
+              height: `${def.hole2.hPct}%`,
+              borderRadius: '50%',
+              overflow: 'hidden',
+              background: layer.photo2Uri ? undefined : '#f0e6ea',
+            }}
+          >
+            {layer.photo2Uri && (
+              <img
+                src={layer.photo2Uri}
+                alt=""
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                  transform: `translate(${layer.photo2Tx}px, ${layer.photo2Ty}px) scale(${layer.photo2Scale})`,
+                }}
+              />
+            )}
+          </div>
+        )}
         {def.image ? <img src={def.image} alt="" style={overlayStyle} /> : FrameSvg ? <FrameSvg style={overlayStyle} /> : null}
       </div>
     );

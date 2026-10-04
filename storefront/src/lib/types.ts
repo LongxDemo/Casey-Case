@@ -21,6 +21,9 @@ export type TextLayer = LayerBase & {
 export type FrameLayer = LayerBase & {
   kind: 'frame'; frameId: string; photoUri: string | null;
   photoTx: number; photoTy: number; photoScale: number;
+  // Second face-hole, only present on frames whose FrameDef has a `hole2`
+  // (currently just 'burger-cat') — undefined/absent for every other frame.
+  photo2Uri?: string | null; photo2Tx?: number; photo2Ty?: number; photo2Scale?: number;
 };
 
 export type Layer = ImageLayer | StickerLayer | TextLayer | FrameLayer;

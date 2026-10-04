@@ -10,7 +10,12 @@ export type Layer =
   | { id: string; kind: 'text'; text: string; color: string; fontSize: number; fontWeight: string; align: 'left' | 'center' | 'right'; tx: number; ty: number; scale: number; rotation: number; z: number }
   // Fruit/character frame with a face-hole; geometry looked up by frameId
   // from FRAME_DEFS at render time (mirrors storefront's lib/frames.ts).
-  | { id: string; kind: 'frame'; frameId: string; photoUri: string | null; photoTx: number; photoTy: number; photoScale: number; tx: number; ty: number; scale: number; rotation: number; z: number };
+  | {
+      id: string; kind: 'frame'; frameId: string; photoUri: string | null; photoTx: number; photoTy: number; photoScale: number;
+      // Second face-hole, only present on frames with a FrameDef.hole2 (currently just 'burger-cat').
+      photo2Uri?: string | null; photo2Tx?: number; photo2Ty?: number; photo2Scale?: number;
+      tx: number; ty: number; scale: number; rotation: number; z: number;
+    };
 
 export type DesignRow = {
   id: string;
