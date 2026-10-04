@@ -141,4 +141,37 @@ export const FRAME_DEFS: Record<string, FrameDef> = {
     height: 2000,
     hole: { xPct: 30.06, yPct: 42.75, wPct: 38.9, hPct: 27.55 },
   },
+  // Trash-bag-beanie + red hoodie character — hole measured the same
+  // green-screen way as 'strawberry-bow'.
+  'cozy-hoodie': {
+    id: 'cozy-hoodie',
+    name: 'Cozy Hoodie',
+    image: `${import.meta.env.BASE_URL}frames/cozy-hoodie.png`,
+    width: 1414,
+    height: 2000,
+    hole: { xPct: 38.19, yPct: 49.6, wPct: 38.19, hPct: 27 },
+  },
+  // Trash-bag-beanie character, bare shoulders — hole measured the same
+  // green-screen way as 'strawberry-bow'.
+  'black-beanie': {
+    id: 'black-beanie',
+    name: 'Black Beanie',
+    image: `${import.meta.env.BASE_URL}frames/black-beanie.png`,
+    width: 1414,
+    height: 2000,
+    hole: { xPct: 29.99, yPct: 54.3, wPct: 39.96, hPct: 28.25 },
+  },
+  // Carrot + tomato plush pair — two holes, each marked with a non-oval
+  // green blob in the source design; the hole is cut to that exact shape,
+  // but the app's photo clip is still an inscribed ellipse — accepted
+  // tradeoff for irregular shapes.
+  'carrot-tomato': {
+    id: 'carrot-tomato',
+    name: 'Carrot & Tomato',
+    image: `${import.meta.env.BASE_URL}frames/carrot-tomato.png`,
+    width: 1414,
+    height: 2000,
+    hole: { xPct: 13.15, yPct: 42.75, wPct: 30.98, hPct: 17.25 },
+    hole2: { xPct: 53.54, yPct: 44.7, wPct: 34.58, hPct: 18.25 },
+  },
 };
