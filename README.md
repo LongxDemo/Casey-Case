@@ -63,10 +63,11 @@ a new/contacted/done status), templates are managed in **Gallery**, and edits in
 
 ## Deploying
 
-Both apps deploy to Cloudflare via Wrangler:
+Both apps build and deploy together as a single Cloudflare Worker, with admin
+served at `/admin`:
 
 ```bash
-npm run deploy        # inside storefront/ or admin/
+npm run deploy        # from the repo root
 ```
 
 ## Roadmap / next steps
