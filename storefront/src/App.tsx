@@ -353,10 +353,6 @@ function Home({
       </div>
 
       <div className="footer-note">Love. Print. Stan. Repeat. 🐰<br />#CASEYCASE #DIYKC</div>
-
-      <div className="fab">
-        <button className="btn cool lg" onClick={onBlank}>🖌️ Design your case</button>
-      </div>
     </>
   );
 }

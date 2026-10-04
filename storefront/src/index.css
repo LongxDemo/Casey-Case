@@ -12,7 +12,6 @@
   --white: #fff;
   --success: #3ec8a0;
   --danger: #ff5470;
-  --iris: #7b61ff;
   --iris-deep: #5b3de0;
   --glass-border: rgba(255, 255, 255, 0.7);
   --glow: 0 10px 32px rgba(123, 61, 255, 0.24), 0 4px 14px rgba(214, 0, 110, 0.14);
@@ -90,14 +89,10 @@ input, textarea, select { font-family: inherit; }
 
 .footer-note { text-align: center; color: var(--pink-soft); font-weight: 800; margin-top: 28px; line-height: 1.4; font-size: 13px; }
 
-.fab { position: sticky; bottom: 14px; left: 0; right: 0; padding: 0 18px; margin-top: 24px; }
-
 /* Buttons */
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: none; border-radius: 999px; padding: 12px 20px; font-weight: 800; font-size: 14px; color: #fff; background: linear-gradient(135deg, #ff4fa3, #ff8ac7); box-shadow: 0 4px 14px rgba(214,0,110,0.2); }
-.btn.lg { padding: 15px 22px; font-size: 15px; width: 100%; }
 .btn.soft { background: var(--blush); color: var(--pink-dark); box-shadow: none; }
 .btn.ghost { background: transparent; border: 2px solid var(--blush); color: var(--pink); box-shadow: none; }
-.btn.cool { background: linear-gradient(135deg, var(--iris), var(--pink)); box-shadow: var(--glow); }
 .btn:disabled { opacity: 0.5; }
 
 /* Editor */
