@@ -100,7 +100,7 @@ export function LocationPicker({
           reverseGeocode(latitude, longitude).then((label) => !cancelled && label && onAddressChange(label));
         },
         () => !cancelled && setLocating(false),
-        { timeout: 8000 },
+        { enableHighAccuracy: true, timeout: 10000 },
       );
     }
 
