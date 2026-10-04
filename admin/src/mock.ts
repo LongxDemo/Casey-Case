@@ -19,7 +19,7 @@ export const mockFrontPage: FrontPage = {
 export const mockDesigns: DesignRow[] = [
   {
     id: 'd1', user_id: null, model_id: 'ip15pm', preview_url: null, created_at: new Date(Date.now() - 3600e3).toISOString(),
-    contact_name: null, contact_email: null, contact_phone: null, note: null, status: null,
+    contact_name: null, contact_email: null, contact_phone: null, contact_address: null, contact_lat: null, contact_lng: null, note: null, status: null,
     background: { id: 'midnight', name: 'Midnight Stan', colors: ['#2B1B3D', '#141018'] },
     layers: [
       { id: 'a', kind: 'text', text: 'STAN\n4 LIFE', color: '#FF3E9A', fontSize: 46, fontWeight: '900', align: 'center', tx: 0, ty: -40, scale: 1, rotation: 0, z: 2 },
@@ -28,7 +28,7 @@ export const mockDesigns: DesignRow[] = [
   },
   {
     id: 'd2', user_id: 'u1', model_id: 's24u', preview_url: null, created_at: new Date(Date.now() - 7200e3).toISOString(),
-    contact_name: null, contact_email: null, contact_phone: null, note: null, status: null,
+    contact_name: null, contact_email: null, contact_phone: null, contact_address: null, contact_lat: null, contact_lng: null, note: null, status: null,
     background: { id: 'bubblegum', name: 'Bubblegum', colors: ['#FF7EC0', '#FF3E9A'] },
     layers: [
       { id: 'a', kind: 'text', text: 'love.\nprint.\nstan.', color: '#FFFFFF', fontSize: 40, fontWeight: '800', align: 'left', tx: -30, ty: 0, scale: 1, rotation: 0, z: 2 },
@@ -37,7 +37,7 @@ export const mockDesigns: DesignRow[] = [
   },
   {
     id: 'd3', user_id: null, model_id: 'ip14', preview_url: null, created_at: new Date(Date.now() - 10800e3).toISOString(),
-    contact_name: null, contact_email: null, contact_phone: null, note: null, status: null,
+    contact_name: null, contact_email: null, contact_phone: null, contact_address: null, contact_lat: null, contact_lng: null, note: null, status: null,
     background: { id: 'cotton', name: 'Cotton Candy', colors: ['#FFD6EC', '#C8B6FF'] },
     layers: [
       { id: 'a', kind: 'sticker', emoji: '🐰', size: 120, tx: 0, ty: -30, scale: 1, rotation: 0, z: 2 },
@@ -47,6 +47,7 @@ export const mockDesigns: DesignRow[] = [
   {
     id: 'd4', user_id: null, model_id: 'ip17p', preview_url: null, created_at: new Date(Date.now() - 1800e3).toISOString(),
     contact_name: 'Sokha R.', contact_email: 'sokha@example.com', contact_phone: '012 345 678',
+    contact_address: 'St 63, Phnom Penh', contact_lat: 11.5564, contact_lng: 104.9282,
     note: 'Pickup please, need it by Friday if possible!', status: 'new',
     background: { id: 'lilac', name: 'Lilac Dream', colors: ['#E4C1F9', '#B892FF'] },
     layers: [

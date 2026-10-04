@@ -99,6 +99,9 @@ create table if not exists designs (
   contact_name   text,
   contact_email  text,
   contact_phone  text,
+  contact_address text,
+  contact_lat    double precision,
+  contact_lng    double precision,
   note           text,
   status         text not null default 'new', -- 'new' | 'contacted' | 'done'
   created_at     timestamptz not null default now()
@@ -107,6 +110,9 @@ create table if not exists designs (
 alter table designs add column if not exists contact_name text;
 alter table designs add column if not exists contact_email text;
 alter table designs add column if not exists contact_phone text;
+alter table designs add column if not exists contact_address text;
+alter table designs add column if not exists contact_lat double precision;
+alter table designs add column if not exists contact_lng double precision;
 alter table designs add column if not exists note text;
 alter table designs add column if not exists status text not null default 'new';
 

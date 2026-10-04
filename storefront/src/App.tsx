@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { toBlob } from 'html-to-image';
 import { CameraModule, CasePreview, camStyleFor, cameraZoneRect } from './components/CasePreview';
 import { EditableLayer } from './components/EditableLayer';
+import { LocationPicker } from './components/LocationPicker';
 import { useDesign } from './hooks/useDesign';
 import { backgrounds, stickerPacks, templates as staticTemplates } from './mock';
 import { CANVAS_BASE, MODELS, phoneModels, sizeForModel } from './lib/types';
@@ -901,12 +902,15 @@ function SendModal({
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
+  const [address, setAddress] = useState('');
+  const [lat, setLat] = useState<number | null>(null);
+  const [lng, setLng] = useState<number | null>(null);
   const [note, setNote] = useState('');
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
   const [sendError, setSendError] = useState('');
 
-  const valid = name.trim().length > 0 && email.includes('@');
+  const valid = name.trim().length > 0 && phone.trim().length > 0;
 
   const submit = async () => {
     setSending(true);
@@ -914,8 +918,13 @@ function SendModal({
     try {
       const form = new FormData();
       form.append('name', name.trim());
-      form.append('email', email.trim());
       form.append('phone', phone.trim());
+      form.append('email', email.trim());
+      form.append('address', address.trim());
+      if (lat != null && lng != null) {
+        form.append('lat', String(lat));
+        form.append('lng', String(lng));
+      }
       form.append('note', note.trim());
       form.append('model', modelLabel);
 
@@ -961,8 +970,11 @@ function SendModal({
             background: design.background,
             layers,
             contact_name: name.trim(),
-            contact_email: email.trim(),
-            contact_phone: phone.trim() || null,
+            contact_phone: phone.trim(),
+            contact_email: email.trim() || null,
+            contact_address: address.trim() || null,
+            contact_lat: lat,
+            contact_lng: lng,
             note: note.trim() || null,
             status: 'new',
           };
@@ -999,7 +1011,7 @@ function SendModal({
           <div className="success-box">
             <div className="success-emoji">🎉</div>
             <h3 className="modal-title">Sent to Casey!</h3>
-            <p className="modal-sub">We'll reach out at {email} about printing and pickup/shipping. Thanks for designing with us 💗</p>
+            <p className="modal-sub">We'll reach out at {phone}{email ? ` or ${email}` : ''} about printing and pickup/shipping. Thanks for designing with us 💗</p>
             <button className="btn" style={{ width: '100%' }} onClick={finish}>Done</button>
           </div>
         ) : (
@@ -1013,10 +1025,17 @@ function SendModal({
             )}
             <label>Your name</label>
             <input className="f" value={name} onChange={(e) => setName(e.target.value)} placeholder="Casey Bunny" />
-            <label>Email</label>
-            <input className="f" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@email.com" />
-            <label>Phone (optional)</label>
+            <label>Phone</label>
             <input className="f" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="012 345 678" />
+            <label>Email (optional)</label>
+            <input className="f" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@email.com" />
+            <LocationPicker
+              address={address}
+              onAddressChange={setAddress}
+              lat={lat}
+              lng={lng}
+              onLocationChange={(la, ln) => { setLat(la); setLng(ln); }}
+            />
             <label>Note (optional)</label>
             <textarea className="f" rows={2} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Ship or pickup? Any special request?" />
             <button className="btn" style={{ width: '100%', marginTop: 14, opacity: valid ? 1 : 0.5 }} disabled={!valid || sending} onClick={submit}>

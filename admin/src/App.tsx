@@ -232,7 +232,7 @@ function Designs() {
     }
   };
 
-  const inbox = designs.filter((d) => d.contact_email);
+  const inbox = designs.filter((d) => d.contact_phone);
 
   return (
     <>
@@ -249,7 +249,15 @@ function Designs() {
                 <div className="design-meta">
                   {MODELS[d.model_id ?? '']?.name ?? d.model_id}<br />
                   <strong>{d.contact_name}</strong><br />
-                  {d.contact_email}{d.contact_phone ? ` · ${d.contact_phone}` : ''}<br />
+                  {d.contact_phone}{d.contact_email ? ` · ${d.contact_email}` : ''}<br />
+                  {d.contact_address && (
+                    <>
+                      📍 {d.contact_lat != null && d.contact_lng != null ? (
+                        <a href={`https://maps.google.com/?q=${d.contact_lat},${d.contact_lng}`} target="_blank" rel="noreferrer">{d.contact_address}</a>
+                      ) : d.contact_address}
+                      <br />
+                    </>
+                  )}
                   {d.note && <em>"{d.note}"</em>}
                 </div>
                 <select className="status" value={d.status ?? 'new'} onChange={(e) => setStatus(d.id, e.target.value)}>

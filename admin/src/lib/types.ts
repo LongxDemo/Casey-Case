@@ -23,6 +23,9 @@ export type DesignRow = {
   contact_name: string | null;
   contact_email: string | null;
   contact_phone: string | null;
+  contact_address: string | null;
+  contact_lat: number | null;
+  contact_lng: number | null;
   note: string | null;
   status: 'new' | 'contacted' | 'done' | null;
   created_at: string;

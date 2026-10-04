@@ -44,9 +44,12 @@ export default {
     }
 
     const name = field(form, 'name');
-    const email = field(form, 'email');
-    if (!name || !email.includes('@')) return json({ error: 'name and email are required' }, 400);
     const phone = field(form, 'phone');
+    if (!name || !phone) return json({ error: 'name and phone are required' }, 400);
+    const email = field(form, 'email');
+    const address = field(form, 'address');
+    const lat = field(form, 'lat');
+    const lng = field(form, 'lng');
     const note = field(form, 'note');
     const model = field(form, 'model');
 
@@ -56,8 +59,10 @@ export default {
       '',
       `Phone: ${model || 'unknown model'}`,
       `Name: ${name}`,
-      `Email: ${email}`,
-      `Phone number: ${phone || '—'}`,
+      `Phone number: ${phone}`,
+      email ? `Email: ${email}` : null,
+      address ? `Address: ${address}` : null,
+      lat && lng ? `Map: https://maps.google.com/?q=${lat},${lng}` : null,
       note ? `Note: ${note}` : null,
     ].filter((l) => l !== null).join('\n');
 
