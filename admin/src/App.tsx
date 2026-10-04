@@ -53,7 +53,7 @@ export default function App() {
   return (
     <div className="app">
       <aside className="sidebar">
-        <div className="brand"><img className="logo" src="/logo.jpg" alt="Casey" /><span className="word">casey</span></div>
+        <div className="brand"><img className="logo" src={`${import.meta.env.BASE_URL}logo.jpg`} alt="Casey" /><span className="word">casey</span></div>
         <NavItem icon="📊" label="Overview" active={page === 'overview'} onClick={() => setPage('overview')} />
         <NavItem icon="🏠" label="Front Page" active={page === 'front'} onClick={() => setPage('front')} />
         <NavItem icon="🎨" label="Designs" active={page === 'designs'} onClick={() => setPage('designs')} />

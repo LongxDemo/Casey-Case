@@ -111,7 +111,7 @@ export const FRAME_DEFS: Record<string, FrameDef> = {
   'strawberry-photo': {
     id: 'strawberry-photo',
     name: 'Strawberry (Real)',
-    image: '/frames/strawberry-photo.png',
+    image: `${import.meta.env.BASE_URL}frames/strawberry-photo.png`,
     width: 640,
     height: 655,
     hole: { xPct: 16.15, yPct: 33.48, wPct: 67.62, hPct: 66.09 },
