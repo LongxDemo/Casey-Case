@@ -159,7 +159,7 @@ export const mockTemplates: TemplateRow[] = [
     ],
   },
   {
-    id: 't-bunny', name: 'Bunny Love', tag: 'Frame', accent: '#FF6FAE', active: true, featured: false, sort: 10, uses_count: 0,
+    id: 't-bunny-frame', name: 'Bunny Love', tag: 'Frame', accent: '#FF6FAE', active: true, featured: false, sort: 10, uses_count: 0,
     created_at: new Date().toISOString(),
     background: { id: 'bunnypink', name: 'Bunny Pink', colors: ['#FFE3F0', '#FFB8DA'] },
     layers: [
@@ -212,7 +212,7 @@ export const mockTemplates: TemplateRow[] = [
 ];
 
 export const mockOrders: OrderRow[] = [
-  { id: 'o1', order_no: 'CK-284910', email: 'mina@kpop.com', full_name: 'Mina L.', fulfillment: 'ship', status: 'paid', subtotal_cents: 3980, shipping_cents: 499, total_cents: 4479, created_at: new Date(Date.now() - 3600e3).toISOString() },
-  { id: 'o2', order_no: 'CK-284911', email: 'jae@stan.com', full_name: 'Jae P.', fulfillment: 'pickup', status: 'printing', subtotal_cents: 1990, shipping_cents: 0, total_cents: 1990, created_at: new Date(Date.now() - 9000e3).toISOString() },
-  { id: 'o3', order_no: 'CK-284912', email: 'soo@fan.com', full_name: 'Soo K.', fulfillment: 'ship', status: 'shipped', subtotal_cents: 5970, shipping_cents: 499, total_cents: 6469, created_at: new Date(Date.now() - 90000e3).toISOString() },
+  { id: 'o1', order_no: 'CK-284910', email: 'mina@kpop.com', full_name: 'Mina L.', fulfillment: 'ship', status: 'paid', subtotal_cents: 3980, shipping_cents: 499, total_cents: 4479, created_at: new Date(Date.now() - 3600e3).toISOString(), order_items: [{ id: 'oi1', model_id: 'ip16pm', quantity: 2, price_cents: 1990, preview_url: null }] },
+  { id: 'o2', order_no: 'CK-284911', email: 'jae@stan.com', full_name: 'Jae P.', fulfillment: 'pickup', status: 'printing', subtotal_cents: 1990, shipping_cents: 0, total_cents: 1990, created_at: new Date(Date.now() - 9000e3).toISOString(), order_items: [{ id: 'oi2', model_id: 's24u', quantity: 1, price_cents: 1990, preview_url: null }] },
+  { id: 'o3', order_no: 'CK-284912', email: 'soo@fan.com', full_name: 'Soo K.', fulfillment: 'ship', status: 'shipped', subtotal_cents: 5970, shipping_cents: 499, total_cents: 6469, created_at: new Date(Date.now() - 90000e3).toISOString(), order_items: [{ id: 'oi3', model_id: 'ip14', quantity: 3, price_cents: 1990, preview_url: null }] },
 ];

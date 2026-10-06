@@ -1,5 +1,7 @@
-/* Cloudflare Worker behind the storefront: receives "Send to Casey"
- * submissions and forwards them to customer support on Telegram.
+/* Cloudflare Worker behind the storefront: notifies customer support on
+ * Telegram when a customer places an order. The order itself is stored in
+ * Supabase (orders/order_items) by the client — this worker is just the
+ * heads-up ping, so its failure doesn't block placing the order.
  * Secrets (set via `wrangler secret put`): TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID.
  */
 

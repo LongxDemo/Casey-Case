@@ -141,7 +141,7 @@ export const templates: Template[] = [
     ],
   },
   {
-    id: 't-bunny', name: 'Bunny Love', tag: 'Frame', accent: '#FF6FAE',
+    id: 't-bunny-frame', name: 'Bunny Love', tag: 'Frame', accent: '#FF6FAE',
     background: backgrounds[14],
     layers: [
       { kind: 'frame', frameId: 'bunny', photoUri: null, photoTx: 0, photoTy: 0, photoScale: 1, tx: 0, ty: -8, scale: 1.05, rotation: 0, z: 2 },

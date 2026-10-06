@@ -4,7 +4,7 @@ import { CameraModule, CasePreview, camStyleFor, cameraZoneRect } from './compon
 import { EditableLayer } from './components/EditableLayer';
 import { LocationPicker } from './components/LocationPicker';
 import { useDesign } from './hooks/useDesign';
-import { backgrounds, stickerPacks, templates as staticTemplates } from './mock';
+import { backgrounds, BASE_PRICE_CENTS, stickerPacks, templates as staticTemplates } from './mock';
 import { CANVAS_BASE, MODELS, phoneModels, sizeForModel } from './lib/types';
 import type { FrontPage, Layer, Template, TextLayer } from './lib/types';
 import { FRAME_DEFS, frameOrder } from './lib/frames';
@@ -130,8 +130,8 @@ export default function App() {
   // Fire-and-forget autosave of the current in-progress design as a draft —
   // only for logged-in customers (guest designs stay exactly as ephemeral as
   // before) and only once there's something worth keeping. Never blocks
-  // navigation: same low-stakes try/catch-and-warn pattern as SendModal's
-  // own backup insert.
+  // navigation: same low-stakes try/catch-and-warn pattern as
+  // PlaceOrderModal's design-row upsert.
   const autosaveDraft = async () => {
     if (!supabase || !session || design.design.layers.length === 0) return;
     try {
@@ -352,7 +352,7 @@ function Home({
           {[
             { icon: '📱', title: 'Choose your phone', desc: 'Pick from iPhone, Samsung, Xiaomi, or OPPO models for a perfect fit.' },
             { icon: '🖼️', title: 'Design your case', desc: 'Add photos, stickers, text, or start from a template.' },
-            { icon: '📩', title: 'Send to Casey', desc: 'Share your design and contact info — no payment needed yet.' },
+            { icon: '🛒', title: 'Place your order', desc: 'Share your design and contact info — no payment needed yet.' },
             { icon: '📦', title: "We'll reach out", desc: "Casey confirms the details and gets your case made." },
           ].map((s, i) => (
             <div className="explainer-item" key={s.title}>
@@ -408,7 +408,7 @@ function Editor({ design, onBack, session }: { design: ReturnType<typeof useDesi
   const {
     design: d, selectedId, adjustFrameId, adjustHole, supabaseId, setSupabaseId, select, setBackground, setModel,
     enterAdjustMode, exitAdjustMode,
-    addSticker, addText, addImage, fitImageToCase, addFrame, setFramePhoto, setImageUri, updateLayer, removeLayer, duplicateLayer, bringToFront,
+    addSticker, addText, addImage, fitImageToCase, addFrame, setFramePhoto, fitFramePhoto, fitFrame, setImageUri, updateLayer, removeLayer, duplicateLayer, bringToFront,
   } = design;
   const model = MODELS[d.modelId] ?? phoneModels[0];
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -421,7 +421,7 @@ function Editor({ design, onBack, session }: { design: ReturnType<typeof useDesi
   const [activePack, setActivePack] = useState(stickerPacks[0].id);
   const [textModal, setTextModal] = useState(false);
   const [draftText, setDraftText] = useState('');
-  const [sendModal, setSendModal] = useState(false);
+  const [orderModal, setOrderModal] = useState(false);
   const [paletteBackgrounds, setPaletteBackgrounds] = useState(backgrounds);
   const [bgRemoving, setBgRemoving] = useState<string | null>(null);
   const [bgProgress, setBgProgress] = useState(0);
@@ -578,7 +578,7 @@ function Editor({ design, onBack, session }: { design: ReturnType<typeof useDesi
           <p className="editor-title">Casey Studio</p>
           <p className="editor-subtitle">{model.brand} {model.name}</p>
         </div>
-        <button className="send-btn" onClick={() => { select(null); setSendModal(true); }}>Send to Casey →</button>
+        <button className="send-btn" onClick={() => { select(null); setOrderModal(true); }}>Place Order →</button>
       </div>
 
       <button className="download-tag" onClick={downloadDesign} disabled={downloading}>
@@ -687,12 +687,16 @@ function Editor({ design, onBack, session }: { design: ReturnType<typeof useDesi
       {selected && !(selected.kind === 'frame' && adjustFrameId === selected.id) && (
         <div className="actions-row">
           {selected.kind === 'text' && <button className="action-btn" onClick={openTextEditor}>✏️ Edit</button>}
+          {selected.kind === 'frame' && (
+            <button className="action-btn" onClick={() => fitFrame(selected.id)}>🖼️ Fit Frame</button>
+          )}
           {selected.kind === 'frame' && !FRAME_DEFS[selected.frameId]?.hole2 && !selected.photoUri && (
             <button className="action-btn" onClick={() => pickImage(selected.id)}>📷 Add Photo</button>
           )}
           {selected.kind === 'frame' && !FRAME_DEFS[selected.frameId]?.hole2 && selected.photoUri && (
             <>
               <button className="action-btn" onClick={() => enterAdjustMode(selected.id)}>🎯 Adjust Face</button>
+              <button className="action-btn" onClick={() => fitFramePhoto(selected.id)}>🖼️ Fit</button>
               <button className="action-btn" onClick={() => pickImage(selected.id)}>🔁 Replace Photo</button>
               <button className="action-btn" disabled={bgRemoving === selected.id} onClick={() => handleRemoveBackground(selected.id)}>
                 {bgRemoving === selected.id ? `⏳ ${bgProgress}%` : '✂️ Remove BG'}
@@ -706,6 +710,7 @@ function Editor({ design, onBack, session }: { design: ReturnType<typeof useDesi
               ) : (
                 <>
                   <button className="action-btn" onClick={() => enterAdjustMode(selected.id, 1)}>🎯 Adjust 1</button>
+                  <button className="action-btn" onClick={() => fitFramePhoto(selected.id, 1)}>🖼️ Fit 1</button>
                   <button className="action-btn" onClick={() => pickImage(selected.id, 1)}>🔁 Replace 1</button>
                   <button className="action-btn" disabled={bgRemoving === selected.id} onClick={() => handleRemoveBackground(selected.id, 1)}>
                     {bgRemoving === selected.id ? `⏳ ${bgProgress}%` : '✂️ BG 1'}
@@ -717,6 +722,7 @@ function Editor({ design, onBack, session }: { design: ReturnType<typeof useDesi
               ) : (
                 <>
                   <button className="action-btn" onClick={() => enterAdjustMode(selected.id, 2)}>🎯 Adjust 2</button>
+                  <button className="action-btn" onClick={() => fitFramePhoto(selected.id, 2)}>🖼️ Fit 2</button>
                   <button className="action-btn" onClick={() => pickImage(selected.id, 2)}>🔁 Replace 2</button>
                   <button className="action-btn" disabled={bgRemoving === selected.id} onClick={() => handleRemoveBackground(selected.id, 2)}>
                     {bgRemoving === selected.id ? `⏳ ${bgProgress}%` : '✂️ BG 2'}
@@ -844,15 +850,15 @@ function Editor({ design, onBack, session }: { design: ReturnType<typeof useDesi
         </div>
       )}
 
-      {sendModal && (
-        <SendModal
+      {orderModal && (
+        <PlaceOrderModal
           design={d}
           modelLabel={`${model.brand} ${model.name}`}
           canvasRef={canvasRef}
           session={session}
           supabaseId={supabaseId}
           onSaved={setSupabaseId}
-          onClose={() => setSendModal(false)}
+          onClose={() => setOrderModal(false)}
           onSent={onBack}
         />
       )}
@@ -898,18 +904,23 @@ function ModelPicker({ modelId, onSetModel }: { modelId: string; onSetModel: (id
   );
 }
 
-/* ───────────────────────── Send to Casey ───────────────────────── */
+/* ───────────────────────── Place Order ───────────────────────── */
 
-/** Move any base64 photo layers into Supabase Storage and swap the data URL
- *  for the public URL, so the designs row stays small. */
-async function uploadDataUri(uri: string): Promise<string> {
-  const blob = await (await fetch(uri)).blob();
+/** Upload a blob (or data URI) into Supabase Storage and return its public URL. */
+async function uploadToStorage(input: Blob | string): Promise<string> {
+  const blob = typeof input === 'string' ? await (await fetch(input)).blob() : input;
   const ext = (blob.type.split('/')[1] || 'png').replace('jpeg', 'jpg');
   const path = `${crypto.randomUUID()}.${ext}`;
   const { error } = await supabase!.storage.from('design-photos').upload(path, blob, { contentType: blob.type });
   if (error) throw new Error(`photo upload — ${error.message}`);
   const { data } = supabase!.storage.from('design-photos').getPublicUrl(path);
   return data.publicUrl;
+}
+
+/** Move any base64 photo layers into Supabase Storage and swap the data URL
+ *  for the public URL, so the designs row stays small. */
+async function uploadDataUri(uri: string): Promise<string> {
+  return uploadToStorage(uri);
 }
 
 async function uploadPhotoLayers(layers: Layer[]): Promise<Layer[]> {
@@ -931,7 +942,7 @@ async function uploadPhotoLayers(layers: Layer[]): Promise<Layer[]> {
   return out;
 }
 
-function SendModal({
+function PlaceOrderModal({
   design,
   modelLabel,
   canvasRef,
@@ -967,84 +978,119 @@ function SendModal({
     setSending(true);
     setSendError('');
     try {
-      const form = new FormData();
-      form.append('name', name.trim());
-      form.append('phone', phone.trim());
-      form.append('email', email.trim());
-      form.append('address', address.trim());
-      if (lat != null && lng != null) {
-        form.append('lat', String(lat));
-        form.append('lng', String(lng));
-      }
-      form.append('note', note.trim());
-      form.append('model', modelLabel);
-
       // Print-ready snapshot straight off the editor canvas — the ONLY file
       // in this submission with the camera cutout actually masked out (the
       // raw photos below are unmasked originals). At pixelRatio 6 this is
       // print-resolution (~300dpi) for every model in the catalog, so this
-      // file, not the raw photos, is what should go to the printer.
-      if (canvasRef.current) {
-        const preview = await captureDesignBlob(canvasRef.current, { pixelRatio: 6 });
-        if (preview) form.append('preview', preview, 'design-print-ready.png');
-      }
-      // Customer's uploaded photos at original quality, for reference/re-
-      // editing only — NOT masked, so printing these directly instead of
-      // design-print-ready.png above will bleed image content into the
-      // camera cutout area.
-      let n = 0;
-      for (const l of design.layers) {
-        if (l.kind === 'image' && l.uri?.startsWith('data:')) {
-          form.append(`photo_${n}`, await (await fetch(l.uri)).blob(), `photo-${n + 1}.png`);
-          n++;
-        } else if (l.kind === 'frame' && l.photoUri?.startsWith('data:')) {
-          form.append(`photo_${n}`, await (await fetch(l.photoUri)).blob(), `photo-${n + 1}.png`);
-          n++;
-        }
-        if (l.kind === 'frame' && l.photo2Uri?.startsWith('data:')) {
-          form.append(`photo_${n}`, await (await fetch(l.photo2Uri)).blob(), `photo-${n + 1}.png`);
-          n++;
-        }
-      }
+      // file, not the raw photos, is what should go to the printer. Captured
+      // once and reused for both the Telegram notification and order storage.
+      const previewBlob = canvasRef.current ? await captureDesignBlob(canvasRef.current, { pixelRatio: 6 }) : null;
 
-      const res = await fetch('/api/send', { method: 'POST', body: form });
-      if (!res.ok) {
-        const body = (await res.json().catch(() => null)) as { error?: string } | null;
-        throw new Error(body?.error ?? `request failed (${res.status})`);
-      }
-
-      // Backup copy into Supabase when configured — Telegram already has the
-      // design, so a failure here shouldn't fail the customer's send. If this
-      // design was already autosaved as a draft (logged-in customer), update
-      // that same row instead of inserting a duplicate.
-      if (supabase) {
-        try {
-          const layers = await uploadPhotoLayers(design.layers);
-          const row = {
-            model_id: design.modelId,
-            background: design.background,
-            layers,
-            contact_name: name.trim(),
-            contact_phone: phone.trim(),
-            contact_email: email.trim() || null,
-            contact_address: address.trim() || null,
-            contact_lat: lat,
-            contact_lng: lng,
-            note: note.trim() || null,
-            status: 'new',
-          };
-          if (supabaseId) {
-            await supabase.from('designs').update(row).eq('id', supabaseId);
-          } else {
-            const { data, error } = await supabase.from('designs').insert({
-              ...row,
-              user_id: session?.user.id ?? null,
-            }).select('id').single();
-            if (!error && data) onSaved(data.id);
+      // Notify Casey on Telegram — best-effort. This is just a heads-up
+      // ping, not the order's record of truth, so a failure here (e.g.
+      // Telegram secrets not configured) shouldn't block placing the order.
+      try {
+        const form = new FormData();
+        form.append('name', name.trim());
+        form.append('phone', phone.trim());
+        form.append('email', email.trim());
+        form.append('address', address.trim());
+        if (lat != null && lng != null) {
+          form.append('lat', String(lat));
+          form.append('lng', String(lng));
+        }
+        form.append('note', note.trim());
+        form.append('model', modelLabel);
+        if (previewBlob) form.append('preview', previewBlob, 'design-print-ready.png');
+        // Customer's uploaded photos at original quality, for reference/re-
+        // editing only — NOT masked, so printing these directly instead of
+        // design-print-ready.png above will bleed image content into the
+        // camera cutout area.
+        let n = 0;
+        for (const l of design.layers) {
+          if (l.kind === 'image' && l.uri?.startsWith('data:')) {
+            form.append(`photo_${n}`, await (await fetch(l.uri)).blob(), `photo-${n + 1}.png`);
+            n++;
+          } else if (l.kind === 'frame' && l.photoUri?.startsWith('data:')) {
+            form.append(`photo_${n}`, await (await fetch(l.photoUri)).blob(), `photo-${n + 1}.png`);
+            n++;
           }
-        } catch (e) {
-          console.warn('Supabase backup failed:', e);
+          if (l.kind === 'frame' && l.photo2Uri?.startsWith('data:')) {
+            form.append(`photo_${n}`, await (await fetch(l.photo2Uri)).blob(), `photo-${n + 1}.png`);
+            n++;
+          }
         }
+        const res = await fetch('/api/send', { method: 'POST', body: form });
+        if (!res.ok) {
+          const body = (await res.json().catch(() => null)) as { error?: string } | null;
+          throw new Error(body?.error ?? `request failed (${res.status})`);
+        }
+      } catch (e) {
+        console.warn('Telegram notification failed:', e);
+      }
+
+      // Store the real order — this is what the admin dashboard's Orders
+      // page reads, and what actually persists the customer's design and
+      // phone model (previously this only happened via Telegram).
+      if (supabase) {
+        const layers = await uploadPhotoLayers(design.layers);
+        const previewUrl = previewBlob ? await uploadToStorage(previewBlob) : null;
+
+        const designRow = {
+          model_id: design.modelId,
+          background: design.background,
+          layers,
+          preview_url: previewUrl,
+          contact_name: name.trim(),
+          contact_phone: phone.trim(),
+          contact_email: email.trim() || null,
+          contact_address: address.trim() || null,
+          contact_lat: lat,
+          contact_lng: lng,
+          note: note.trim() || null,
+          status: 'new',
+        };
+
+        let designId = supabaseId;
+        if (designId) {
+          const { error } = await supabase.from('designs').update(designRow).eq('id', designId);
+          if (error) throw new Error(`saving your design — ${error.message}`);
+        } else {
+          const { data, error } = await supabase.from('designs').insert({
+            ...designRow,
+            user_id: session?.user.id ?? null,
+          }).select('id').single();
+          if (error) throw new Error(`saving your design — ${error.message}`);
+          const newId: string = data.id;
+          designId = newId;
+          onSaved(newId);
+        }
+        if (!designId) throw new Error('missing design id');
+
+        const fulfillment = address.trim() ? 'ship' : 'pickup';
+        const { data: order, error: orderError } = await supabase.from('orders').insert({
+          order_no: `CK-${crypto.randomUUID().slice(0, 8).toUpperCase()}`,
+          user_id: session?.user.id ?? null,
+          email: email.trim() || null,
+          full_name: name.trim(),
+          address: address.trim() || null,
+          fulfillment,
+          status: 'pending',
+          subtotal_cents: BASE_PRICE_CENTS,
+          shipping_cents: 0,
+          total_cents: BASE_PRICE_CENTS,
+        }).select('id').single();
+        if (orderError) throw new Error(`placing your order — ${orderError.message}`);
+
+        const { error: itemError } = await supabase.from('order_items').insert({
+          order_id: order.id,
+          design_id: designId,
+          model_id: design.modelId,
+          quantity: 1,
+          price_cents: BASE_PRICE_CENTS,
+          preview_url: previewUrl,
+        });
+        if (itemError) throw new Error(`placing your order — ${itemError.message}`);
       }
       setSent(true);
     } catch (e) {
@@ -1065,17 +1111,17 @@ function SendModal({
         {sent ? (
           <div className="success-box">
             <div className="success-emoji">🎉</div>
-            <h3 className="modal-title">Sent to Casey!</h3>
+            <h3 className="modal-title">Order placed!</h3>
             <p className="modal-sub">We'll reach out at {phone}{email ? ` or ${email}` : ''} about printing and pickup/shipping. Thanks for designing with us 💗</p>
             <button className="btn" style={{ width: '100%' }} onClick={finish}>Done</button>
           </div>
         ) : (
           <>
-            <h3 className="modal-title">Send your design ✨</h3>
+            <h3 className="modal-title">Place your order ✨</h3>
             <p className="modal-sub">No payment here — we'll follow up with you directly to sort out printing and delivery.</p>
             {sendError && (
               <div className="notice" style={{ margin: '0 0 10px', color: 'var(--danger)' }}>
-                ⚠️ Your design didn't send ({sendError}). Please try again.
+                ⚠️ Your order didn't go through ({sendError}). Please try again.
               </div>
             )}
             <label>Your name</label>
@@ -1094,7 +1140,7 @@ function SendModal({
             <label>Note (optional)</label>
             <textarea className="f" rows={2} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Ship or pickup? Any special request?" />
             <button className="btn" style={{ width: '100%', marginTop: 14, opacity: valid ? 1 : 0.5 }} disabled={!valid || sending} onClick={submit}>
-              {sending ? 'Sending…' : '📩 Send to Casey'}
+              {sending ? 'Placing order…' : '🛒 Place Order'}
             </button>
           </>
         )}
