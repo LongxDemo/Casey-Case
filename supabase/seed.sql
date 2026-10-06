@@ -43,6 +43,24 @@ insert into backgrounds (id, name, colors, sort) values
   ('solidpink','Hot Pink','["#FF3E9A","#FF3E9A"]',7)
 on conflict (id) do nothing;
 
+-- Added later alongside the frame-shape gallery templates below — these
+-- back the Berry Duo / Peachy Keen / etc. templates and are also selectable
+-- directly from the blank-case color picker, so they belong in this catalog
+-- table too (mirrors storefront/src/mock.ts's `backgrounds` array, which had
+-- drifted ahead of this seed, causing the live fetch to momentarily replace
+-- a bigger local fallback list with a smaller live one on every page load).
+insert into backgrounds (id, name, colors, pattern, sort) values
+  ('gingham-berry','Gingham Picnic','["#FCE9C6","#E4574A"]','gingham',8),
+  ('peachy','Peachy Keen','["#FFE3C6","#FFB37B"]',null,9),
+  ('melon','Melon Splash','["#C8F5D6","#5FC98A"]',null,10),
+  ('citrus','Sunny Citrus','["#FFDDB0","#FF9A3D"]',null,11),
+  ('donutcream','Donut Cream','["#FFE9F4","#FFC2E0"]',null,12),
+  ('bearmint','Bear Mint','["#B8F2E6","#6FC9B8"]',null,13),
+  ('bunnypink','Bunny Pink','["#FFE3F0","#FFB8DA"]',null,14),
+  ('puppytan','Puppy Tan','["#FFECD2","#FFD199"]',null,15),
+  ('kittylilac','Kitty Lilac','["#EDE1FB","#C9A6F5"]',null,16)
+on conflict (id) do nothing;
+
 insert into sticker_packs (id, name, cover, sort) values
   ('hearts','Love','💗',0),
   ('kpop','K-Pop','🎤',1),
@@ -78,6 +96,81 @@ insert into templates (id, name, tag, accent, background, layers, featured, sort
    '[{"kind":"text","text":"♡ my bias ♡","color":"#FFFFFF","fontSize":26,"fontWeight":"800","align":"center","tx":0,"ty":150,"scale":1,"rotation":0,"z":3},
      {"kind":"sticker","emoji":"📸","size":50,"tx":0,"ty":-160,"scale":1,"rotation":0,"z":2}]',
    true, 3)
+on conflict (id) do nothing;
+
+-- Added later (2026-09-25 face-frame shapes, plus Berry Duo / real-photo /
+-- full-case-wrap templates) — storefront/src/mock.ts's fallback catalog grew
+-- to 15 templates while this seed stayed at the original 4, so a connected
+-- backend momentarily replaced the bigger local fallback with this smaller
+-- live set on every page load (visible as the gallery flashing down from 15
+-- cards to 4). Backfilling these keeps the live catalog in sync.
+insert into templates (id, name, tag, accent, background, layers, featured, sort) values
+  ('t-berry-duo', 'Berry Duo', 'Photo', '#E4574A',
+   '{"id":"gingham-berry","name":"Gingham Picnic","colors":["#FCE9C6","#E4574A"],"pattern":"gingham"}',
+   '[{"kind":"frame","frameId":"strawberry","photoUri":null,"photoTx":0,"photoTy":0,"photoScale":1,"tx":-72,"ty":-35,"scale":0.62,"rotation":-0.06,"z":2},
+     {"kind":"frame","frameId":"cherry","photoUri":null,"photoTx":0,"photoTy":0,"photoScale":1,"tx":72,"ty":-35,"scale":0.62,"rotation":0.06,"z":2},
+     {"kind":"text","text":"besties","color":"#B23A2E","fontSize":30,"fontWeight":"800","align":"center","tx":0,"ty":155,"scale":1,"rotation":0,"z":3},
+     {"kind":"sticker","emoji":"✨","size":34,"tx":-118,"ty":-155,"scale":1,"rotation":-0.2,"z":1},
+     {"kind":"sticker","emoji":"✨","size":34,"tx":118,"ty":-155,"scale":1,"rotation":0.2,"z":1}]',
+   false, 4),
+  ('t-peach', 'Peachy Keen', 'Frame', '#E8720C',
+   '{"id":"peachy","name":"Peachy Keen","colors":["#FFE3C6","#FFB37B"]}',
+   '[{"kind":"frame","frameId":"peach","photoUri":null,"photoTx":0,"photoTy":0,"photoScale":1,"tx":0,"ty":-8,"scale":1.05,"rotation":0,"z":2},
+     {"kind":"sticker","emoji":"✨","size":36,"tx":-100,"ty":-150,"scale":1,"rotation":-0.2,"z":1},
+     {"kind":"sticker","emoji":"🎀","size":40,"tx":96,"ty":150,"scale":1,"rotation":0.2,"z":1}]',
+   false, 5),
+  ('t-watermelon', 'Melon Splash', 'Frame', '#2E9E5B',
+   '{"id":"melon","name":"Melon Splash","colors":["#C8F5D6","#5FC98A"]}',
+   '[{"kind":"frame","frameId":"watermelon","photoUri":null,"photoTx":0,"photoTy":0,"photoScale":1,"tx":0,"ty":-8,"scale":1.05,"rotation":0,"z":2},
+     {"kind":"sticker","emoji":"✨","size":36,"tx":-100,"ty":-150,"scale":1,"rotation":-0.2,"z":1},
+     {"kind":"sticker","emoji":"🎀","size":40,"tx":96,"ty":150,"scale":1,"rotation":0.2,"z":1}]',
+   false, 6),
+  ('t-orange', 'Sunny Citrus', 'Frame', '#E8720C',
+   '{"id":"citrus","name":"Sunny Citrus","colors":["#FFDDB0","#FF9A3D"]}',
+   '[{"kind":"frame","frameId":"orange","photoUri":null,"photoTx":0,"photoTy":0,"photoScale":1,"tx":0,"ty":-8,"scale":1.05,"rotation":0,"z":2},
+     {"kind":"sticker","emoji":"✨","size":36,"tx":-100,"ty":-150,"scale":1,"rotation":-0.2,"z":1},
+     {"kind":"sticker","emoji":"🎀","size":40,"tx":96,"ty":150,"scale":1,"rotation":0.2,"z":1}]',
+   false, 7),
+  ('t-donut', 'Donut Vibes', 'Frame', '#E85AA0',
+   '{"id":"donutcream","name":"Donut Cream","colors":["#FFE9F4","#FFC2E0"]}',
+   '[{"kind":"frame","frameId":"donut","photoUri":null,"photoTx":0,"photoTy":0,"photoScale":1,"tx":0,"ty":-8,"scale":1.05,"rotation":0,"z":2},
+     {"kind":"sticker","emoji":"✨","size":36,"tx":-100,"ty":-150,"scale":1,"rotation":-0.2,"z":1},
+     {"kind":"sticker","emoji":"🎀","size":40,"tx":96,"ty":150,"scale":1,"rotation":0.2,"z":1}]',
+   false, 8),
+  ('t-bear', 'Bear Hug', 'Frame', '#3D9C89',
+   '{"id":"bearmint","name":"Bear Mint","colors":["#B8F2E6","#6FC9B8"]}',
+   '[{"kind":"frame","frameId":"bear","photoUri":null,"photoTx":0,"photoTy":0,"photoScale":1,"tx":0,"ty":-8,"scale":1.05,"rotation":0,"z":2},
+     {"kind":"sticker","emoji":"⭐","size":36,"tx":-100,"ty":-150,"scale":1,"rotation":-0.2,"z":1},
+     {"kind":"sticker","emoji":"🎀","size":40,"tx":96,"ty":150,"scale":1,"rotation":0.2,"z":1}]',
+   false, 9),
+  ('t-bunny-frame', 'Bunny Love', 'Frame', '#FF6FAE',
+   '{"id":"bunnypink","name":"Bunny Pink","colors":["#FFE3F0","#FFB8DA"]}',
+   '[{"kind":"frame","frameId":"bunny","photoUri":null,"photoTx":0,"photoTy":0,"photoScale":1,"tx":0,"ty":-8,"scale":1.05,"rotation":0,"z":2},
+     {"kind":"sticker","emoji":"✨","size":36,"tx":-100,"ty":-150,"scale":1,"rotation":-0.2,"z":1},
+     {"kind":"sticker","emoji":"🎀","size":40,"tx":96,"ty":150,"scale":1,"rotation":0.2,"z":1}]',
+   false, 10),
+  ('t-dog', 'Puppy Love', 'Frame', '#E8A23D',
+   '{"id":"puppytan","name":"Puppy Tan","colors":["#FFECD2","#FFD199"]}',
+   '[{"kind":"frame","frameId":"dog","photoUri":null,"photoTx":0,"photoTy":0,"photoScale":1,"tx":0,"ty":-8,"scale":1.05,"rotation":0,"z":2},
+     {"kind":"sticker","emoji":"✨","size":36,"tx":-100,"ty":-150,"scale":1,"rotation":-0.2,"z":1},
+     {"kind":"sticker","emoji":"🐾","size":34,"tx":96,"ty":150,"scale":1,"rotation":0.2,"z":1}]',
+   false, 11),
+  ('t-cat', 'Kitty Cutie', 'Frame', '#8B4FD1',
+   '{"id":"kittylilac","name":"Kitty Lilac","colors":["#EDE1FB","#C9A6F5"]}',
+   '[{"kind":"frame","frameId":"cat","photoUri":null,"photoTx":0,"photoTy":0,"photoScale":1,"tx":0,"ty":-8,"scale":1.05,"rotation":0,"z":2},
+     {"kind":"sticker","emoji":"✨","size":36,"tx":-100,"ty":-150,"scale":1,"rotation":-0.2,"z":1},
+     {"kind":"sticker","emoji":"🎀","size":40,"tx":96,"ty":150,"scale":1,"rotation":0.2,"z":1}]',
+   false, 12),
+  ('t-strawberry-real', 'Strawberry (Real)', 'Real Photo', '#B23A2E',
+   '{"id":"gingham-berry","name":"Gingham Picnic","colors":["#FCE9C6","#E4574A"],"pattern":"gingham"}',
+   '[{"kind":"frame","frameId":"strawberry-photo","photoUri":null,"photoTx":0,"photoTy":0,"photoScale":1,"tx":0,"ty":-6,"scale":1.05,"rotation":0,"z":2},
+     {"kind":"sticker","emoji":"🎀","size":38,"tx":-100,"ty":-150,"scale":1,"rotation":-0.2,"z":1},
+     {"kind":"sticker","emoji":"🎀","size":38,"tx":100,"ty":150,"scale":1,"rotation":0.2,"z":1}]',
+   false, 13),
+  ('t-full-photo', 'Your Photo, Full Case', 'Real Print', '#2c2c31',
+   '{"id":"cream","name":"Cream","colors":["#FFF5FA","#FFE9F4"]}',
+   '[{"kind":"image","uri":null,"width":320,"height":667,"radius":0,"tx":0,"ty":0,"scale":1,"rotation":0,"z":1}]',
+   false, 14)
 on conflict (id) do nothing;
 
 -- To grant dashboard access, sign up in the admin app, then run:
