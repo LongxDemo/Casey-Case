@@ -53,7 +53,7 @@ export default function App() {
   return (
     <div className="app">
       <aside className="sidebar">
-        <div className="brand"><img className="logo" src={`${import.meta.env.BASE_URL}logo.jpg`} alt="Casey" /><span className="word">casey</span></div>
+        <a className="brand" href="https://caseycase.design" title="Back to the storefront"><img className="logo" src={`${import.meta.env.BASE_URL}logo.jpg`} alt="Casey" /><span className="word">casey</span></a>
         <NavItem icon="📊" label="Overview" active={page === 'overview'} onClick={() => setPage('overview')} />
         <NavItem icon="🏠" label="Front Page" active={page === 'front'} onClick={() => setPage('front')} />
         <NavItem icon="🎨" label="Designs" active={page === 'designs'} onClick={() => setPage('designs')} />
@@ -502,7 +502,7 @@ function Orders() {
   const [orders, setOrders] = useState<OrderRow[]>(mockOrders);
   useEffect(() => {
     if (!supabase) return;
-    supabase.from('orders').select('*').order('created_at', { ascending: false }).then(({ data }) => data && setOrders(data as OrderRow[]));
+    supabase.from('orders').select('*, order_items(id, model_id, quantity, price_cents, preview_url)').order('created_at', { ascending: false }).then(({ data }) => data && setOrders(data as OrderRow[]));
   }, []);
 
   const setStatus = async (id: string, status: string) => {
@@ -517,6 +517,19 @@ function Orders() {
     }
   };
 
+  const remove = async (id: string) => {
+    if (!window.confirm("Delete this order permanently? This can't be undone.")) return;
+    const prev = orders;
+    setOrders((os) => os.filter((o) => o.id !== id));
+    if (supabase) {
+      const { error } = await supabase.from('orders').delete().eq('id', id);
+      if (error) {
+        setOrders(prev);
+        window.alert(`Couldn't delete the order: ${error.message}`);
+      }
+    }
+  };
+
   const total = useMemo(() => orders.reduce((a, o) => a + o.total_cents, 0), [orders]);
 
   return (
@@ -526,23 +539,37 @@ function Orders() {
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
         <table>
           <thead>
-            <tr><th>Order</th><th>Customer</th><th>Fulfillment</th><th>Total</th><th>Date</th><th>Status</th></tr>
+            <tr><th>Design</th><th>Order</th><th>Customer</th><th>Fulfillment</th><th>Total</th><th>Date</th><th>Status</th><th></th></tr>
           </thead>
           <tbody>
-            {orders.map((o) => (
-              <tr key={o.id}>
-                <td style={{ fontWeight: 800 }}>{o.order_no}</td>
-                <td>{o.full_name}<br /><span style={{ color: 'var(--ink-faint)', fontWeight: 500 }}>{o.email}</span></td>
-                <td><span className="badge">{o.fulfillment === 'ship' ? '📦 Ship' : '🏬 Pickup'}</span></td>
-                <td style={{ fontWeight: 800, color: 'var(--pink-dark)' }}>{money(o.total_cents)}</td>
-                <td>{new Date(o.created_at).toLocaleDateString()}</td>
-                <td>
-                  <select className="status" value={o.status} onChange={(e) => setStatus(o.id, e.target.value)}>
-                    {ORDER_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
-                  </select>
-                </td>
-              </tr>
-            ))}
+            {orders.map((o) => {
+              const item = o.order_items?.[0];
+              return (
+                <tr key={o.id}>
+                  <td>
+                    {item?.preview_url ? (
+                      <img src={item.preview_url} alt="" style={{ width: 48, height: 48, objectFit: 'cover', borderRadius: 8 }} />
+                    ) : (
+                      <div style={{ width: 48, height: 48, borderRadius: 8, background: 'var(--surface-2, #f2f2f5)' }} />
+                    )}
+                    <div style={{ fontSize: 11, color: 'var(--ink-faint)', marginTop: 4 }}>
+                      {MODELS[item?.model_id ?? '']?.name ?? item?.model_id ?? '—'}
+                    </div>
+                  </td>
+                  <td style={{ fontWeight: 800 }}>{o.order_no}</td>
+                  <td>{o.full_name}<br /><span style={{ color: 'var(--ink-faint)', fontWeight: 500 }}>{o.email}</span></td>
+                  <td><span className="badge">{o.fulfillment === 'ship' ? '📦 Ship' : '🏬 Pickup'}</span></td>
+                  <td style={{ fontWeight: 800, color: 'var(--pink-dark)' }}>{money(o.total_cents)}</td>
+                  <td>{new Date(o.created_at).toLocaleDateString()}</td>
+                  <td>
+                    <select className="status" value={o.status} onChange={(e) => setStatus(o.id, e.target.value)}>
+                      {ORDER_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  </td>
+                  <td><button className="tpl-delete" onClick={() => remove(o.id)} title="Delete order">🗑️</button></td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

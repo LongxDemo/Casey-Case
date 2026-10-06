@@ -36,6 +36,14 @@ export type DesignRow = {
   created_at: string;
 };
 
+export type OrderItemRow = {
+  id: string;
+  model_id: string | null;
+  quantity: number;
+  price_cents: number;
+  preview_url: string | null;
+};
+
 export type OrderRow = {
   id: string;
   order_no: string;
@@ -47,6 +55,7 @@ export type OrderRow = {
   shipping_cents: number;
   total_cents: number;
   created_at: string;
+  order_items?: OrderItemRow[];
 };
 
 export type TemplateRow = {
