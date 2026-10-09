@@ -108,6 +108,29 @@ select.status { padding: 6px 10px; border-radius: 999px; border: 1.5px solid var
 .notice { background: var(--petal); border-radius: 14px; padding: 14px 18px; color: var(--pink-dark); font-weight: 600; font-size: 14px; margin-bottom: 20px; }
 .empty { text-align: center; color: var(--ink-faint); padding: 60px 0; font-weight: 600; }
 
+.gallery-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+.gallery-header .btn { flex-shrink: 0; }
+
+/* Template editor */
+.editor-topbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 24px; }
+.editor-body { display: flex; gap: 28px; align-items: flex-start; flex-wrap: wrap; }
+.editor-stage-wrap { display: flex; flex-direction: column; align-items: center; gap: 16px; }
+.editor-actions-row { display: flex; gap: 8px; }
+.editor-panel { flex: 1; min-width: 320px; max-width: 420px; }
+.editor-tabbar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 18px; }
+.editor-tool-panel textarea.f { resize: vertical; }
+.editor-swatch-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+.editor-swatch { width: 28px; height: 28px; border-radius: 14px; border: 2px solid #fff; outline-offset: 2px; box-shadow: 0 0 0 1px rgba(0,0,0,0.1); }
+.editor-sticker-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+.editor-sticker-btn { font-size: 26px; background: var(--cream); border: 1.5px solid var(--line); border-radius: 12px; padding: 10px 0; }
+.editor-frame-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.editor-frame-btn { display: flex; flex-direction: column; align-items: center; gap: 4px; background: var(--cream); border: 1.5px solid var(--line); border-radius: 12px; padding: 8px 4px; }
+.editor-frame-btn span { font-size: 10px; font-weight: 700; color: var(--ink-soft); text-align: center; }
+.editor-color-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.editor-color-swatch { height: 48px; border-radius: 12px; border: 1.5px solid var(--line); outline-offset: 2px; }
+.editor-model-label { font-size: 13px; font-weight: 800; color: var(--ink-soft); }
+.editor-model-grid { display: flex; gap: 8px; flex-wrap: wrap; }
+
 @media (max-width: 860px) {
   .app { flex-direction: column; }
   .sidebar {

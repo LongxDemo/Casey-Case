@@ -25,6 +25,12 @@ export type FrameDef = {
   /** Second face-hole, for the one frame ('burger-cat') cut from a source
    *  photo with two faces in it — every other frame has just the one. */
   hole2?: { xPct: number; yPct: number; wPct: number; hPct: number };
+  /** Initial layer scale when this frame is added — defaults to 1 (the
+   *  SVG frames' 200x220 artboard already roughly matches case size at
+   *  scale 1). A frame whose source photo is much larger than that (like
+   *  'burger-cat' at 1080x1800) needs a smaller starting scale so it isn't
+   *  added wildly oversized relative to the case. */
+  defaultScale?: number;
 };
 
 export const FRAME_DEFS: Record<string, FrameDef> = {
@@ -129,6 +135,10 @@ export const FRAME_DEFS: Record<string, FrameDef> = {
     height: 1800,
     hole: { xPct: 50.46, yPct: 39.44, wPct: 31.94, hPct: 15 },
     hole2: { xPct: 15.28, yPct: 27.5, wPct: 31.94, hPct: 15.28 },
+    // Matches the image's height to a typical case's rendered height —
+    // width ends up a bit wider than the case (clipped at the edges), which
+    // keeps the full top-to-bottom composition instead of cropping it.
+    defaultScale: 0.37,
   },
   // Strawberry-and-bows pattern template — hole position measured from a
   // solid-green placeholder circle the user drew in their own design
@@ -140,6 +150,7 @@ export const FRAME_DEFS: Record<string, FrameDef> = {
     width: 1414,
     height: 2000,
     hole: { xPct: 30.06, yPct: 42.75, wPct: 38.9, hPct: 27.55 },
+    defaultScale: 0.33,
   },
   // Trash-bag-beanie + red hoodie character — hole measured the same
   // green-screen way as 'strawberry-bow'.
@@ -150,6 +161,7 @@ export const FRAME_DEFS: Record<string, FrameDef> = {
     width: 1414,
     height: 2000,
     hole: { xPct: 38.19, yPct: 49.6, wPct: 38.19, hPct: 27 },
+    defaultScale: 0.33,
   },
   // Trash-bag-beanie character, bare shoulders — hole measured the same
   // green-screen way as 'strawberry-bow'.
@@ -160,6 +172,7 @@ export const FRAME_DEFS: Record<string, FrameDef> = {
     width: 1414,
     height: 2000,
     hole: { xPct: 29.99, yPct: 54.3, wPct: 39.96, hPct: 28.25 },
+    defaultScale: 0.33,
   },
   // Carrot + tomato plush pair — two holes, each marked with a non-oval
   // green blob in the source design; the hole is cut to that exact shape,
@@ -173,5 +186,8 @@ export const FRAME_DEFS: Record<string, FrameDef> = {
     height: 2000,
     hole: { xPct: 13.15, yPct: 42.75, wPct: 30.98, hPct: 17.25 },
     hole2: { xPct: 53.54, yPct: 44.7, wPct: 34.58, hPct: 18.25 },
+    defaultScale: 0.33,
   },
 };
+
+export const frameOrder: string[] = ['strawberry', 'cherry', 'peach', 'watermelon', 'orange', 'donut', 'bear', 'bunny', 'dog', 'cat', 'strawberry-photo', 'burger-cat', 'strawberry-bow', 'cozy-hoodie', 'black-beanie', 'carrot-tomato'];

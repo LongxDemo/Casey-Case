@@ -1,12 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { CasePreview } from './components/CasePreview';
+import { TemplateEditor } from './components/TemplateEditor';
 import { hasSupabase, supabase } from './lib/supabase';
 import { MODELS } from './lib/types';
 import type { BackgroundRow, DesignRow, FrontPage, OrderRow, TemplateRow } from './lib/types';
 import { mockBackgrounds, mockDesigns, mockFrontPage, mockOrders, mockTemplates } from './mock';
 
-type Page = 'overview' | 'front' | 'designs' | 'orders' | 'gallery' | 'backgrounds';
+// 'editor' is intentionally not in the sidebar nav — it's only reached via
+// the "+ Add Template" button on the Gallery page, and closes back to it.
+type Page = 'overview' | 'front' | 'designs' | 'orders' | 'gallery' | 'backgrounds' | 'editor';
 const ORDER_STATUSES = ['pending', 'paid', 'printing', 'shipped', 'ready_pickup', 'completed', 'cancelled'];
 const money = (c: number) => `$${(c / 100).toFixed(2)}`;
 
@@ -69,9 +72,10 @@ export default function App() {
         {page === 'overview' && <Overview />}
         {page === 'front' && <FrontPageEditor />}
         {page === 'designs' && <Designs />}
-        {page === 'gallery' && <Gallery />}
+        {page === 'gallery' && <Gallery onNew={() => setPage('editor')} />}
         {page === 'backgrounds' && <Backgrounds />}
         {page === 'orders' && <Orders />}
+        {page === 'editor' && <TemplateEditor onClose={() => setPage('gallery')} />}
       </main>
     </div>
   );
@@ -315,7 +319,7 @@ async function promoteDesign(d: DesignRow) {
 }
 
 /* ───────────────────────── Gallery ───────────────────────── */
-function Gallery() {
+function Gallery({ onNew }: { onNew: () => void }) {
   const [templates, setTemplates] = useState<TemplateRow[]>(mockTemplates);
   useEffect(() => {
     if (!supabase) return;
@@ -352,10 +356,15 @@ function Gallery() {
 
   return (
     <>
-      <h1 className="page-title">Already Made Template</h1>
-      <p className="page-sub">
-        Styles customers browse on the home screen — promoted from a customer design in the Designs tab. {templates.length} total.
-      </p>
+      <div className="gallery-header">
+        <div>
+          <h1 className="page-title">Already Made Template</h1>
+          <p className="page-sub">
+            Styles customers browse on the home screen — promoted from a customer design in the Designs tab, or built from scratch. {templates.length} total.
+          </p>
+        </div>
+        <button className="btn cool" onClick={onNew}>+ Add Template</button>
+      </div>
       {sorted.length === 0 ? (
         <div className="empty">No gallery styles yet 🐰 — promote one from the Designs tab.</div>
       ) : (
