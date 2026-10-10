@@ -1,4 +1,27 @@
-import type { BackgroundRow, DesignRow, FrontPage, OrderRow, TemplateRow } from './lib/types';
+import type { BackgroundRow, DesignRow, FrontPage, OrderRow, StickerPack, TemplateRow } from './lib/types';
+
+export const stickerPacks: StickerPack[] = [
+  { id: 'hearts', name: 'Love', cover: '💗', stickers: [
+    { id: 'h1', emoji: '💗' }, { id: 'h2', emoji: '💖' }, { id: 'h3', emoji: '❤️' },
+    { id: 'h4', emoji: '🖤' }, { id: 'h5', emoji: '💕' }, { id: 'h6', emoji: '💝' },
+    { id: 'h7', emoji: '😍' }, { id: 'h8', emoji: '🥰' }, { id: 'h9', emoji: '😘' },
+  ] },
+  { id: 'kpop', name: 'K-Pop', cover: '🎤', stickers: [
+    { id: 'k1', emoji: '🎤' }, { id: 'k2', emoji: '🎧' }, { id: 'k3', emoji: '🎶' },
+    { id: 'k4', emoji: '💿' }, { id: 'k5', emoji: '⭐' }, { id: 'k6', emoji: '🌟' },
+    { id: 'k7', emoji: '👑' }, { id: 'k8', emoji: '💫' }, { id: 'k9', emoji: '🔥' },
+  ] },
+  { id: 'cute', name: 'Cutie', cover: '🐰', stickers: [
+    { id: 'c1', emoji: '🐰' }, { id: 'c2', emoji: '🎀' }, { id: 'c3', emoji: '🌸' },
+    { id: 'c4', emoji: '🍓' }, { id: 'c5', emoji: '🧸' }, { id: 'c6', emoji: '🍰' },
+    { id: 'c7', emoji: '🦋' }, { id: 'c8', emoji: '🌈' }, { id: 'c9', emoji: '☁️' },
+  ] },
+  { id: 'sparkle', name: 'Sparkle', cover: '✨', stickers: [
+    { id: 's1', emoji: '✨' }, { id: 's2', emoji: '💎' }, { id: 's3', emoji: '🌟' },
+    { id: 's4', emoji: '⚡' }, { id: 's5', emoji: '🪩' }, { id: 's6', emoji: '💐' },
+    { id: 's7', emoji: '🌷' }, { id: 's8', emoji: '🍭' }, { id: 's9', emoji: '🫧' },
+  ] },
+];
 
 export const mockBackgrounds: BackgroundRow[] = [
   { id: 'bubblegum', name: 'Bubblegum', colors: ['#FF7EC0', '#FF3E9A'], pattern: null, active: true, sort: 0 },

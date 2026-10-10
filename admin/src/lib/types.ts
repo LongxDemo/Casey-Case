@@ -17,6 +17,9 @@ export type Layer =
       tx: number; ty: number; scale: number; rotation: number; z: number;
     };
 
+export type Sticker = { id: string; emoji?: string; uri?: string };
+export type StickerPack = { id: string; name: string; cover: string; stickers: Sticker[] };
+
 export type DesignRow = {
   id: string;
   user_id: string | null;

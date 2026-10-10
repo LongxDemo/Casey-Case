@@ -1,3 +1,5 @@
+import { Fragment } from 'react';
+import type { ReactNode, Ref } from 'react';
 import { CANVAS_BASE, MODELS, sizeForModel } from '../lib/types';
 import type { CaseBackground, Layer, PhoneModel } from '../lib/types';
 import { FRAME_DEFS } from '../lib/frames';
@@ -9,12 +11,23 @@ export function CasePreview({
   layers,
   modelId,
   width,
+  renderLayer,
+  innerRef,
 }: {
   background: CaseBackground | null;
   layers: Layer[];
   modelId: string | null;
   /** Render width for the WIDEST phone in the catalog — other models scale down proportionally (real relative size, not a fixed box). */
   width: number;
+  /** Swaps the static per-layer rendering (LayerView) for a caller-supplied
+   *  one — used by the admin Template Editor to render interactive
+   *  EditableLayer overlays in exactly the same stacking position (under
+   *  the camera-module cutout) as the static design, instead of duplicating
+   *  this component's background/camera-module rendering logic. */
+  renderLayer?: (layer: Layer, scale: number) => ReactNode;
+  /** Exposes the sized/clipped root element — the admin Template Editor
+   *  needs this as EditableLayer's canvasRef for its drag/rotate math. */
+  innerRef?: Ref<HTMLDivElement>;
 }) {
   const model = (modelId && MODELS[modelId]) || MODELS.ip15pm;
   const { width: renderWidth, height } = sizeForModel(model, width);
@@ -41,6 +54,7 @@ export function CasePreview({
 
   return (
     <div
+      ref={innerRef}
       style={{
         width: renderWidth,
         height,
@@ -60,7 +74,7 @@ export function CasePreview({
       }}
     >
       {ordered.map((l) => (
-        <LayerView key={l.id} layer={l} scale={scale} />
+        renderLayer ? <Fragment key={l.id}>{renderLayer(l, scale)}</Fragment> : <LayerView key={l.id} layer={l} scale={scale} />
       ))}
       {/* The camera bump area is its own unprinted panel on a real case —
           the print doesn't run underneath it, but DOES show through right
