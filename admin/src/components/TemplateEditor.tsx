@@ -4,7 +4,7 @@ import { CasePreview } from './CasePreview';
 import { EditableLayer } from './EditableLayer';
 import { hasSupabase, supabase } from '../lib/supabase';
 import { aspectOf, CANVAS_BASE, MODELS, sizeForModel } from '../lib/types';
-import type { BackgroundRow, CaseBackground, Layer } from '../lib/types';
+import type { BackgroundRow, CaseBackground, Layer, TemplateRow } from '../lib/types';
 import { FRAME_DEFS, frameOrder } from '../lib/frames';
 import { mockBackgrounds, stickerPacks } from '../mock';
 
@@ -101,11 +101,11 @@ async function uploadPhotoLayers(layers: Layer[]): Promise<Layer[]> {
 
 type Tool = 'text' | 'stickers' | 'frames' | 'photo' | 'color' | 'model';
 
-export function TemplateEditor({ onClose }: { onClose: () => void }) {
-  const [name, setName] = useState('');
-  const [tag, setTag] = useState('');
-  const [background, setBackground] = useState<CaseBackground>(() => toCaseBackground(mockBackgrounds[0]));
-  const [layers, setLayers] = useState<Layer[]>([]);
+export function TemplateEditor({ onClose, initial }: { onClose: () => void; initial?: TemplateRow | null }) {
+  const [name, setName] = useState(initial?.name ?? '');
+  const [tag, setTag] = useState(initial?.tag ?? '');
+  const [background, setBackground] = useState<CaseBackground>(() => initial?.background ?? toCaseBackground(mockBackgrounds[0]));
+  const [layers, setLayers] = useState<Layer[]>(() => initial?.layers ?? []);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [adjustFrameId, setAdjustFrameId] = useState<string | null>(null);
   const [adjustHole, setAdjustHole] = useState<1 | 2>(1);
@@ -217,7 +217,7 @@ export function TemplateEditor({ onClose }: { onClose: () => void }) {
   };
 
   const cancel = () => {
-    if (layers.length > 0 && !window.confirm('Discard this template?')) return;
+    if (layers.length > 0 && !window.confirm(initial ? 'Discard these changes?' : 'Discard this template?')) return;
     onClose();
   };
 
@@ -239,17 +239,24 @@ export function TemplateEditor({ onClose }: { onClose: () => void }) {
       window.alert(err instanceof Error ? err.message : 'Photo upload failed.');
       return;
     }
-    const id = `t-${name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '').slice(0, 40)}-${Math.random().toString(36).slice(2, 6)}`;
     const accent = background.colors[0] ?? '#FF3E9A';
-    const { error } = await supabase.from('templates').insert({
-      id,
-      name: name.trim(),
-      tag: tag.trim() || null,
-      accent,
-      background,
-      layers: uploadedLayers,
-      active: true,
-    });
+    const { error } = initial
+      ? await supabase.from('templates').update({
+          name: name.trim(),
+          tag: tag.trim() || null,
+          accent,
+          background,
+          layers: uploadedLayers,
+        }).eq('id', initial.id)
+      : await supabase.from('templates').insert({
+          id: `t-${name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '').slice(0, 40)}-${Math.random().toString(36).slice(2, 6)}`,
+          name: name.trim(),
+          tag: tag.trim() || null,
+          accent,
+          background,
+          layers: uploadedLayers,
+          active: true,
+        });
     setSaving(false);
     if (error) {
       window.alert(`Failed: ${error.message}`);
@@ -271,7 +278,7 @@ export function TemplateEditor({ onClose }: { onClose: () => void }) {
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
           <button className="btn ghost" onClick={cancel}>✕ Cancel</button>
-          <button className="btn cool" onClick={save} disabled={saving}>{saving ? 'Saving…' : '💾 Save Template'}</button>
+          <button className="btn cool" onClick={save} disabled={saving}>{saving ? 'Saving…' : initial ? '💾 Update Template' : '💾 Save Template'}</button>
         </div>
       </div>
 

@@ -19,6 +19,7 @@ export default function App() {
   const [ready, setReady] = useState<boolean>(!hasSupabase);
   const [page, setPage] = useState<Page>('overview');
   const [email, setEmail] = useState<string>('demo mode');
+  const [editingTemplate, setEditingTemplate] = useState<TemplateRow | null>(null);
 
   useEffect(() => {
     if (!supabase) return;
@@ -72,10 +73,15 @@ export default function App() {
         {page === 'overview' && <Overview />}
         {page === 'front' && <FrontPageEditor />}
         {page === 'designs' && <Designs />}
-        {page === 'gallery' && <Gallery onNew={() => setPage('editor')} />}
+        {page === 'gallery' && (
+          <Gallery
+            onNew={() => { setEditingTemplate(null); setPage('editor'); }}
+            onEdit={(t) => { setEditingTemplate(t); setPage('editor'); }}
+          />
+        )}
         {page === 'backgrounds' && <Backgrounds />}
         {page === 'orders' && <Orders />}
-        {page === 'editor' && <TemplateEditor onClose={() => setPage('gallery')} />}
+        {page === 'editor' && <TemplateEditor initial={editingTemplate} onClose={() => setPage('gallery')} />}
       </main>
     </div>
   );
@@ -319,7 +325,7 @@ async function promoteDesign(d: DesignRow) {
 }
 
 /* ───────────────────────── Gallery ───────────────────────── */
-function Gallery({ onNew }: { onNew: () => void }) {
+function Gallery({ onNew, onEdit }: { onNew: () => void; onEdit: (t: TemplateRow) => void }) {
   const [templates, setTemplates] = useState<TemplateRow[]>(mockTemplates);
   useEffect(() => {
     if (!supabase) return;
@@ -399,6 +405,7 @@ function Gallery({ onNew }: { onNew: () => void }) {
                     onChange={(e) => patch(t.id, { sort: Number(e.target.value) || 0 })}
                     title="Sort order"
                   />
+                  <button className="tpl-edit" onClick={() => onEdit(t)} title="Edit this template">✏️ Edit</button>
                   <button className="tpl-delete" onClick={() => remove(t.id)} title="Remove from gallery">🗑️</button>
                 </div>
               </div>

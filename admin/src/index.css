@@ -91,6 +91,7 @@ input.f:focus, textarea.f:focus { border-color: var(--pink); }
 .tpl-controls-row { display: flex; gap: 6px; align-items: center; justify-content: center; width: 100%; }
 .tpl-sort-input { width: 56px; padding: 6px 8px; border-radius: 10px; border: 1.5px solid var(--line); background: var(--cream); font-size: 13px; font-weight: 700; color: var(--ink); text-align: center; }
 .tpl-delete { border: none; background: var(--petal); border-radius: 999px; width: 30px; height: 30px; font-size: 13px; }
+.tpl-edit { border: none; background: var(--blush); color: var(--pink-dark); border-radius: 999px; height: 30px; padding: 0 10px; font-size: 12px; font-weight: 800; flex: 1; white-space: nowrap; }
 
 .bg-field { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1.5px solid var(--line); font-size: 14px; }
 .bg-swatch-lg { width: 100%; height: 64px; border-radius: 14px; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.06); }
