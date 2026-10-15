@@ -26,6 +26,19 @@ export type FrameDef = {
   /** Second face-hole, for the one frame ('burger-cat') cut from a source
    *  photo with two faces in it — every other frame has just the one. */
   hole2?: { xPct: number; yPct: number; wPct: number; hPct: number };
+  /** Precise edge mask for a non-oval hole — a PNG the size of the hole's
+   *  own bounding box, opaque where the real cutout is and transparent
+   *  elsewhere (the inverse of the frame image's own alpha there). Applied
+   *  as a CSS mask-image so the photo fills the *actual* cut shape instead
+   *  of just an inscribed ellipse, which otherwise leaves the case
+   *  background peeking through at the corners for non-round holes. Omit
+   *  for round/oval holes, where the ellipse already matches closely. */
+  holeMask?: string;
+  hole2Mask?: string;
+  /** How the customer's photo fills the hole — defaults to 'cover' (crops
+   *  to fill, no gaps). 'contain' shows the whole photo, which can leave
+   *  background-colored gaps inside the hole. */
+  fit?: 'cover' | 'contain';
   /** Initial layer scale when this frame is added — defaults to 1 (the
    *  SVG frames' 200x220 artboard already roughly matches case size at
    *  scale 1). A frame whose source photo is much larger than that (like
@@ -176,9 +189,10 @@ export const FRAME_DEFS: Record<string, FrameDef> = {
     defaultScale: 0.33,
   },
   // Carrot + tomato plush pair — two holes, each marked with a non-oval
-  // green blob in the source design; the hole is cut to that exact shape,
-  // but the app's photo clip is still an inscribed ellipse (see memory on
-  // non-round marker shapes) — accepted tradeoff for irregular shapes.
+  // green blob in the source design. holeMask/hole2Mask clip the photo to
+  // the exact cut shape (an inverted crop of the frame PNG's own alpha
+  // channel over each hole's bbox) instead of an inscribed ellipse, which
+  // otherwise left the case background visible at the corners.
   'carrot-tomato': {
     id: 'carrot-tomato',
     name: 'Carrot & Tomato',
@@ -187,6 +201,8 @@ export const FRAME_DEFS: Record<string, FrameDef> = {
     height: 2000,
     hole: { xPct: 13.15, yPct: 42.75, wPct: 30.98, hPct: 17.25 },
     hole2: { xPct: 53.54, yPct: 44.7, wPct: 34.58, hPct: 18.25 },
+    holeMask: '/frames/carrot-tomato-hole1-mask.png',
+    hole2Mask: '/frames/carrot-tomato-hole2-mask.png',
     defaultScale: 0.33,
   },
 };

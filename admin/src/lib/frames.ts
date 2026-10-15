@@ -31,6 +31,14 @@ export type FrameDef = {
    *  'burger-cat' at 1080x1800) needs a smaller starting scale so it isn't
    *  added wildly oversized relative to the case. */
   defaultScale?: number;
+  /** Precise edge mask for a non-oval hole — see storefront/src/lib/frames.ts
+   *  for the full explanation. Omit for round/oval holes. */
+  holeMask?: string;
+  hole2Mask?: string;
+  /** How the customer's photo fills the hole — defaults to 'cover' (crops
+   *  to fill, no gaps). 'contain' shows the whole photo, which can leave
+   *  background-colored gaps inside the hole. */
+  fit?: 'cover' | 'contain';
 };
 
 export const FRAME_DEFS: Record<string, FrameDef> = {
@@ -175,9 +183,8 @@ export const FRAME_DEFS: Record<string, FrameDef> = {
     defaultScale: 0.33,
   },
   // Carrot + tomato plush pair — two holes, each marked with a non-oval
-  // green blob in the source design; the hole is cut to that exact shape,
-  // but the app's photo clip is still an inscribed ellipse — accepted
-  // tradeoff for irregular shapes.
+  // green blob in the source design. holeMask/hole2Mask clip the preview to
+  // the exact cut shape instead of an inscribed ellipse.
   'carrot-tomato': {
     id: 'carrot-tomato',
     name: 'Carrot & Tomato',
@@ -187,6 +194,8 @@ export const FRAME_DEFS: Record<string, FrameDef> = {
     hole: { xPct: 13.15, yPct: 42.75, wPct: 30.98, hPct: 17.25 },
     hole2: { xPct: 53.54, yPct: 44.7, wPct: 34.58, hPct: 18.25 },
     defaultScale: 0.33,
+    holeMask: `${import.meta.env.BASE_URL}frames/carrot-tomato-hole1-mask.png`,
+    hole2Mask: `${import.meta.env.BASE_URL}frames/carrot-tomato-hole2-mask.png`,
   },
 };
 

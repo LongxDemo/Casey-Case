@@ -199,6 +199,7 @@ export function LayerView({ layer, scale }: { layer: Layer; scale: number }) {
     const w = def.width * scale;
     const h = def.height * scale;
     const { hole } = def;
+    const fit = def.fit ?? 'cover';
     const FrameSvg = def.Svg;
     const overlayStyle: React.CSSProperties = { position: 'absolute', inset: 0, width: '100%', height: '100%' };
     return (
@@ -210,9 +211,11 @@ export function LayerView({ layer, scale }: { layer: Layer; scale: number }) {
             top: `${hole.yPct}%`,
             width: `${hole.wPct}%`,
             height: `${hole.hPct}%`,
-            borderRadius: '50%',
             overflow: 'hidden',
             background: layer.photoUri ? undefined : '#f0e6ea',
+            ...(def.holeMask
+              ? { maskImage: `url(${def.holeMask})`, WebkitMaskImage: `url(${def.holeMask})`, maskSize: '100% 100%', WebkitMaskSize: '100% 100%', maskRepeat: 'no-repeat', WebkitMaskRepeat: 'no-repeat' }
+              : { borderRadius: '50%' }),
           }}
         >
           {layer.photoUri && (
@@ -222,7 +225,7 @@ export function LayerView({ layer, scale }: { layer: Layer; scale: number }) {
               style={{
                 width: '100%',
                 height: '100%',
-                objectFit: 'cover',
+                objectFit: fit,
                 transform: `translate(${layer.photoTx}px, ${layer.photoTy}px) scale(${layer.photoScale})`,
               }}
             />
@@ -236,9 +239,11 @@ export function LayerView({ layer, scale }: { layer: Layer; scale: number }) {
               top: `${def.hole2.yPct}%`,
               width: `${def.hole2.wPct}%`,
               height: `${def.hole2.hPct}%`,
-              borderRadius: '50%',
               overflow: 'hidden',
               background: layer.photo2Uri ? undefined : '#f0e6ea',
+              ...(def.hole2Mask
+                ? { maskImage: `url(${def.hole2Mask})`, WebkitMaskImage: `url(${def.hole2Mask})`, maskSize: '100% 100%', WebkitMaskSize: '100% 100%', maskRepeat: 'no-repeat', WebkitMaskRepeat: 'no-repeat' }
+                : { borderRadius: '50%' }),
             }}
           >
             {layer.photo2Uri && (
@@ -248,7 +253,7 @@ export function LayerView({ layer, scale }: { layer: Layer; scale: number }) {
                 style={{
                   width: '100%',
                   height: '100%',
-                  objectFit: 'cover',
+                  objectFit: fit,
                   transform: `translate(${layer.photo2Tx}px, ${layer.photo2Ty}px) scale(${layer.photo2Scale})`,
                 }}
               />

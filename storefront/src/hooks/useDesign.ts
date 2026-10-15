@@ -113,6 +113,29 @@ export function useDesign(initialModelId: string) {
           : { ...l, photoUri: uri, photoTx: 0, photoTy: 0, photoScale: 1 }
         : l)),
     }));
+  // Re-centers a frame hole's photo back to the default centered cover-fit
+  // (tx/ty 0, scale 1) — an escape hatch for when dragging/zooming in Adjust
+  // mode has left it looking off, mirroring fitImageToCase for plain images.
+  const fitFramePhoto = (id: string, hole: 1 | 2 = 1) =>
+    setDesign((d) => ({
+      ...d,
+      layers: d.layers.map((l) => (l.id === id && l.kind === 'frame'
+        ? hole === 2
+          ? { ...l, photo2Tx: 0, photo2Ty: 0, photo2Scale: 1 }
+          : { ...l, photoTx: 0, photoTy: 0, photoScale: 1 }
+        : l)),
+    }));
+  // Resets a frame layer's own position/scale/rotation back to how it looked
+  // when first added (tx/ty 0, defaultScale, no rotation) — an escape hatch
+  // for when dragging/resizing the frame itself has left it looking off,
+  // mirroring fitImageToCase for plain image layers.
+  const fitFrame = (id: string) =>
+    setDesign((d) => ({
+      ...d,
+      layers: d.layers.map((l) => (l.id === id && l.kind === 'frame'
+        ? { ...l, tx: 0, ty: 0, scale: FRAME_DEFS[l.frameId]?.defaultScale ?? 1, rotation: 0 }
+        : l)),
+    }));
   // Fills an empty "tap to add your photo" image-layer placeholder (full-
   // case-wrap templates) — mirrors setFramePhoto's role for frame layers.
   const setImageUri = (id: string, uri: string) =>
@@ -140,6 +163,6 @@ export function useDesign(initialModelId: string) {
   return {
     design, selectedId, adjustFrameId, adjustHole, supabaseId, setSupabaseId, startBlank, startFromTemplate, loadDesign, setModel, setBackground, select,
     enterAdjustMode, exitAdjustMode,
-    addSticker, addText, addImage, fitImageToCase, addFrame, setFramePhoto, setImageUri, updateLayer, removeLayer, duplicateLayer, bringToFront,
+    addSticker, addText, addImage, fitImageToCase, addFrame, setFramePhoto, fitFramePhoto, fitFrame, setImageUri, updateLayer, removeLayer, duplicateLayer, bringToFront,
   };
 }

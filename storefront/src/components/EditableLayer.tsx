@@ -177,6 +177,7 @@ export function EditableLayer({
           const def = FRAME_DEFS[layer.frameId];
           if (!def) return null;
           const { hole } = def;
+          const fit = def.fit ?? 'cover';
           const FrameSvg = def.Svg;
           const overlayStyle: React.CSSProperties = { position: 'absolute', inset: 0, width: '100%', height: '100%' };
           return (
@@ -188,9 +189,11 @@ export function EditableLayer({
                   top: `${hole.yPct}%`,
                   width: `${hole.wPct}%`,
                   height: `${hole.hPct}%`,
-                  borderRadius: '50%',
                   overflow: 'hidden',
                   background: layer.photoUri ? undefined : '#f0e6ea',
+                  ...(def.holeMask
+                    ? { maskImage: `url(${def.holeMask})`, WebkitMaskImage: `url(${def.holeMask})`, maskSize: '100% 100%', WebkitMaskSize: '100% 100%', maskRepeat: 'no-repeat', WebkitMaskRepeat: 'no-repeat' }
+                    : { borderRadius: '50%' }),
                 }}
               >
                 {layer.photoUri ? (
@@ -200,7 +203,7 @@ export function EditableLayer({
                     style={{
                       width: '100%',
                       height: '100%',
-                      objectFit: 'cover',
+                      objectFit: fit,
                       transform: `translate(${layer.photoTx}px, ${layer.photoTy}px) scale(${layer.photoScale})`,
                     }}
                   />
@@ -218,9 +221,11 @@ export function EditableLayer({
                     top: `${def.hole2.yPct}%`,
                     width: `${def.hole2.wPct}%`,
                     height: `${def.hole2.hPct}%`,
-                    borderRadius: '50%',
                     overflow: 'hidden',
                     background: layer.photo2Uri ? undefined : '#f0e6ea',
+                    ...(def.hole2Mask
+                      ? { maskImage: `url(${def.hole2Mask})`, WebkitMaskImage: `url(${def.hole2Mask})`, maskSize: '100% 100%', WebkitMaskSize: '100% 100%', maskRepeat: 'no-repeat', WebkitMaskRepeat: 'no-repeat' }
+                      : { borderRadius: '50%' }),
                   }}
                 >
                   {layer.photo2Uri ? (
@@ -230,7 +235,7 @@ export function EditableLayer({
                       style={{
                         width: '100%',
                         height: '100%',
-                        objectFit: 'cover',
+                        objectFit: fit,
                         transform: `translate(${layer.photo2Tx ?? 0}px, ${layer.photo2Ty ?? 0}px) scale(${layer.photo2Scale ?? 1})`,
                       }}
                     />
