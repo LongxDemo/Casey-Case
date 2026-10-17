@@ -79,7 +79,9 @@ export function EditableLayer({
       const divisor = scale * layer.scale;
       if (adjustHole === 2) onChange(layer.id, { photo2Tx: startTx + dx / divisor, photo2Ty: startTy + dy / divisor });
       else onChange(layer.id, { photoTx: startTx + dx / divisor, photoTy: startTy + dy / divisor });
-    } else {
+    } else if (!layer.locked) {
+      // Locked (admin-template) layers don't move as a whole — only the
+      // photo inside one of their holes can be repositioned (handled above).
       onChange(layer.id, { tx: startTx + dx / scale, ty: startTy + dy / scale });
     }
   };
@@ -149,7 +151,7 @@ export function EditableLayer({
         height: dh,
         transform,
         transformOrigin: 'center',
-        cursor: 'grab',
+        cursor: layer.locked && !adjustHole ? 'default' : 'grab',
         touchAction: 'none',
         userSelect: 'none',
         outline: selected ? '1.5px dashed #FF3E9A' : 'none',
@@ -267,7 +269,7 @@ export function EditableLayer({
         )}
       </div>
 
-      {selected && !adjustHole && (
+      {selected && !adjustHole && !layer.locked && (
         <div
           onPointerDown={onHandlePointerDown}
           onPointerMove={onHandlePointerMove}

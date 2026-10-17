@@ -3,7 +3,12 @@
 // instead, still built from `colors` (base + check color), no raster image.
 export type CaseBackground = { id: string; name: string; colors: string[]; pattern?: 'gingham' };
 
-export type LayerBase = { id: string; tx: number; ty: number; scale: number; rotation: number; z: number };
+// `locked` layers come from an admin-built template — the customer can still
+// fill/replace the photo inside a frame hole, but can't drag, resize, rotate,
+// duplicate or delete the layer itself (keeps the admin's artwork from being
+// dragged out of alignment with the background/hole cutouts). Unset (or
+// false) for anything the customer added themselves.
+export type LayerBase = { id: string; tx: number; ty: number; scale: number; rotation: number; z: number; locked?: boolean };
 
 // uri is nullable so a template can ship an empty "tap to add your photo"
 // placeholder (same pattern as FrameLayer.photoUri) — used for full-case

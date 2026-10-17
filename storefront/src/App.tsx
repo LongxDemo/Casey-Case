@@ -687,7 +687,7 @@ function Editor({ design, onBack, session }: { design: ReturnType<typeof useDesi
       {selected && !(selected.kind === 'frame' && adjustFrameId === selected.id) && (
         <div className="actions-row">
           {selected.kind === 'text' && <button className="action-btn" onClick={openTextEditor}>✏️ Edit</button>}
-          {selected.kind === 'frame' && (
+          {selected.kind === 'frame' && !selected.locked && (
             <button className="action-btn" onClick={() => fitFrame(selected.id)}>🖼️ Fit Frame</button>
           )}
           {selected.kind === 'frame' && !FRAME_DEFS[selected.frameId]?.hole2 && !selected.photoUri && (
@@ -733,18 +733,26 @@ function Editor({ design, onBack, session }: { design: ReturnType<typeof useDesi
           )}
           {selected.kind === 'image' && (
             <>
-              <button className="action-btn" onClick={() => fitImageToCase(selected.id)}>🖼️ Fit to Case</button>
+              {!selected.locked && <button className="action-btn" onClick={() => fitImageToCase(selected.id)}>🖼️ Fit to Case</button>}
               <button className="action-btn" disabled={bgRemoving === selected.id} onClick={() => handleRemoveBackground(selected.id)}>
                 {bgRemoving === selected.id ? `⏳ ${bgProgress}%` : '✂️ Remove BG'}
               </button>
             </>
           )}
-          <button className="action-btn" onClick={() => updateLayer(selected.id, { scale: Math.max(0.3, selected.scale / 1.15) })}>➖ Smaller</button>
-          <button className="action-btn" onClick={() => updateLayer(selected.id, { scale: Math.min(6, selected.scale * 1.15) })}>➕ Bigger</button>
-          <button className="action-btn" onClick={() => updateLayer(selected.id, { rotation: selected.rotation + Math.PI / 12 })}>🔄 Rotate</button>
-          <button className="action-btn" onClick={() => duplicateLayer(selected.id)}>📄 Copy</button>
-          <button className="action-btn" onClick={() => bringToFront(selected.id)}>⬆️ Front</button>
-          <button className="action-btn" style={{ color: 'var(--danger)' }} onClick={() => removeLayer(selected.id)}>🗑️ Delete</button>
+          {/* Locked (admin-template) layers skip every position/transform
+              control below — only the photo inside a hole is customer-
+              editable, the admin's own artwork can't be moved, resized,
+              rotated, duplicated or deleted out of its designed spot. */}
+          {!selected.locked && (
+            <>
+              <button className="action-btn" onClick={() => updateLayer(selected.id, { scale: Math.max(0.3, selected.scale / 1.15) })}>➖ Smaller</button>
+              <button className="action-btn" onClick={() => updateLayer(selected.id, { scale: Math.min(6, selected.scale * 1.15) })}>➕ Bigger</button>
+              <button className="action-btn" onClick={() => updateLayer(selected.id, { rotation: selected.rotation + Math.PI / 12 })}>🔄 Rotate</button>
+              <button className="action-btn" onClick={() => duplicateLayer(selected.id)}>📄 Copy</button>
+              <button className="action-btn" onClick={() => bringToFront(selected.id)}>⬆️ Front</button>
+              <button className="action-btn" style={{ color: 'var(--danger)' }} onClick={() => removeLayer(selected.id)}>🗑️ Delete</button>
+            </>
+          )}
         </div>
       )}
 

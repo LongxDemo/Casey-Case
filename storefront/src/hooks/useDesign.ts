@@ -16,7 +16,11 @@ function fromTemplate(t: Template, modelId: string): Design {
     id: uid('d'),
     modelId,
     background: t.background,
-    layers: t.layers.map((l, i) => ({ ...l, id: uid(), z: l.z ?? i + 1 })) as Layer[],
+    // Every layer an admin placed in the template is locked in the
+    // customer's copy — only the photo *inside* a frame hole (or image
+    // placeholder) stays editable, so the artwork itself can't be dragged
+    // out of alignment with the background/hole cutouts.
+    layers: t.layers.map((l, i) => ({ ...l, id: uid(), z: l.z ?? i + 1, locked: true })) as Layer[],
   };
 }
 
