@@ -377,7 +377,18 @@ function Gallery({ onNew, onEdit }: { onNew: () => void; onEdit: (t: TemplateRow
         <div className="tpl-grid">
           {sorted.map((t) => (
             <div className="card tpl-card" key={t.id}>
-              <CasePreview modelId={null} background={t.background} layers={t.layers} width={140} />
+              <CasePreview modelId={t.preview_model_id ?? null} background={t.background} layers={t.layers} width={140} />
+              <select
+                className="tpl-model-select"
+                value={t.preview_model_id ?? ''}
+                onChange={(e) => patch(t.id, { preview_model_id: e.target.value || null })}
+                title="Preview device (cosmetic only — doesn't change which phones this style is offered for)"
+              >
+                <option value="">Default (15 Pro Max)</option>
+                {Object.values(MODELS).map((m) => (
+                  <option key={m.id} value={m.id}>{m.brand} {m.name}</option>
+                ))}
+              </select>
               <div className="tpl-info">
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, flexWrap: 'wrap' }}>
                   <strong>{t.name}</strong>

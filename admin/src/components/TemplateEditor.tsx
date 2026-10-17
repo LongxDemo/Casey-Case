@@ -10,12 +10,11 @@ import { mockBackgrounds, stickerPacks } from '../mock';
 
 const TEXT_COLORS = ['#FFFFFF', '#141018', '#FF3E9A', '#D6006E', '#FFD400', '#7B61FF', '#3EC8A0', '#FF5470'];
 // Templates aren't tied to a device — a customer's chosen phone model
-// reflows the design automatically when they start from this template
-// (same as every existing gallery template). The model picker here is a
-// preview-only convenience so an admin can check other case shapes before
-// saving; it defaults to the model CasePreview itself falls back to
-// whenever a template has no device tied to it (Gallery cards render the
-// same way).
+// reflows the design automatically when they start from this template (same
+// as every existing gallery template). The model picker here just controls
+// which device the Gallery card/editor preview itself renders on (saved as
+// preview_model_id), purely cosmetic — it never limits which phones a
+// customer can actually use this template with.
 const DEFAULT_PREVIEW_MODEL_ID = 'ip15pm';
 const EDIT_WIDTH = 340;
 const phoneModels = Object.values(MODELS);
@@ -110,7 +109,7 @@ export function TemplateEditor({ onClose, initial }: { onClose: () => void; init
   const [adjustFrameId, setAdjustFrameId] = useState<string | null>(null);
   const [adjustHole, setAdjustHole] = useState<1 | 2>(1);
   const [tool, setTool] = useState<Tool>('text');
-  const [previewModelId, setPreviewModelId] = useState<string>(DEFAULT_PREVIEW_MODEL_ID);
+  const [previewModelId, setPreviewModelId] = useState<string>(initial?.preview_model_id ?? DEFAULT_PREVIEW_MODEL_ID);
   const [stickerPackId, setStickerPackId] = useState(stickerPacks[0].id);
   const [paletteBackgrounds, setPaletteBackgrounds] = useState<BackgroundRow[]>(mockBackgrounds);
   const [saving, setSaving] = useState(false);
@@ -247,6 +246,7 @@ export function TemplateEditor({ onClose, initial }: { onClose: () => void; init
           accent,
           background,
           layers: uploadedLayers,
+          preview_model_id: previewModelId,
         }).eq('id', initial.id)
       : await supabase.from('templates').insert({
           id: `t-${name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '').slice(0, 40)}-${Math.random().toString(36).slice(2, 6)}`,
@@ -256,6 +256,7 @@ export function TemplateEditor({ onClose, initial }: { onClose: () => void; init
           background,
           layers: uploadedLayers,
           active: true,
+          preview_model_id: previewModelId,
         });
     setSaving(false);
     if (error) {
@@ -476,7 +477,7 @@ export function TemplateEditor({ onClose, initial }: { onClose: () => void; init
             {tool === 'model' && (
               <>
                 <p className="page-sub" style={{ margin: '0 0 12px' }}>
-                  Preview only — this doesn't get saved with the template. A customer's own phone model reflows the design automatically.
+                  Sets which device the Gallery card previews on — cosmetic only. A customer's own phone model reflows the design automatically.
                 </p>
                 <div className="editor-tabbar" style={{ marginBottom: 12 }}>
                   {BRAND_TABS.map((b) => (

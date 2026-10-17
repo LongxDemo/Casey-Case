@@ -68,6 +68,10 @@ create table if not exists templates (
   uses_count  int not null default 0,      -- times a customer tapped this to start designing
   created_at  timestamptz not null default now()
 );
+-- Which device the Gallery card/editor preview renders on — purely cosmetic,
+-- the template itself isn't tied to a device (a customer's own phone model
+-- reflows the design). Null falls back to CasePreview's own default model.
+alter table templates add column if not exists preview_model_id text;
 
 -- ─────────────────────────────────────────────────────────────
 -- Front page content (admin-controlled)

@@ -73,6 +73,10 @@ export type TemplateRow = {
   sort: number;
   uses_count: number;
   created_at: string;
+  // Which device the Gallery card/editor preview renders on — cosmetic only,
+  // the template itself isn't tied to a device. Null/undefined falls back to
+  // CasePreview's own default model.
+  preview_model_id?: string | null;
 };
 
 export type BackgroundRow = {
