@@ -1,4 +1,4 @@
-import type { BackgroundRow, DesignRow, FrontPage, OrderRow, StickerPack, TemplateRow } from './lib/types';
+import type { AdminRow, BackgroundRow, DesignRow, FrontPage, OrderRow, StickerPack, TemplateRow } from './lib/types';
 
 export const stickerPacks: StickerPack[] = [
   { id: 'hearts', name: 'Love', cover: '💗', stickers: [
@@ -232,6 +232,11 @@ export const mockTemplates: TemplateRow[] = [
       { id: 'a', kind: 'image', uri: null, width: 320, height: 667, radius: 0, tx: 0, ty: 0, scale: 1, rotation: 0, z: 1 },
     ],
   },
+];
+
+export const mockAdmins: AdminRow[] = [
+  { user_id: 'demo-admin', email: 'demo mode', role: 'admin', created_at: new Date(Date.now() - 60 * 86400e3).toISOString() },
+  { user_id: 'demo-staff', email: 'staff@example.com', role: 'staff', created_at: new Date(Date.now() - 10 * 86400e3).toISOString() },
 ];
 
 export const mockOrders: OrderRow[] = [

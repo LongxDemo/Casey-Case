@@ -7,3 +7,4 @@ dist-check/
 .env.local
 .DS_Store
 .claude/settings.local.json
+supabase/.temp/

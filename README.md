@@ -56,6 +56,20 @@ top) · Gallery (template management) · Orders (with status control).
    insert into admins (user_id, email)
    select id, email from auth.users where email = 'you@email.com';
    ```
+   This first insert defaults to the `admin` role (full access, including
+   deleting things and managing other admins' roles). This one-time manual
+   step is only needed to bootstrap the very first admin — after that, an
+   `admin`-role user can add more teammates (as `admin` or `staff`) straight
+   from the dashboard's **Admins** page, which creates their account and
+   grants access in one step. The page also lets you re-tier an existing
+   admin to `staff` (everyday access, no deletes, can't touch the Admins tab)
+   or back.
+5. Deploy the `admin-create-user` Edge Function (`supabase/functions/admin-create-user`)
+   so the Admins page's "+ Add admin" button works — either via the Supabase
+   dashboard's Edge Functions → "Via Editor" flow, or `supabase functions deploy
+   admin-create-user`. It needs no extra secrets; `SUPABASE_URL`,
+   `SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY` are auto-provided to
+   every Edge Function.
 
 Once connected: storefront submissions land in **Designs** (with contact info and
 a new/contacted/done status), templates are managed in **Gallery**, and edits in

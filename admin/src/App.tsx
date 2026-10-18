@@ -4,21 +4,26 @@ import { CasePreview } from './components/CasePreview';
 import { TemplateEditor } from './components/TemplateEditor';
 import { hasSupabase, supabase } from './lib/supabase';
 import { MODELS } from './lib/types';
-import type { BackgroundRow, DesignRow, FrontPage, OrderRow, TemplateRow } from './lib/types';
-import { mockBackgrounds, mockDesigns, mockFrontPage, mockOrders, mockTemplates } from './mock';
+import type { AdminRow, BackgroundRow, DesignRow, FrontPage, OrderRow, TemplateRow } from './lib/types';
+import { mockAdmins, mockBackgrounds, mockDesigns, mockFrontPage, mockOrders, mockTemplates } from './mock';
 
 // 'editor' is intentionally not in the sidebar nav — it's only reached via
 // the "+ Add Template" button on the Gallery page, and closes back to it.
-type Page = 'overview' | 'front' | 'designs' | 'orders' | 'gallery' | 'backgrounds' | 'editor';
+type Page = 'overview' | 'front' | 'designs' | 'orders' | 'gallery' | 'backgrounds' | 'admins' | 'editor';
+type Role = 'admin' | 'staff';
 const ORDER_STATUSES = ['pending', 'paid', 'printing', 'shipped', 'ready_pickup', 'completed', 'cancelled'];
 const money = (c: number) => `$${(c / 100).toFixed(2)}`;
 
 export default function App() {
   const [session, setSession] = useState<boolean>(!hasSupabase); // demo mode = logged in
   const [isAdmin, setIsAdmin] = useState<boolean>(!hasSupabase);
+  // 'admin' can delete things and manage other admins' roles; 'staff' can't.
+  // Demo mode acts as the full 'admin' role.
+  const [role, setRole] = useState<Role>('admin');
   const [ready, setReady] = useState<boolean>(!hasSupabase);
   const [page, setPage] = useState<Page>('overview');
   const [email, setEmail] = useState<string>('demo mode');
+  const [myUserId, setMyUserId] = useState<string>('demo-admin');
   const [editingTemplate, setEditingTemplate] = useState<TemplateRow | null>(null);
 
   useEffect(() => {
@@ -27,9 +32,14 @@ export default function App() {
     const apply = async (s: Session | null) => {
       setSession(!!s);
       setEmail(s?.user.email ?? '');
+      setMyUserId(s?.user.id ?? '');
       if (s) {
         const { data } = await supabase!.rpc('am_i_admin');
         setIsAdmin(data === true);
+        if (data === true) {
+          const { data: row } = await supabase!.from('admins').select('role').eq('user_id', s.user.id).single();
+          setRole((row?.role as Role) ?? 'staff');
+        }
       } else {
         setIsAdmin(false);
       }
@@ -64,6 +74,7 @@ export default function App() {
         <NavItem icon="✨" label="Gallery" active={page === 'gallery'} onClick={() => setPage('gallery')} />
         <NavItem icon="🌈" label="Colors" active={page === 'backgrounds'} onClick={() => setPage('backgrounds')} />
         <NavItem icon="📦" label="Orders" active={page === 'orders'} onClick={() => setPage('orders')} />
+        {role === 'admin' && <NavItem icon="🔑" label="Admins" active={page === 'admins'} onClick={() => setPage('admins')} />}
         <div className="nav-spacer" />
         <div className="nav-user">{email}</div>
         {supabase && <button className="nav-item" onClick={() => supabase!.auth.signOut()}>↩︎ Sign out</button>}
@@ -75,12 +86,14 @@ export default function App() {
         {page === 'designs' && <Designs />}
         {page === 'gallery' && (
           <Gallery
+            role={role}
             onNew={() => { setEditingTemplate(null); setPage('editor'); }}
             onEdit={(t) => { setEditingTemplate(t); setPage('editor'); }}
           />
         )}
-        {page === 'backgrounds' && <Backgrounds />}
-        {page === 'orders' && <Orders />}
+        {page === 'backgrounds' && <Backgrounds role={role} />}
+        {page === 'orders' && <Orders role={role} />}
+        {page === 'admins' && role === 'admin' && <Admins myUserId={myUserId} />}
         {page === 'editor' && <TemplateEditor initial={editingTemplate} onClose={() => setPage('gallery')} />}
       </main>
     </div>
@@ -325,7 +338,7 @@ async function promoteDesign(d: DesignRow) {
 }
 
 /* ───────────────────────── Gallery ───────────────────────── */
-function Gallery({ onNew, onEdit }: { onNew: () => void; onEdit: (t: TemplateRow) => void }) {
+function Gallery({ role, onNew, onEdit }: { role: Role; onNew: () => void; onEdit: (t: TemplateRow) => void }) {
   const [templates, setTemplates] = useState<TemplateRow[]>(mockTemplates);
   useEffect(() => {
     if (!supabase) return;
@@ -417,7 +430,7 @@ function Gallery({ onNew, onEdit }: { onNew: () => void; onEdit: (t: TemplateRow
                     title="Sort order"
                   />
                   <button className="tpl-edit" onClick={() => onEdit(t)} title="Edit this template">✏️ Edit</button>
-                  <button className="tpl-delete" onClick={() => remove(t.id)} title="Remove from gallery">🗑️</button>
+                  {role === 'admin' && <button className="tpl-delete" onClick={() => remove(t.id)} title="Remove from gallery">🗑️</button>}
                 </div>
               </div>
             </div>
@@ -429,7 +442,7 @@ function Gallery({ onNew, onEdit }: { onNew: () => void; onEdit: (t: TemplateRow
 }
 
 /* ───────────────────────── Backgrounds ───────────────────────── */
-function Backgrounds() {
+function Backgrounds({ role }: { role: Role }) {
   const [rows, setRows] = useState<BackgroundRow[]>(mockBackgrounds);
   const [name, setName] = useState('');
   const [color1, setColor1] = useState('#FF7EC0');
@@ -515,7 +528,7 @@ function Backgrounds() {
             <div className="card tpl-card" key={b.id}>
               <div className="bg-swatch-lg" style={{ background: `linear-gradient(135deg, ${b.colors[0]}, ${b.colors[b.colors.length - 1]})` }} />
               <div className="tpl-info"><strong>{b.name}</strong></div>
-              <button className="tpl-delete" onClick={() => remove(b.id)} title="Delete color">🗑️</button>
+              {role === 'admin' && <button className="tpl-delete" onClick={() => remove(b.id)} title="Delete color">🗑️</button>}
             </div>
           ))}
         </div>
@@ -525,7 +538,7 @@ function Backgrounds() {
 }
 
 /* ───────────────────────── Orders ───────────────────────── */
-function Orders() {
+function Orders({ role }: { role: Role }) {
   const [orders, setOrders] = useState<OrderRow[]>(mockOrders);
   useEffect(() => {
     if (!supabase) return;
@@ -593,10 +606,148 @@ function Orders() {
                       {ORDER_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
                     </select>
                   </td>
-                  <td><button className="tpl-delete" onClick={() => remove(o.id)} title="Delete order">🗑️</button></td>
+                  <td>{role === 'admin' && <button className="tpl-delete" onClick={() => remove(o.id)} title="Delete order">🗑️</button>}</td>
                 </tr>
               );
             })}
+          </tbody>
+        </table>
+      </div>
+    </>
+  );
+}
+
+/* ───────────────────────── Admins ───────────────────────── */
+// Only reachable by the 'admin' role (App.tsx gates the nav item + route) —
+// 'staff' can't see or change who has dashboard access. "+ Add admin" calls
+// the admin-create-user edge function (needs the service-role key to create
+// an auth user, so it can't be done with the browser's anon key) — you set
+// the password yourself here and send it to the person directly.
+const genPassword = () => {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
+  let out = '';
+  for (let i = 0; i < 12; i++) out += chars[Math.floor(Math.random() * chars.length)];
+  return out;
+};
+
+function Admins({ myUserId }: { myUserId: string }) {
+  const [rows, setRows] = useState<AdminRow[]>(mockAdmins);
+  const [showAdd, setShowAdd] = useState(false);
+  const [newEmail, setNewEmail] = useState('');
+  const [newPassword, setNewPassword] = useState(genPassword());
+  const [newRole, setNewRole] = useState<AdminRow['role']>('staff');
+  const [creating, setCreating] = useState(false);
+  const [justAdded, setJustAdded] = useState<{ email: string; password: string } | null>(null);
+
+  const refresh = () => {
+    if (!supabase) return;
+    supabase.from('admins').select('*').order('created_at', { ascending: true }).then(({ data }) => data && setRows(data as AdminRow[]));
+  };
+  useEffect(refresh, []);
+
+  const setRole = async (userId: string, role: AdminRow['role']) => {
+    if (userId === myUserId && role !== 'admin' && !window.confirm("Remove your own admin access? You'll lose the Admins tab and delete permissions.")) return;
+    const prev = rows;
+    setRows((rs) => rs.map((r) => (r.user_id === userId ? { ...r, role } : r)));
+    if (supabase) {
+      const { error } = await supabase.from('admins').update({ role }).eq('user_id', userId);
+      if (error) {
+        setRows(prev);
+        window.alert(`Couldn't update role: ${error.message}`);
+      }
+    }
+  };
+
+  const addAdmin = async () => {
+    if (!newEmail.trim() || newPassword.length < 8) {
+      window.alert('Enter an email and a password of at least 8 characters.');
+      return;
+    }
+    if (!supabase) {
+      window.alert('Connect Supabase to add admins — this is demo mode only.');
+      return;
+    }
+    setCreating(true);
+    const { data, error } = await supabase.functions.invoke('admin-create-user', {
+      body: { email: newEmail.trim(), password: newPassword, role: newRole },
+    });
+    setCreating(false);
+    if (error || !data?.ok) {
+      window.alert(`Couldn't add admin: ${data?.error ?? error?.message ?? 'unknown error'}`);
+      return;
+    }
+    setJustAdded({ email: newEmail.trim(), password: newPassword });
+    setShowAdd(false);
+    setNewEmail('');
+    setNewPassword(genPassword());
+    setNewRole('staff');
+    refresh();
+  };
+
+  return (
+    <>
+      <div className="gallery-header">
+        <div>
+          <h1 className="page-title">Admins</h1>
+          <p className="page-sub">Who has dashboard access, and what they can do. {rows.length} total.</p>
+        </div>
+        <button className="btn cool" onClick={() => { setShowAdd((v) => !v); setJustAdded(null); }}>+ Add admin</button>
+      </div>
+
+      {justAdded && (
+        <div className="card" style={{ maxWidth: 480, marginBottom: 24, border: '2px solid var(--success)' }}>
+          <h3 style={{ marginTop: 0 }}>Account created ✓</h3>
+          <p className="page-sub">Send these to {justAdded.email} so they can sign in — this password won't be shown again.</p>
+          <p style={{ fontFamily: 'monospace' }}>Email: {justAdded.email}<br />Password: {justAdded.password}</p>
+        </div>
+      )}
+
+      {showAdd && (
+        <div className="card" style={{ maxWidth: 480, marginBottom: 24 }}>
+          <div style={{ display: 'grid', gap: 14 }}>
+            <div>
+              <label>Email</label>
+              <input className="bg-field" type="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} placeholder="teammate@example.com" />
+            </div>
+            <div>
+              <label>Password</label>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <input className="bg-field" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
+                <button className="btn soft" type="button" onClick={() => setNewPassword(genPassword())}>Generate</button>
+              </div>
+            </div>
+            <div>
+              <label>Role</label>
+              <select className="status" value={newRole} onChange={(e) => setNewRole(e.target.value as AdminRow['role'])}>
+                <option value="staff">Staff — can't delete or manage admins</option>
+                <option value="admin">Admin — full access</option>
+              </select>
+            </div>
+            <button className="btn cool" style={{ width: 160 }} disabled={creating} onClick={addAdmin}>
+              {creating ? 'Adding…' : 'Create account'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+        <table>
+          <thead>
+            <tr><th>Email</th><th>Role</th><th>Added</th></tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.user_id}>
+                <td>{r.email ?? r.user_id}{r.user_id === myUserId && <span className="page-sub" style={{ margin: '0 0 0 6px' }}>(you)</span>}</td>
+                <td>
+                  <select className="status" value={r.role} onChange={(e) => setRole(r.user_id, e.target.value as AdminRow['role'])}>
+                    <option value="admin">Admin — full access</option>
+                    <option value="staff">Staff — can't delete or manage admins</option>
+                  </select>
+                </td>
+                <td>{new Date(r.created_at).toLocaleDateString()}</td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>

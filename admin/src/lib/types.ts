@@ -88,6 +88,13 @@ export type BackgroundRow = {
   sort: number;
 };
 
+export type AdminRow = {
+  user_id: string;
+  email: string | null;
+  role: 'admin' | 'staff';
+  created_at: string;
+};
+
 export type FrontPage = {
   id: number;
   hero_title: string;

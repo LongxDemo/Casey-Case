@@ -123,7 +123,12 @@ alter table designs add column if not exists status text not null default 'new';
 -- ─────────────────────────────────────────────────────────────
 -- Orders
 -- ─────────────────────────────────────────────────────────────
-create type order_status as enum ('pending', 'paid', 'printing', 'shipped', 'ready_pickup', 'completed', 'cancelled');
+do $$
+begin
+  if not exists (select 1 from pg_type where typname = 'order_status') then
+    create type order_status as enum ('pending', 'paid', 'printing', 'shipped', 'ready_pickup', 'completed', 'cancelled');
+  end if;
+end $$;
 
 create table if not exists orders (
   id            uuid primary key default gen_random_uuid(),
@@ -157,8 +162,17 @@ create table if not exists order_items (
 create table if not exists admins (
   user_id     uuid primary key references auth.users(id) on delete cascade,
   email       text,
+  role        text not null default 'admin',
   created_at  timestamptz not null default now()
 );
+-- Safe to re-run on an already-provisioned project.
+alter table admins add column if not exists role text not null default 'admin';
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conname = 'admins_role_check') then
+    alter table admins add constraint admins_role_check check (role in ('admin', 'staff'));
+  end if;
+end $$;
 
 -- security definer so RLS policies can call this without recursing through
 -- the admins table's own policy (which itself depends on is_admin()).
@@ -175,6 +189,15 @@ language sql security definer set search_path = public stable as $$
   select exists (select 1 from admins where user_id = auth.uid());
 $$;
 grant execute on function am_i_admin() to anon, authenticated;
+
+-- Role-tier check (e.g. has_role('admin')) — 'staff' is everyday dashboard
+-- access, 'admin' additionally gates deletes and managing other admins' roles.
+-- Security definer for the same recursion reason as is_admin() above.
+create or replace function has_role(p_role text) returns boolean
+language sql security definer set search_path = public stable as $$
+  select exists (select 1 from admins where user_id = auth.uid() and role = p_role);
+$$;
+grant execute on function has_role(text) to authenticated;
 
 -- Lets any client (including guests) bump a gallery template's popularity
 -- counter without granting UPDATE on templates itself — the table stays
@@ -200,7 +223,8 @@ alter table orders        enable row level security;
 alter table order_items   enable row level security;
 alter table admins        enable row level security;
 
--- Catalog + front page: readable by everyone, writable by admins only
+-- Catalog + front page: readable by everyone, writable by any admin (staff
+-- included); deleting is restricted to the 'admin' role tier.
 do $$
 declare t text;
 begin
@@ -208,8 +232,13 @@ begin
   loop
     execute format('drop policy if exists %I_read on %I;', t, t);
     execute format('create policy %I_read on %I for select using (true);', t, t);
-    execute format('drop policy if exists %I_admin_write on %I;', t, t);
-    execute format('create policy %I_admin_write on %I for all using (is_admin()) with check (is_admin());', t, t);
+    execute format('drop policy if exists %I_admin_write on %I;', t, t); -- superseded by the insert/update/delete split below
+    execute format('drop policy if exists %I_admin_insert on %I;', t, t);
+    execute format('create policy %I_admin_insert on %I for insert with check (is_admin());', t, t);
+    execute format('drop policy if exists %I_admin_update on %I;', t, t);
+    execute format('create policy %I_admin_update on %I for update using (is_admin()) with check (is_admin());', t, t);
+    execute format('drop policy if exists %I_admin_delete on %I;', t, t);
+    execute format('create policy %I_admin_delete on %I for delete using (has_role(''admin''));', t, t);
   end loop;
 end $$;
 
@@ -233,17 +262,42 @@ create policy designs_update_own on designs for update
 drop policy if exists designs_delete_own on designs;
 create policy designs_delete_own on designs for delete
   using (auth.uid() is not null and user_id = auth.uid());
-create policy designs_admin_all on designs for all using (is_admin()) with check (is_admin());
+-- Any admin (staff included) can read/update all designs; deleting someone
+-- else's design is restricted to the 'admin' role tier (a customer can still
+-- delete their own via designs_delete_own above, regardless of role).
+-- designs_admin_all is dropped (superseded) — leaving it would silently let
+-- staff delete anyway, since permissive RLS policies are OR'd together.
+drop policy if exists designs_admin_all on designs;
+drop policy if exists designs_admin_read on designs;
+create policy designs_admin_read on designs for select using (is_admin());
+drop policy if exists designs_admin_update on designs;
+create policy designs_admin_update on designs for update using (is_admin()) with check (is_admin());
+drop policy if exists designs_admin_delete on designs;
+create policy designs_admin_delete on designs for delete using (has_role('admin'));
 
 -- Orders: customer can create + see their own; admin sees all
+drop policy if exists orders_insert on orders;
 create policy orders_insert on orders for insert with check (true);
+drop policy if exists orders_read_own on orders;
 create policy orders_read_own on orders for select using (user_id = auth.uid() or is_admin());
-create policy orders_admin_all on orders for all using (is_admin()) with check (is_admin());
+-- Any admin (staff included) can update orders; deleting is 'admin'-only.
+-- orders_admin_all is dropped (superseded) for the same OR-together reason as above.
+drop policy if exists orders_admin_all on orders;
+drop policy if exists orders_admin_update on orders;
+create policy orders_admin_update on orders for update using (is_admin()) with check (is_admin());
+drop policy if exists orders_admin_delete on orders;
+create policy orders_admin_delete on orders for delete using (has_role('admin'));
+drop policy if exists order_items_insert on order_items;
 create policy order_items_insert on order_items for insert with check (true);
+drop policy if exists order_items_read on order_items;
 create policy order_items_read on order_items for select using (is_admin() or exists (select 1 from orders o where o.id = order_id and (o.user_id = auth.uid())));
 
--- Admins table: readable by admins
+-- Admins table: any admin can read; only the 'admin' role tier can change a
+-- row's role (adding a brand-new admin is still the manual SQL step below).
+drop policy if exists admins_read on admins;
 create policy admins_read on admins for select using (is_admin());
+drop policy if exists admins_update_role on admins;
+create policy admins_update_role on admins for update using (has_role('admin')) with check (has_role('admin'));
 
 -- ─────────────────────────────────────────────────────────────
 -- Storage: customer design photos
