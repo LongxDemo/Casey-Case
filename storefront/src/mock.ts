@@ -1,6 +1,23 @@
 import type { CaseBackground, StickerPack, Template } from './lib/types';
+import type { CameraSpec } from './components/CameraSVG';
 
 export const BASE_PRICE_CENTS = 1990;
+
+// Placeholder used only if Supabase env vars are missing — admins design the
+// real camera specs visually in the admin dashboard's Cameras page.
+export const mockCameraSpecs: Record<string, CameraSpec> = {
+  ip15pm: {
+    mounting: 'island',
+    island: { shape: 'rounded-square', xMm: 3.07, yMm: 3.07, widthMm: 38.35, heightMm: 40.02, cornerRadiusMm: 10.74 },
+    lenses: [
+      { label: 'ultra-wide', xMm: 14.57, yMm: 13.87, diameterMm: 17.64, ringMm: 1.59 },
+      { label: 'wide', xMm: 14.57, yMm: 32.68, diameterMm: 17.64, ringMm: 1.59 },
+      { label: 'telephoto', xMm: 29.15, yMm: 23.08, diameterMm: 17.64, ringMm: 1.59 },
+    ],
+    flash: { xMm: 33.75, yMm: 9.47, diameterMm: 6.9 },
+    sensors: [{ type: 'lidar', xMm: 29.15, yMm: 36.29, diameterMm: 5.37 }],
+  },
+};
 
 export const backgrounds: CaseBackground[] = [
   { id: 'bubblegum', name: 'Bubblegum', colors: ['#FF7EC0', '#FF3E9A'] },

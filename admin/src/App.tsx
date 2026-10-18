@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { CasePreview } from './components/CasePreview';
 import { TemplateEditor } from './components/TemplateEditor';
+import { CameraDesigner } from './components/CameraDesigner';
 import { hasSupabase, supabase } from './lib/supabase';
 import { MODELS } from './lib/types';
 import type { AdminRow, BackgroundRow, DesignRow, FrontPage, OrderRow, TemplateRow } from './lib/types';
@@ -9,7 +10,7 @@ import { mockAdmins, mockBackgrounds, mockDesigns, mockFrontPage, mockOrders, mo
 
 // 'editor' is intentionally not in the sidebar nav — it's only reached via
 // the "+ Add Template" button on the Gallery page, and closes back to it.
-type Page = 'overview' | 'front' | 'designs' | 'orders' | 'gallery' | 'backgrounds' | 'admins' | 'editor';
+type Page = 'overview' | 'front' | 'designs' | 'orders' | 'gallery' | 'backgrounds' | 'admins' | 'cameras' | 'editor';
 type Role = 'admin' | 'staff';
 const ORDER_STATUSES = ['pending', 'paid', 'printing', 'shipped', 'ready_pickup', 'completed', 'cancelled'];
 const money = (c: number) => `$${(c / 100).toFixed(2)}`;
@@ -74,6 +75,7 @@ export default function App() {
         <NavItem icon="✨" label="Gallery" active={page === 'gallery'} onClick={() => setPage('gallery')} />
         <NavItem icon="🌈" label="Colors" active={page === 'backgrounds'} onClick={() => setPage('backgrounds')} />
         <NavItem icon="📦" label="Orders" active={page === 'orders'} onClick={() => setPage('orders')} />
+        <NavItem icon="📷" label="Cameras" active={page === 'cameras'} onClick={() => setPage('cameras')} />
         {role === 'admin' && <NavItem icon="🔑" label="Admins" active={page === 'admins'} onClick={() => setPage('admins')} />}
         <div className="nav-spacer" />
         <div className="nav-user">{email}</div>
@@ -94,6 +96,7 @@ export default function App() {
         {page === 'backgrounds' && <Backgrounds role={role} />}
         {page === 'orders' && <Orders role={role} />}
         {page === 'admins' && role === 'admin' && <Admins myUserId={myUserId} />}
+        {page === 'cameras' && <CameraDesigner role={role} myUserId={myUserId} />}
         {page === 'editor' && <TemplateEditor initial={editingTemplate} onClose={() => setPage('gallery')} />}
       </main>
     </div>

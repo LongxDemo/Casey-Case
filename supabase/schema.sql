@@ -300,6 +300,37 @@ drop policy if exists admins_update_role on admins;
 create policy admins_update_role on admins for update using (has_role('admin')) with check (has_role('admin'));
 
 -- ─────────────────────────────────────────────────────────────
+-- Camera module specs (admin-authored, replaces hand-estimated geometry)
+-- ─────────────────────────────────────────────────────────────
+-- model_id matches the hardcoded MODELS catalog key in admin/storefront's
+-- lib/types.ts (e.g. 'ip15pm') — that catalog isn't itself in the DB (see
+-- the unused phone_models table above), so no FK here, just a free-text key.
+create table if not exists camera_specs (
+  model_id            text primary key,
+  spec                jsonb not null,              -- CameraSpec: { mounting, island, lenses, flash, sensors }
+  reference_photo_url text,                         -- admin-only editing aid, never shown to customers
+  reference_photo_w   int,
+  reference_photo_h   int,
+  -- How the reference photo is panned/scaled under the mm guide in the
+  -- editor, so re-opening a saved model restores the same alignment instead
+  -- of forcing a re-fit from scratch every time.
+  reference_photo_offset_x_mm numeric,
+  reference_photo_offset_y_mm numeric,
+  reference_photo_scale       numeric,
+  updated_at          timestamptz not null default now(),
+  updated_by          uuid references admins(user_id) on delete set null
+);
+alter table camera_specs enable row level security;
+drop policy if exists camera_specs_read on camera_specs;
+create policy camera_specs_read on camera_specs for select using (true);
+drop policy if exists camera_specs_admin_insert on camera_specs;
+create policy camera_specs_admin_insert on camera_specs for insert with check (is_admin());
+drop policy if exists camera_specs_admin_update on camera_specs;
+create policy camera_specs_admin_update on camera_specs for update using (is_admin()) with check (is_admin());
+drop policy if exists camera_specs_admin_delete on camera_specs;
+create policy camera_specs_admin_delete on camera_specs for delete using (has_role('admin'));
+
+-- ─────────────────────────────────────────────────────────────
 -- Storage: customer design photos
 -- ─────────────────────────────────────────────────────────────
 -- Uploaded photos live here (public URLs stored in designs.layers) instead of

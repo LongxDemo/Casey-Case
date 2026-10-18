@@ -1,4 +1,5 @@
 import type { AdminRow, BackgroundRow, DesignRow, FrontPage, OrderRow, StickerPack, TemplateRow } from './lib/types';
+import type { CameraSpec } from './components/CameraSVG';
 
 export const stickerPacks: StickerPack[] = [
   { id: 'hearts', name: 'Love', cover: '💗', stickers: [
@@ -233,6 +234,23 @@ export const mockTemplates: TemplateRow[] = [
     ],
   },
 ];
+
+// Demo-mode placeholder so the Cameras page has something to show without a
+// live Supabase connection — admins design the real thing visually, this is
+// just a stand-in example (iPhone 15 Pro Max's triple-lens square module).
+export const mockCameraSpecs: Record<string, CameraSpec> = {
+  ip15pm: {
+    mounting: 'island',
+    island: { shape: 'rounded-square', xMm: 3.07, yMm: 3.07, widthMm: 38.35, heightMm: 40.02, cornerRadiusMm: 10.74 },
+    lenses: [
+      { label: 'ultra-wide', xMm: 14.57, yMm: 13.87, diameterMm: 17.64, ringMm: 1.59 },
+      { label: 'wide', xMm: 14.57, yMm: 32.68, diameterMm: 17.64, ringMm: 1.59 },
+      { label: 'telephoto', xMm: 29.15, yMm: 23.08, diameterMm: 17.64, ringMm: 1.59 },
+    ],
+    flash: { xMm: 33.75, yMm: 9.47, diameterMm: 6.9 },
+    sensors: [{ type: 'lidar', xMm: 29.15, yMm: 36.29, diameterMm: 5.37 }],
+  },
+};
 
 export const mockAdmins: AdminRow[] = [
   { user_id: 'demo-admin', email: 'demo mode', role: 'admin', created_at: new Date(Date.now() - 60 * 86400e3).toISOString() },

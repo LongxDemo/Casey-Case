@@ -1,6 +1,8 @@
 import { CANVAS_BASE, MODELS, sizeForModel } from '../lib/types';
 import type { CaseBackground, Layer, PhoneModel } from '../lib/types';
 import { FRAME_DEFS } from '../lib/frames';
+import { CameraSVG, cameraCutoutPath } from './CameraSVG';
+import { useCameraSpecs } from '../lib/cameraSpecs';
 
 export function CasePreview({
   background,
@@ -15,6 +17,8 @@ export function CasePreview({
   width: number;
 }) {
   const model = (modelId && MODELS[modelId]) || MODELS.ip15pm;
+  const liveCameraSpecs = useCameraSpecs();
+  const cameraSpec = modelId ? liveCameraSpecs[modelId] : undefined;
   const { width: renderWidth, height } = sizeForModel(model, width);
   const scale = renderWidth / CANVAS_BASE;
   const radius = renderWidth * 0.2;
@@ -66,73 +70,91 @@ export function CasePreview({
           case — this only hugs the module's own footprint, it's not a
           full-width band). Painted over the layers/photo with a hard edge,
           in the case's own solid color, before the module draws on top. */}
-      {(() => {
-        const camStyle = camStyleFor(model);
-        // 'ip-vert' (base 17, and 16/16 Plus which share the same module)
-        // is two disconnected real-hardware shapes (lens pill + separate
-        // flash) with a lot of empty space between them inside their own
-        // bounding box — a single rounded-rect zone there reads as an
-        // oversized black slab instead of hugging the module. CameraModule
-        // draws its own tightly-fitted pill+circle background for this
-        // style instead, so skip the generic zone.
-        if (camStyle === 'ip-vert') return null;
-        const zone = cameraZoneRect(camStyle, renderWidth, height);
-        // The zone only needs to hug the module's own real footprint — the
-        // fixed case-body radius, applied to a much smaller box, rounds its
-        // corners way more aggressively than the module's own real hardware
-        // rounding, so a flat black halo bled out from behind the photo on
-        // every side (looked like a cartoon sticker outline instead of part
-        // of the same object). Real-photo compact modules get their own
-        // tighter, proportional radius instead.
-        const compactPhotoStyles: CamStyle[] = ['ip-dual-vert', 'ip11pro-square', 'ip12pro-square', 'ip13pro-square', 'ip14pro-square', 'ip13-diag', 'ip15-diag', 'ip15-square', 's26u'];
-        const zoneRadius = compactPhotoStyles.includes(camStyle) ? Math.min(zone.width, zone.height) * 0.32 : radius;
-        // s26u's module is a single irregular (notched, not rectangular)
-        // hardware shape — a rounded-rect zone always either clips a
-        // corner of the photo or leaves extra flat black showing in the
-        // notch, whichever radius you pick. Hugs the module's real
-        // silhouette instead by drawing the SAME photo again (scaled up
-        // slightly to the rim-inflated zone box) blackened via a filter,
-        // confirmed with the user 2026-09-26. Originally built as a
-        // `mask-image` div instead of an `<img>` — switched 2026-10-01
-        // because Android Chrome rasterizes a scaled CSS mask with hard,
-        // jagged (not anti-aliased) edges, visibly different from desktop;
-        // an `<img>`'s alpha goes through the browser's normal image-
-        // scaling path, which anti-aliases consistently everywhere.
-        if (camStyle === 's26u') {
-          return (
-            <img
-              src="/camera/s26u.png"
-              alt=""
-              style={{
-                position: 'absolute',
-                top: zone.top,
-                left: zone.left,
-                width: zone.width,
-                height: zone.height,
-                filter: 'brightness(0)',
-              }}
-            />
-          );
-        }
-        return (
-          <div
-            style={{
-              position: 'absolute',
-              top: zone.top,
-              left: zone.left,
-              width: zone.width,
-              height: zone.height,
-              borderRadius: zoneRadius,
-              background: '#0c0c0f',
-              boxShadow: '0 1px 0 rgba(0,0,0,0.12)',
-            }}
-          />
-        );
-      })()}
-      {/* Every real case photo we've checked is black plastic underneath —
-          the camera surround is always black, not tinted to whatever
-          decorative color the customer picked for their print. */}
-      <CameraModule style={camStyleFor(model)} width={renderWidth} height={height} tint="#0c0c0f" />
+      {cameraSpec ? (
+        // Admin-designed camera (Cameras page in the dashboard) — the die-cut
+        // cutout and the plate on top share one source of truth (both derived
+        // from cameraSpec.island), so they can never drift apart like the
+        // hand-tuned CSS zone/module pair below sometimes did.
+        <svg
+          viewBox={`0 0 ${model.widthMm} ${model.heightMm}`}
+          width={renderWidth}
+          height={height}
+          style={{ position: 'absolute', inset: 0 }}
+        >
+          <path d={cameraCutoutPath(cameraSpec.island, 1.2)} fill="#0c0c0f" fillRule="evenodd" />
+          <CameraSVG spec={cameraSpec} tint="#0c0c0f" />
+        </svg>
+      ) : (
+        <>
+          {(() => {
+            const camStyle = camStyleFor(model);
+            // 'ip-vert' (base 17, and 16/16 Plus which share the same module)
+            // is two disconnected real-hardware shapes (lens pill + separate
+            // flash) with a lot of empty space between them inside their own
+            // bounding box — a single rounded-rect zone there reads as an
+            // oversized black slab instead of hugging the module. CameraModule
+            // draws its own tightly-fitted pill+circle background for this
+            // style instead, so skip the generic zone.
+            if (camStyle === 'ip-vert') return null;
+            const zone = cameraZoneRect(camStyle, renderWidth, height);
+            // The zone only needs to hug the module's own real footprint — the
+            // fixed case-body radius, applied to a much smaller box, rounds its
+            // corners way more aggressively than the module's own real hardware
+            // rounding, so a flat black halo bled out from behind the photo on
+            // every side (looked like a cartoon sticker outline instead of part
+            // of the same object). Real-photo compact modules get their own
+            // tighter, proportional radius instead.
+            const compactPhotoStyles: CamStyle[] = ['ip-dual-vert', 'ip11pro-square', 'ip12pro-square', 'ip13pro-square', 'ip14pro-square', 'ip13-diag', 'ip15-diag', 'ip15-square', 's26u'];
+            const zoneRadius = compactPhotoStyles.includes(camStyle) ? Math.min(zone.width, zone.height) * 0.32 : radius;
+            // s26u's module is a single irregular (notched, not rectangular)
+            // hardware shape — a rounded-rect zone always either clips a
+            // corner of the photo or leaves extra flat black showing in the
+            // notch, whichever radius you pick. Hugs the module's real
+            // silhouette instead by drawing the SAME photo again (scaled up
+            // slightly to the rim-inflated zone box) blackened via a filter,
+            // confirmed with the user 2026-09-26. Originally built as a
+            // `mask-image` div instead of an `<img>` — switched 2026-10-01
+            // because Android Chrome rasterizes a scaled CSS mask with hard,
+            // jagged (not anti-aliased) edges, visibly different from desktop;
+            // an `<img>`'s alpha goes through the browser's normal image-
+            // scaling path, which anti-aliases consistently everywhere.
+            if (camStyle === 's26u') {
+              return (
+                <img
+                  src="/camera/s26u.png"
+                  alt=""
+                  style={{
+                    position: 'absolute',
+                    top: zone.top,
+                    left: zone.left,
+                    width: zone.width,
+                    height: zone.height,
+                    filter: 'brightness(0)',
+                  }}
+                />
+              );
+            }
+            return (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: zone.top,
+                  left: zone.left,
+                  width: zone.width,
+                  height: zone.height,
+                  borderRadius: zoneRadius,
+                  background: '#0c0c0f',
+                  boxShadow: '0 1px 0 rgba(0,0,0,0.12)',
+                }}
+              />
+            );
+          })()}
+          {/* Every real case photo we've checked is black plastic underneath —
+              the camera surround is always black, not tinted to whatever
+              decorative color the customer picked for their print. */}
+          <CameraModule style={camStyleFor(model)} width={renderWidth} height={height} tint="#0c0c0f" />
+        </>
+      )}
       {/* subtle printed-case sheen */}
       <div
         style={{
