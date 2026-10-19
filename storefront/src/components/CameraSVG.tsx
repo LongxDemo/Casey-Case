@@ -16,6 +16,14 @@ export type CameraSpec = {
   lenses: { label: string; xMm: number; yMm: number; diameterMm: number; ringMm: number }[];
   flash: { xMm: number; yMm: number; diameterMm: number } | null;
   sensors: { type: string; xMm: number; yMm: number; diameterMm: number }[];
+  /** A real cropped camera-module photo (transparent background), used
+   *  instead of the island/lenses/flash/sensors shapes above when present.
+   *  wPx/hPx are the source image's own pixel size; scaleMmPerPx converts
+   *  that into the same mm space as everything else here. marginMm controls
+   *  how much bigger the die-cut cutout is than the photo itself (defaults
+   *  to 1.2mm, same as the vector shapes) — adjustable per model since a
+   *  bigger module needs a bigger cutout margin than a small one. */
+  image?: { url: string; wPx: number; hPx: number; xMm: number; yMm: number; scaleMmPerPx: number; marginMm?: number } | null;
 };
 
 function roundedRectPath(x: number, y: number, w: number, h: number, r: number): string {

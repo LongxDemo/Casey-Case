@@ -1,4 +1,4 @@
-import { Fragment } from 'react';
+import { Fragment, useId } from 'react';
 import type { ReactNode, Ref } from 'react';
 import { CANVAS_BASE, MODELS, sizeForModel } from '../lib/types';
 import type { CaseBackground, Layer, PhoneModel } from '../lib/types';
@@ -92,7 +92,9 @@ export function CasePreview({
           case — this only hugs the module's own footprint, it's not a
           full-width band). Painted over the layers/photo with a hard edge,
           in the case's own solid color, before the module draws on top. */}
-      {cameraSpec ? (
+      {cameraSpec?.image ? (
+        <CameraImageModule image={cameraSpec.image} pxPerMm={renderWidth / model.widthMm} />
+      ) : cameraSpec ? (
         // Admin-designed camera (Cameras page in the dashboard) — the die-cut
         // cutout and the plate on top share one source of truth (both derived
         // from cameraSpec.island), so they can never drift apart like the
@@ -206,6 +208,43 @@ export function CasePreview({
         }}
       />
     </div>
+  );
+}
+
+// A real camera photo (uploaded in the Cameras admin page) used in place of
+// the hand-drawn island/lenses/flash/sensors shapes. Drawn twice — once
+// blackened as the die-cut cutout silhouette, once at full color on top —
+// the same proven technique as the hardcoded s26u real photo below, just
+// driven by whatever alpha the admin's own cropped upload has instead of a
+// baked-in asset.
+// The die-cut cutout needs a UNIFORM margin around the module's own real
+// silhouette — not a bigger copy of the same (possibly irregular) shape
+// scaled up around its center. For an L-shaped module (e.g. a lens pill with
+// a flash bump sticking out one side), scaling the whole shape up stretches
+// it anisotropically and pushes far corners (like the bump) out much
+// further than near ones, so the margin visibly isn't a consistent ring
+// around the module — confirmed against a real Samsung module upload,
+// 2026-10-19. `feMorphology operator="dilate"` grows the image's own alpha
+// silhouette outward by a fixed pixel radius in every direction (the same
+// way a real manufacturing cutout tolerance works), giving a true uniform
+// halo regardless of the module's shape.
+function CameraImageModule({ image, pxPerMm }: { image: NonNullable<CameraSpec['image']>; pxPerMm: number }) {
+  const filterId = useId();
+  const left = image.xMm * pxPerMm;
+  const top = image.yMm * pxPerMm;
+  const width = image.wPx * image.scaleMmPerPx * pxPerMm;
+  const height = image.hPx * image.scaleMmPerPx * pxPerMm;
+  const radiusPx = (image.marginMm ?? 1.2) * pxPerMm;
+  return (
+    <>
+      <svg width={0} height={0} style={{ position: 'absolute' }} aria-hidden="true">
+        <filter id={filterId} x="-200%" y="-200%" width="500%" height="500%">
+          <feMorphology operator="dilate" radius={radiusPx} />
+        </filter>
+      </svg>
+      <img src={image.url} alt="" style={{ position: 'absolute', left, top, width, height, filter: `url(#${filterId}) brightness(0)` }} />
+      <img src={image.url} alt="" style={{ position: 'absolute', left, top, width, height }} />
+    </>
   );
 }
 

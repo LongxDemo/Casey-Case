@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import { CasePreview } from './CasePreview';
 import { CameraShapeHandle } from './CameraShapeHandle';
@@ -35,7 +35,14 @@ function blankSpec(model: PhoneModel): CameraSpec {
 // larger cap than customer design uploads is fine — more detail helps
 // precise placement.
 const MAX_UPLOAD_DIM = 2000;
-function loadImageFile(file: File): Promise<{ dataUri: string; width: number; height: number }> {
+// `format` defaults to JPEG (fine for reference photos — never shown to
+// customers, and JPEG keeps the data URI small). Camera-module template
+// uploads pass 'image/png' instead: JPEG has no alpha channel, so
+// downsizing through it was silently flattening any transparent case-body
+// pixels to opaque black, which extractCameraModule below then misread as
+// part of the module itself — confirmed on a real S25 template upload
+// (2026-10-19) where the whole phone body got treated as "camera".
+function loadImageFile(file: File, format: 'image/jpeg' | 'image/png' = 'image/jpeg'): Promise<{ dataUri: string; width: number; height: number }> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onerror = () => reject(reader.error);
@@ -52,7 +59,7 @@ function loadImageFile(file: File): Promise<{ dataUri: string; width: number; he
         const ctx = canvas.getContext('2d');
         if (!ctx) { resolve({ dataUri: reader.result as string, width: w, height: h }); return; }
         ctx.drawImage(img, 0, 0, cw, ch);
-        resolve({ dataUri: canvas.toDataURL('image/jpeg', 0.9), width: cw, height: ch });
+        resolve({ dataUri: format === 'image/png' ? canvas.toDataURL('image/png') : canvas.toDataURL('image/jpeg', 0.9), width: cw, height: ch });
       };
       img.src = reader.result as string;
     };
@@ -60,20 +67,151 @@ function loadImageFile(file: File): Promise<{ dataUri: string; width: number; he
   });
 }
 
-async function uploadReferencePhoto(dataUri: string): Promise<string> {
+async function uploadDesignPhoto(dataUri: string, folder: string): Promise<string> {
   const blob = await (await fetch(dataUri)).blob();
   const ext = (blob.type.split('/')[1] || 'png').replace('jpeg', 'jpg');
-  const path = `camera-refs/${crypto.randomUUID()}.${ext}`;
+  const path = `${folder}/${crypto.randomUUID()}.${ext}`;
   const { error } = await supabase!.storage.from('design-photos').upload(path, blob, { contentType: blob.type });
   if (error) throw new Error(error.message);
   const { data } = supabase!.storage.from('design-photos').getPublicUrl(path);
   return data.publicUrl;
 }
 
+function loadImageEl(dataUri: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = dataUri;
+  });
+}
+
+// Isolates a camera module from a phone-template photo — e.g. a "T-FRAME"
+// reference render, which may already have the case body cut to transparent
+// (alpha 0) around an opaque module, or may be a flattened photo with a
+// plain white case body — without requiring the admin to pre-cut a
+// transparent PNG themselves. Mirrors the green-marker frame-hole trick
+// (detect by color, cut to alpha) but classifies by "not transparent, not
+// the background color, not white" instead of a single marker color, since
+// the module here is the real photographed hardware rather than a flat
+// marker shape.
+//
+// The SAME boolean color test (`isModulePixel` below) drives both the
+// bounding-box detection AND the output alpha — they used to be two
+// different tests (a hard threshold for the bbox, a separately-feathered
+// smoothstep for the output alpha), which could disagree: the feathered
+// alpha sometimes stayed faintly visible past where the bbox's own padding
+// assumed it had already faded to nothing, flush against the crop's edge
+// on whichever side had a softer gradient in the source photo — while the
+// opposite side kept its full padding, making the module look off-center
+// once a cutout margin was drawn around it (confirmed on a real S26 Ultra
+// upload, 2026-10-19). Using one shared test for both guarantees they can
+// never disagree, at the cost of a slightly harder (non-anti-aliased) cut
+// edge instead of a soft feather.
+async function extractCameraModule(dataUri: string): Promise<{ dataUri: string; w: number; h: number }> {
+  const img = await loadImageEl(dataUri);
+  const w = img.naturalWidth, h = img.naturalHeight;
+  const canvas = document.createElement('canvas');
+  canvas.width = w; canvas.height = h;
+  const ctx = canvas.getContext('2d')!;
+  ctx.drawImage(img, 0, 0);
+  const { data } = ctx.getImageData(0, 0, w, h);
+  const idx = (x: number, y: number) => (y * w + x) * 4;
+  const distTo = (i: number, r: number, g: number, b: number) => Math.hypot(data[i] - r, data[i + 1] - g, data[i + 2] - b);
+  const bg = idx(0, 0);
+  const bgR = data[bg], bgG = data[bg + 1], bgB = data[bg + 2];
+  const BG_TOL = 30, WHITE_TOL = 35;
+
+  // A pixel belongs to the module if it's opaque, inside the phone
+  // silhouette (not background), and not the case body itself (not white).
+  // The alpha check matters when the body was already cut to transparent
+  // (alpha 0) — those pixels' leftover RGB is meaningless and would
+  // otherwise look like "not white, not background" by color alone.
+  const isModulePixel = (i: number) => data[i + 3] > 128 && distTo(i, bgR, bgG, bgB) > BG_TOL && distTo(i, 255, 255, 255) > WHITE_TOL;
+  const candidate = new Uint8Array(w * h);
+  for (let p = 0; p < w * h; p++) candidate[p] = isModulePixel(p * 4) ? 1 : 0;
+
+  // Flood-fill connected components, labeling every pixel with which
+  // component it belongs to — discarding any component that touches the
+  // image border (that's the phone's own outline stroke running edge-to-edge
+  // around the whole silhouette, not the module, which always sits inset).
+  // Labeling (rather than just re-testing isModulePixel per output pixel)
+  // matters: a stray, unconnected fleck of module-colored pixels near the
+  // crop's edge — e.g. anti-aliasing on the phone's own rounded corner —
+  // could independently pass isModulePixel without being part of the real
+  // module, making the output's own visible footprint bigger than the
+  // "best" component's bbox on just that side and throwing off centering
+  // once a cutout margin was drawn around it (confirmed on a real S26 Ultra
+  // upload, 2026-10-19). Restricting the output to only the labeled "best"
+  // component's own pixels guarantees the stored crop's visible content is
+  // exactly what the bbox (and therefore the padding/centering) was based on.
+  const label = new Int32Array(w * h).fill(-1);
+  let best: { id: number; minX: number; minY: number; maxX: number; maxY: number; size: number } | null = null;
+  const stack: number[] = [];
+  let nextId = 0;
+  for (let start = 0; start < w * h; start++) {
+    if (!candidate[start] || label[start] !== -1) continue;
+    const id = nextId++;
+    label[start] = id;
+    stack.push(start);
+    let minX = start % w, maxX = minX, minY = (start / w) | 0, maxY = minY, size = 0, touchesBorder = false;
+    while (stack.length) {
+      const p = stack.pop()!;
+      const x = p % w, y = (p / w) | 0;
+      size++;
+      if (x === 0 || y === 0 || x === w - 1 || y === h - 1) touchesBorder = true;
+      if (x < minX) minX = x; if (x > maxX) maxX = x;
+      if (y < minY) minY = y; if (y > maxY) maxY = y;
+      const neighbors: [number, number][] = [[x - 1, y], [x + 1, y], [x, y - 1], [x, y + 1]];
+      for (const [nx, ny] of neighbors) {
+        if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+        const np = ny * w + nx;
+        if (label[np] !== -1 || !candidate[np]) continue;
+        label[np] = id;
+        stack.push(np);
+      }
+    }
+    if (touchesBorder) continue;
+    if (!best || size > best.size) best = { id, minX, minY, maxX, maxY, size };
+  }
+  if (!best) throw new Error("Couldn't find the camera module in that photo — it needs a plain background and a white case body, with the module itself clearly darker/different.");
+
+  const pad = Math.max(4, Math.round(Math.min(w, h) * 0.01));
+  // The SAME padding on all four sides — if the module sits close to the
+  // source photo's own edge on just one side, shrink padding uniformly on
+  // every side instead of silently dropping it on only that side (which
+  // left the stored crop's content flush against one edge and padded on
+  // the opposite, making the module look off-center once a cutout margin
+  // was added around it — confirmed on a real S26 Ultra upload 2026-10-19).
+  const safePad = Math.max(0, Math.min(pad, best.minX, best.minY, w - 1 - best.maxX, h - 1 - best.maxY));
+  const cropX = best.minX - safePad, cropY = best.minY - safePad;
+  const cropW = (best.maxX - best.minX + 1) + safePad * 2;
+  const cropH = (best.maxY - best.minY + 1) + safePad * 2;
+
+  const outCanvas = document.createElement('canvas');
+  outCanvas.width = cropW; outCanvas.height = cropH;
+  const outCtx = outCanvas.getContext('2d')!;
+  const outData = outCtx.createImageData(cropW, cropH);
+  for (let y = 0; y < cropH; y++) {
+    for (let x = 0; x < cropW; x++) {
+      const srcX = x + cropX, srcY = y + cropY;
+      const srcI = idx(srcX, srcY);
+      const dstI = (y * cropW + x) * 4;
+      outData.data[dstI] = data[srcI];
+      outData.data[dstI + 1] = data[srcI + 1];
+      outData.data[dstI + 2] = data[srcI + 2];
+      outData.data[dstI + 3] = label[srcY * w + srcX] === best.id ? data[srcI + 3] : 0;
+    }
+  }
+  outCtx.putImageData(outData, 0, 0);
+  return { dataUri: outCanvas.toDataURL('image/png'), w: cropW, h: cropH };
+}
+
 type PhotoState = { url: string | null; w: number | null; h: number | null };
 type PhotoFit = { xMm: number; yMm: number; scale: number }; // scale = mm per photo-px
 
 export function CameraDesigner({ role, myUserId }: { role: 'admin' | 'staff'; myUserId: string }) {
+  const cameraCutoutFilterId = useId();
   const [modelId, setModelId] = useState(DEFAULT_MODEL_ID);
   const model = MODELS[modelId] ?? MODELS[DEFAULT_MODEL_ID];
   const [draftSpec, setDraftSpec] = useState<CameraSpec>(() => mockCameraSpecs[DEFAULT_MODEL_ID] ?? blankSpec(model));
@@ -138,12 +276,58 @@ export function CameraDesigner({ role, myUserId }: { role: 'admin' | 'staff'; my
     setPhotoFit({ xMm: 0, yMm: 0, scale: model.widthMm / width });
     if (supabase) {
       try {
-        const url = await uploadReferencePhoto(dataUri);
+        const url = await uploadDesignPhoto(dataUri, 'camera-refs');
         setPhoto((p) => ({ ...p, url }));
       } catch (err) {
         window.alert(`Photo upload failed: ${err instanceof Error ? err.message : err}`);
       }
     }
+  };
+
+  const cameraImageInputRef = useRef<HTMLInputElement>(null);
+  const onCameraImageFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    const { dataUri } = await loadImageFile(file, 'image/png');
+    let cropped: { dataUri: string; w: number; h: number };
+    try {
+      cropped = await extractCameraModule(dataUri);
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : String(err));
+      return;
+    }
+    const scaleMmPerPx = (model.widthMm * 0.4) / cropped.w;
+    setDraftSpec((s) => ({
+      ...s,
+      image: { url: cropped.dataUri, wPx: cropped.w, hPx: cropped.h, xMm: model.widthMm * 0.06, yMm: model.widthMm * 0.06, scaleMmPerPx },
+    }));
+    if (supabase) {
+      try {
+        const url = await uploadDesignPhoto(cropped.dataUri, 'camera-modules');
+        setDraftSpec((s) => (s.image ? { ...s, image: { ...s.image, url } } : s));
+      } catch (err) {
+        window.alert(`Camera photo upload failed: ${err instanceof Error ? err.message : err}`);
+      }
+    }
+  };
+  const removeCameraImage = () => setDraftSpec((s) => ({ ...s, image: undefined }));
+
+  const cameraImageDrag = useRef<{ startXmm: number; startYmm: number; startClientX: number; startClientY: number } | null>(null);
+  const onCameraImagePointerDown = (e: ReactPointerEvent) => {
+    e.stopPropagation();
+    if (!draftSpec.image) return;
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    cameraImageDrag.current = { startXmm: draftSpec.image.xMm, startYmm: draftSpec.image.yMm, startClientX: e.clientX, startClientY: e.clientY };
+  };
+  const onCameraImagePointerMove = (e: ReactPointerEvent) => {
+    if (!cameraImageDrag.current) return;
+    const { startXmm, startYmm, startClientX, startClientY } = cameraImageDrag.current;
+    setDraftSpec((s) => (s.image ? { ...s, image: { ...s.image, xMm: startXmm + (e.clientX - startClientX) / pxPerMm, yMm: startYmm + (e.clientY - startClientY) / pxPerMm } } : s));
+  };
+  const onCameraImagePointerUp = (e: ReactPointerEvent) => {
+    cameraImageDrag.current = null;
+    (e.target as HTMLElement).releasePointerCapture(e.pointerId);
   };
 
   const photoDrag = useRef<{ startXmm: number; startYmm: number; startClientX: number; startClientY: number } | null>(null);
@@ -249,7 +433,7 @@ export function CameraDesigner({ role, myUserId }: { role: 'admin' | 'staff'; my
         </div>
       </div>
 
-      <div className="editor-body">
+      <div className="editor-body" style={{ flexWrap: 'nowrap', overflowX: 'auto' }}>
         <div className="editor-stage-wrap">
           <div className="editor-model-label">{model.brand} {model.name} — {model.widthMm}×{model.heightMm}mm</div>
 
@@ -270,73 +454,126 @@ export function CameraDesigner({ role, myUserId }: { role: 'admin' | 'staff'; my
               />
             )}
 
-            <CameraShapeHandle
-              geom={{ kind: 'rect', ...draftSpec.island }}
-              pxPerMm={pxPerMm}
-              color="#FF3E9A"
-              label="island"
-              selected={selectedKey === 'island'}
-              onSelect={() => setSelectedKey('island')}
-              onChange={updateIsland}
-            />
-            {draftSpec.island.extra?.map((ex, i) => (
-              <CameraShapeHandle
-                key={`extra-${i}`}
-                geom={{ kind: 'circle', xMm: ex.xMm, yMm: ex.yMm, diameterMm: ex.diameterMm }}
-                pxPerMm={pxPerMm}
-                color="#FF7EC0"
-                label="extra"
-                selected={selectedKey === `extra-${i}`}
-                onSelect={() => setSelectedKey(`extra-${i}`)}
-                onChange={(patch) => updateExtra(i, patch)}
-              />
-            ))}
-            {draftSpec.island.notch && (
-              <CameraShapeHandle
-                geom={{ kind: 'rect', ...draftSpec.island.notch }}
-                pxPerMm={pxPerMm}
-                color="#8B4FD1"
-                label="notch (cut out)"
-                selected={selectedKey === 'notch'}
-                onSelect={() => setSelectedKey('notch')}
-                onChange={updateNotch}
-              />
+            {draftSpec.image ? (
+              <>
+                {/* The die-cut cutout — the same photo, dilated outward by a
+                    uniform pixel radius (same technique as CasePreview's
+                    CameraImageModule — see its comment for why a plain
+                    scaled-up copy looks lopsided for an irregular module
+                    shape) — so you can see the actual hole shape and its
+                    manufacturing tolerance while still dragging/zooming the
+                    photo into place, not just in the small Live preview.
+                    Non-interactive so dragging still targets the photo. */}
+                <svg width={0} height={0} style={{ position: 'absolute' }} aria-hidden="true">
+                  <filter id={cameraCutoutFilterId} x="-200%" y="-200%" width="500%" height="500%">
+                    <feMorphology operator="dilate" radius={(draftSpec.image.marginMm ?? 1.2) * pxPerMm} />
+                  </filter>
+                </svg>
+                <img
+                  src={draftSpec.image.url}
+                  alt=""
+                  draggable={false}
+                  style={{
+                    position: 'absolute',
+                    left: draftSpec.image.xMm * pxPerMm,
+                    top: draftSpec.image.yMm * pxPerMm,
+                    width: draftSpec.image.wPx * draftSpec.image.scaleMmPerPx * pxPerMm,
+                    height: draftSpec.image.hPx * draftSpec.image.scaleMmPerPx * pxPerMm,
+                    filter: `url(#${cameraCutoutFilterId}) brightness(0)`,
+                    pointerEvents: 'none',
+                  }}
+                />
+                <img
+                  src={draftSpec.image.url}
+                  alt=""
+                  draggable={false}
+                  onPointerDown={onCameraImagePointerDown}
+                  onPointerMove={onCameraImagePointerMove}
+                  onPointerUp={onCameraImagePointerUp}
+                  style={{
+                    position: 'absolute',
+                    left: draftSpec.image.xMm * pxPerMm,
+                    top: draftSpec.image.yMm * pxPerMm,
+                    width: draftSpec.image.wPx * draftSpec.image.scaleMmPerPx * pxPerMm,
+                    height: draftSpec.image.hPx * draftSpec.image.scaleMmPerPx * pxPerMm,
+                    cursor: 'grab',
+                    userSelect: 'none',
+                    outline: '2px solid #3EC8A0',
+                    outlineOffset: 2,
+                  }}
+                />
+              </>
+            ) : (
+              <>
+                <CameraShapeHandle
+                  geom={{ kind: 'rect', ...draftSpec.island }}
+                  pxPerMm={pxPerMm}
+                  color="#FF3E9A"
+                  label="island"
+                  selected={selectedKey === 'island'}
+                  onSelect={() => setSelectedKey('island')}
+                  onChange={updateIsland}
+                />
+                {draftSpec.island.extra?.map((ex, i) => (
+                  <CameraShapeHandle
+                    key={`extra-${i}`}
+                    geom={{ kind: 'circle', xMm: ex.xMm, yMm: ex.yMm, diameterMm: ex.diameterMm }}
+                    pxPerMm={pxPerMm}
+                    color="#FF7EC0"
+                    label="extra"
+                    selected={selectedKey === `extra-${i}`}
+                    onSelect={() => setSelectedKey(`extra-${i}`)}
+                    onChange={(patch) => updateExtra(i, patch)}
+                  />
+                ))}
+                {draftSpec.island.notch && (
+                  <CameraShapeHandle
+                    geom={{ kind: 'rect', ...draftSpec.island.notch }}
+                    pxPerMm={pxPerMm}
+                    color="#8B4FD1"
+                    label="notch (cut out)"
+                    selected={selectedKey === 'notch'}
+                    onSelect={() => setSelectedKey('notch')}
+                    onChange={updateNotch}
+                  />
+                )}
+                {draftSpec.lenses.map((l, i) => (
+                  <CameraShapeHandle
+                    key={`lens-${i}`}
+                    geom={{ kind: 'circle', xMm: l.xMm, yMm: l.yMm, diameterMm: l.diameterMm }}
+                    pxPerMm={pxPerMm}
+                    color="#3EC8A0"
+                    label={l.label}
+                    selected={selectedKey === `lens-${i}`}
+                    onSelect={() => setSelectedKey(`lens-${i}`)}
+                    onChange={(patch) => updateLens(i, patch)}
+                  />
+                ))}
+                {draftSpec.flash && (
+                  <CameraShapeHandle
+                    geom={{ kind: 'circle', ...draftSpec.flash }}
+                    pxPerMm={pxPerMm}
+                    color="#FFD400"
+                    label="flash"
+                    selected={selectedKey === 'flash'}
+                    onSelect={() => setSelectedKey('flash')}
+                    onChange={updateFlash}
+                  />
+                )}
+                {draftSpec.sensors.map((s, i) => (
+                  <CameraShapeHandle
+                    key={`sensor-${i}`}
+                    geom={{ kind: 'circle', xMm: s.xMm, yMm: s.yMm, diameterMm: s.diameterMm }}
+                    pxPerMm={pxPerMm}
+                    color="#7B61FF"
+                    label={s.type}
+                    selected={selectedKey === `sensor-${i}`}
+                    onSelect={() => setSelectedKey(`sensor-${i}`)}
+                    onChange={(patch) => updateSensor(i, patch)}
+                  />
+                ))}
+              </>
             )}
-            {draftSpec.lenses.map((l, i) => (
-              <CameraShapeHandle
-                key={`lens-${i}`}
-                geom={{ kind: 'circle', xMm: l.xMm, yMm: l.yMm, diameterMm: l.diameterMm }}
-                pxPerMm={pxPerMm}
-                color="#3EC8A0"
-                label={l.label}
-                selected={selectedKey === `lens-${i}`}
-                onSelect={() => setSelectedKey(`lens-${i}`)}
-                onChange={(patch) => updateLens(i, patch)}
-              />
-            ))}
-            {draftSpec.flash && (
-              <CameraShapeHandle
-                geom={{ kind: 'circle', ...draftSpec.flash }}
-                pxPerMm={pxPerMm}
-                color="#FFD400"
-                label="flash"
-                selected={selectedKey === 'flash'}
-                onSelect={() => setSelectedKey('flash')}
-                onChange={updateFlash}
-              />
-            )}
-            {draftSpec.sensors.map((s, i) => (
-              <CameraShapeHandle
-                key={`sensor-${i}`}
-                geom={{ kind: 'circle', xMm: s.xMm, yMm: s.yMm, diameterMm: s.diameterMm }}
-                pxPerMm={pxPerMm}
-                color="#7B61FF"
-                label={s.type}
-                selected={selectedKey === `sensor-${i}`}
-                onSelect={() => setSelectedKey(`sensor-${i}`)}
-                onChange={(patch) => updateSensor(i, patch)}
-              />
-            ))}
           </div>
 
           <div className="editor-actions-row">
@@ -354,12 +591,52 @@ export function CameraDesigner({ role, myUserId }: { role: 'admin' | 'staff'; my
                 />
               </label>
             )}
+            <button className="btn soft" onClick={() => cameraImageInputRef.current?.click()}>{draftSpec.image ? '🔁 Replace camera photo' : '📷 Upload camera photo'}</button>
+            {draftSpec.image && (
+              <>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--ink-faint)' }}>
+                  Zoom
+                  <input
+                    type="range"
+                    min={(model.widthMm / draftSpec.image.wPx) * 0.3}
+                    max={(model.widthMm / draftSpec.image.wPx) * 3}
+                    step={((model.widthMm / draftSpec.image.wPx) * 2.7) / 200 || 0.001}
+                    value={draftSpec.image.scaleMmPerPx}
+                    onChange={(e) => setDraftSpec((s) => (s.image ? { ...s, image: { ...s.image, scaleMmPerPx: Number(e.target.value) } } : s))}
+                  />
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--ink-faint)' }}>
+                  Cutout margin
+                  <input
+                    type="range"
+                    min={0}
+                    max={12}
+                    step={0.1}
+                    value={draftSpec.image.marginMm ?? 1.2}
+                    onChange={(e) => setDraftSpec((s) => (s.image ? { ...s, image: { ...s.image, marginMm: Number(e.target.value) } } : s))}
+                  />
+                  {(draftSpec.image.marginMm ?? 1.2).toFixed(1)}mm
+                </label>
+                <button className="btn ghost" onClick={removeCameraImage}>✕ Remove camera photo</button>
+              </>
+            )}
           </div>
           <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={onPhotoFile} />
-          <p className="page-sub" style={{ maxWidth: RENDER_WIDTH_PX }}>Drag the photo to line it up with the dashed phone outline, then drag the colored shapes onto the real lenses/flash/sensors. Drag a shape's corner dot to resize it.</p>
+          <input ref={cameraImageInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={onCameraImageFile} />
+          <p className="page-sub" style={{ maxWidth: RENDER_WIDTH_PX }}>
+            {draftSpec.image
+              ? "Drag the green-outlined camera photo to line it up with the dashed phone outline, and use Zoom to size it."
+              : 'Drag the photo to line it up with the dashed phone outline, then drag the colored shapes onto the real lenses/flash/sensors. Drag a shape\'s corner dot to resize it.'}
+          </p>
         </div>
 
-        <div className="editor-tool-panel" style={{ flex: '1 1 420px', minWidth: 320, maxWidth: 520 }}>
+        <div style={{ flex: '0 1 200px', minWidth: 180 }}>
+          <h3 style={{ margin: '0 0 8px' }}>Live preview</h3>
+          <p className="page-sub" style={{ margin: '0 0 10px' }}>Exactly how this renders on a real case.</p>
+          <CasePreview background={null} layers={[]} modelId={modelId} width={160} cameraSpecOverride={draftSpec} />
+        </div>
+
+        <div className="editor-tool-panel" style={{ flex: '1 1 320px', minWidth: 260, maxWidth: 420 }}>
           <div className="editor-tabbar" style={{ marginBottom: 12 }}>
             {BRAND_TABS.map((b) => (
               <button
@@ -379,51 +656,55 @@ export function CameraDesigner({ role, myUserId }: { role: 'admin' | 'staff'; my
             ))}
           </div>
 
-          <h3 style={{ margin: '0 0 8px' }}>Island</h3>
-          <select className="status" style={{ marginBottom: 12, width: '100%' }} value={draftSpec.island.shape} onChange={(e) => setIslandShape(e.target.value as IslandShape)}>
-            <option value="rounded-square">Rounded square (iPhone-style)</option>
-            <option value="rounded-rect">Rounded rectangle</option>
-            <option value="pill">Pill (vertical strip)</option>
-            <option value="compound">Compound (extra circle island)</option>
-            <option value="irregular">Irregular (notched)</option>
-            <option value="none">None (lenses only, no plate)</option>
-          </select>
-          {draftSpec.island.shape === 'compound' && (
+          {draftSpec.image ? (
+            <p className="page-sub">
+              Using a real camera photo for this model. Remove it (above the stage) to go back to hand-drawn island/lens/flash/sensor shapes.
+            </p>
+          ) : (
             <>
-              {(draftSpec.island.extra ?? []).map((_, i) => (
-                <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'center' }}>
-                  <span className="page-sub" style={{ margin: 0, flex: 1 }}>Extra circle {i + 1}</span>
-                  <button className="tpl-delete" onClick={() => removeExtra(i)} title="Remove extra circle">🗑️</button>
+              <h3 style={{ margin: '0 0 8px' }}>Island</h3>
+              <select className="status" style={{ marginBottom: 12, width: '100%' }} value={draftSpec.island.shape} onChange={(e) => setIslandShape(e.target.value as IslandShape)}>
+                <option value="rounded-square">Rounded square (iPhone-style)</option>
+                <option value="rounded-rect">Rounded rectangle</option>
+                <option value="pill">Pill (vertical strip)</option>
+                <option value="compound">Compound (extra circle island)</option>
+                <option value="irregular">Irregular (notched)</option>
+                <option value="none">None (lenses only, no plate)</option>
+              </select>
+              {draftSpec.island.shape === 'compound' && (
+                <>
+                  {(draftSpec.island.extra ?? []).map((_, i) => (
+                    <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'center' }}>
+                      <span className="page-sub" style={{ margin: 0, flex: 1 }}>Extra circle {i + 1}</span>
+                      <button className="tpl-delete" onClick={() => removeExtra(i)} title="Remove extra circle">🗑️</button>
+                    </div>
+                  ))}
+                  <button className="btn soft" style={{ marginBottom: 12 }} onClick={addExtra}>+ Extra circle island</button>
+                </>
+              )}
+
+              <h3 style={{ margin: '0 0 8px' }}>Lenses ({draftSpec.lenses.length})</h3>
+              {draftSpec.lenses.map((l, i) => (
+                <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+                  <input className="bg-field" style={{ flex: 1 }} value={l.label} onChange={(e) => renameLens(i, e.target.value)} />
+                  <button className="tpl-delete" onClick={() => removeLens(i)} title="Remove lens">🗑️</button>
                 </div>
               ))}
-              <button className="btn soft" style={{ marginBottom: 12 }} onClick={addExtra}>+ Extra circle island</button>
+              <button className="btn soft" style={{ marginBottom: 20 }} onClick={addLens}>+ Add lens</button>
+
+              <h3 style={{ margin: '0 0 8px' }}>Flash</h3>
+              <button className="btn soft" style={{ marginBottom: 20 }} onClick={toggleFlash}>{draftSpec.flash ? '✕ Remove flash' : '+ Add flash'}</button>
+
+              <h3 style={{ margin: '0 0 8px' }}>Sensors ({draftSpec.sensors.length})</h3>
+              {draftSpec.sensors.map((s, i) => (
+                <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+                  <input className="bg-field" style={{ flex: 1 }} value={s.type} onChange={(e) => renameSensor(i, e.target.value)} placeholder="e.g. lidar, mic" />
+                  <button className="tpl-delete" onClick={() => removeSensor(i)} title="Remove sensor">🗑️</button>
+                </div>
+              ))}
+              <button className="btn soft" style={{ marginBottom: 20 }} onClick={addSensor}>+ Add sensor</button>
             </>
           )}
-
-          <h3 style={{ margin: '0 0 8px' }}>Lenses ({draftSpec.lenses.length})</h3>
-          {draftSpec.lenses.map((l, i) => (
-            <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-              <input className="bg-field" style={{ flex: 1 }} value={l.label} onChange={(e) => renameLens(i, e.target.value)} />
-              <button className="tpl-delete" onClick={() => removeLens(i)} title="Remove lens">🗑️</button>
-            </div>
-          ))}
-          <button className="btn soft" style={{ marginBottom: 20 }} onClick={addLens}>+ Add lens</button>
-
-          <h3 style={{ margin: '0 0 8px' }}>Flash</h3>
-          <button className="btn soft" style={{ marginBottom: 20 }} onClick={toggleFlash}>{draftSpec.flash ? '✕ Remove flash' : '+ Add flash'}</button>
-
-          <h3 style={{ margin: '0 0 8px' }}>Sensors ({draftSpec.sensors.length})</h3>
-          {draftSpec.sensors.map((s, i) => (
-            <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-              <input className="bg-field" style={{ flex: 1 }} value={s.type} onChange={(e) => renameSensor(i, e.target.value)} placeholder="e.g. lidar, mic" />
-              <button className="tpl-delete" onClick={() => removeSensor(i)} title="Remove sensor">🗑️</button>
-            </div>
-          ))}
-          <button className="btn soft" style={{ marginBottom: 20 }} onClick={addSensor}>+ Add sensor</button>
-
-          <h3 style={{ margin: '0 0 8px' }}>Live preview</h3>
-          <p className="page-sub" style={{ margin: '0 0 10px' }}>Exactly how this renders on a real case.</p>
-          <CasePreview background={null} layers={[]} modelId={modelId} width={160} cameraSpecOverride={draftSpec} />
         </div>
       </div>
     </>
