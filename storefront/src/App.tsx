@@ -461,7 +461,12 @@ function Editor({ design, onBack, session }: { design: ReturnType<typeof useDesi
     if (tool !== 'photo' && tool !== 'frames') return;
     bgModelPreloaded.current = true;
     import('@imgly/background-removal').then(({ preload }) => {
-      void preload({ model: 'isnet_quint8' });
+      // device: 'gpu' asks the library to run inference on WebGPU instead of
+      // wasm/CPU when the browser supports it (falls back to CPU otherwise)
+      // — several times faster for this segmentation model. Must match the
+      // removeBackground() call's config below key-for-key so it reuses this
+      // same preloaded/cached session instead of spinning up a second one.
+      void preload({ model: 'isnet_quint8', device: 'gpu' });
     });
   }, [tool]);
 
@@ -514,6 +519,7 @@ function Editor({ design, onBack, session }: { design: ReturnType<typeof useDesi
       const { removeBackground: imglyRemoveBackground } = await import('@imgly/background-removal');
       const resultBlob = await imglyRemoveBackground(sourceUri, {
         model: 'isnet_quint8',
+        device: 'gpu',
         progress: (_key: string, current: number, total: number) => setBgProgress(total ? Math.round((current / total) * 100) : 0),
       });
       const resultUri = await blobToDataUri(resultBlob);
