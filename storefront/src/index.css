@@ -99,6 +99,11 @@ input, textarea, select { font-family: inherit; }
 .btn.soft { background: var(--blush); color: var(--pink-dark); box-shadow: none; }
 .btn.ghost { background: transparent; border: 2px solid var(--blush); color: var(--pink); box-shadow: none; }
 .btn:disabled { opacity: 0.5; }
+.btn.oauth { width: 100%; background: #fff; color: var(--ink); border: 1.5px solid var(--line); box-shadow: none; justify-content: flex-start; padding: 11px 16px; }
+.btn.oauth:active { background: var(--blush); }
+
+.auth-divider { display: flex; align-items: center; gap: 10px; margin: 16px 0; color: var(--ink-faint); font-size: 12px; font-weight: 700; }
+.auth-divider::before, .auth-divider::after { content: ''; flex: 1; height: 1px; background: var(--line); }
 
 /* Editor */
 .editor-topbar { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px 6px; }

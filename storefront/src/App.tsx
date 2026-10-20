@@ -1194,11 +1194,33 @@ function PlaceOrderModal({
 
 /* ───────────────────────── Login ───────────────────────── */
 
+// Minimal official marks, just enough to be recognizable on a login button —
+// not full brand lockups.
+function GoogleMark() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
+      <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3c-1.6 4.7-6.1 8-11.3 8-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 8 3l5.7-5.7C34.6 6 29.6 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.7-.4-3.5z" />
+      <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.6 15.9 18.9 13 24 13c3.1 0 5.8 1.1 8 3l5.7-5.7C34.6 6 29.6 4 24 4 16.3 4 9.7 8.3 6.3 14.7z" />
+      <path fill="#4CAF50" d="M24 44c5.5 0 10.4-1.9 14.2-5.1l-6.6-5.6c-2 1.5-4.6 2.6-7.6 2.6-5.2 0-9.6-3.3-11.2-7.9l-6.5 5C9.6 39.6 16.2 44 24 44z" />
+      <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.2 4.2-4.1 5.6l6.6 5.6C41.9 36 44 30.6 44 24c0-1.3-.1-2.7-.4-3.5z" />
+    </svg>
+  );
+}
+function FacebookMark() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
+      <circle cx="24" cy="24" r="24" fill="#1877F2" />
+      <path fill="#fff" d="M30.2 30.8l1-6.5h-6.2v-4.2c0-1.8.7-3.4 3.6-3.4h3V10.8c-1-.1-3-.3-5.4-.3-5.4 0-9.1 3.1-9.1 8.9v4.9h-6v6.5h6V40h6.9V30.8z" />
+    </svg>
+  );
+}
+
 function LoginModal({ onClose }: { onClose: () => void }) {
   const [email, setEmail] = useState('');
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState('');
+  const [showEmail, setShowEmail] = useState(false);
 
   const valid = email.includes('@');
 
@@ -1215,6 +1237,20 @@ function LoginModal({ onClose }: { onClose: () => void }) {
     else setSent(true);
   };
 
+  // Full-page redirect to the provider — no "sending" state needed here
+  // since the browser navigates away immediately on success. An error only
+  // surfaces synchronously when the provider isn't enabled/configured yet
+  // in the Supabase project.
+  const loginWithProvider = async (provider: 'google' | 'facebook') => {
+    if (!supabase) return;
+    setError('');
+    const { error: err } = await supabase.auth.signInWithOAuth({
+      provider,
+      options: { redirectTo: window.location.origin },
+    });
+    if (err) setError(err.message);
+  };
+
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal-card" onClick={(e) => e.stopPropagation()}>
@@ -1228,17 +1264,30 @@ function LoginModal({ onClose }: { onClose: () => void }) {
         ) : (
           <>
             <h3 className="modal-title">Log in ✨</h3>
-            <p className="modal-sub">No password needed — we'll email you a link to sign in.</p>
+            <p className="modal-sub">Save your designs and come back to them anytime.</p>
             {error && (
               <div className="notice" style={{ margin: '0 0 10px', color: 'var(--danger)' }}>
                 ⚠️ {error}
               </div>
             )}
-            <label>Email</label>
-            <input className="f" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@email.com" />
-            <button className="btn" style={{ width: '100%', marginTop: 14, opacity: valid ? 1 : 0.5 }} disabled={!valid || sending} onClick={submit}>
-              {sending ? 'Sending…' : '✉️ Send login link'}
-            </button>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <button className="btn oauth" onClick={() => loginWithProvider('google')}><GoogleMark /> Continue with Google</button>
+              <button className="btn oauth" onClick={() => loginWithProvider('facebook')}><FacebookMark /> Continue with Facebook</button>
+            </div>
+            {showEmail ? (
+              <>
+                <div className="auth-divider">or</div>
+                <label>Email</label>
+                <input className="f" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@email.com" />
+                <button className="btn" style={{ width: '100%', marginTop: 14, opacity: valid ? 1 : 0.5 }} disabled={!valid || sending} onClick={submit}>
+                  {sending ? 'Sending…' : '✉️ Send login link'}
+                </button>
+              </>
+            ) : (
+              <button className="action-btn" style={{ width: '100%', marginTop: 14 }} onClick={() => setShowEmail(true)}>
+                Use email instead
+              </button>
+            )}
           </>
         )}
       </div>
