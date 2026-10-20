@@ -262,7 +262,18 @@ export function LayerView({ layer, scale }: { layer: Layer; scale: number }) {
   if (layer.kind === 'image') {
     const w = layer.width * scale, h = layer.height * scale, r = (layer.radius ?? 0) * scale;
     return layer.uri ? (
-      <img src={layer.uri} alt="" style={{ ...base, width: w, height: h, borderRadius: r, objectFit: 'cover' }} />
+      <div style={{ ...base, width: w, height: h, borderRadius: r, overflow: 'hidden' }}>
+        <img
+          src={layer.uri}
+          alt=""
+          style={{
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            transform: `translate(${layer.photoTx ?? 0}px, ${layer.photoTy ?? 0}px) scale(${layer.photoScale ?? 1})`,
+          }}
+        />
+      </div>
     ) : (
       <div style={{ ...base, width: w, height: h, borderRadius: r, background: '#f0e6ea', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <PhotoPlaceholderIcon size={Math.min(w, h) * 0.32} />

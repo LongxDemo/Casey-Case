@@ -73,9 +73,13 @@ export function EditableLayer({
     e.stopPropagation();
     onSelect(layer.id);
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
-    const useAdjust = adjustHole && layer.kind === 'frame';
-    const startTx = useAdjust ? (adjustHole === 2 ? (layer.photo2Tx ?? 0) : layer.photoTx) : layer.tx;
-    const startTy = useAdjust ? (adjustHole === 2 ? (layer.photo2Ty ?? 0) : layer.photoTy) : layer.ty;
+    const useAdjust = adjustHole && (layer.kind === 'frame' || layer.kind === 'image');
+    const startTx = useAdjust
+      ? layer.kind === 'frame' ? (adjustHole === 2 ? (layer.photo2Tx ?? 0) : layer.photoTx) : (layer.photoTx ?? 0)
+      : layer.tx;
+    const startTy = useAdjust
+      ? layer.kind === 'frame' ? (adjustHole === 2 ? (layer.photo2Ty ?? 0) : layer.photoTy) : (layer.photoTy ?? 0)
+      : layer.ty;
     dragState.current = { startTx, startTy, startX: e.clientX, startY: e.clientY, moved: false };
   };
   const onBodyPointerMove = (e: React.PointerEvent) => {
@@ -84,12 +88,12 @@ export function EditableLayer({
     const dx = e.clientX - startX;
     const dy = e.clientY - startY;
     if (Math.abs(dx) > TAP_THRESHOLD_PX || Math.abs(dy) > TAP_THRESHOLD_PX) dragState.current.moved = true;
-    if (adjustHole && layer.kind === 'frame') {
+    if (adjustHole && (layer.kind === 'frame' || layer.kind === 'image')) {
       // photoTx/Ty live inside a box that's already scaled by both the
       // canvas scale and this layer's own scale, so undo both to keep the
       // drag tracking the pointer 1:1.
       const divisor = scale * layer.scale;
-      if (adjustHole === 2) onChange(layer.id, { photo2Tx: startTx + dx / divisor, photo2Ty: startTy + dy / divisor });
+      if (layer.kind === 'frame' && adjustHole === 2) onChange(layer.id, { photo2Tx: startTx + dx / divisor, photo2Ty: startTy + dy / divisor });
       else onChange(layer.id, { photoTx: startTx + dx / divisor, photoTy: startTy + dy / divisor });
     } else if (!layer.locked) {
       // Locked (admin-template) layers don't move as a whole — only the
@@ -180,7 +184,18 @@ export function EditableLayer({
           ))}
         {layer.kind === 'image' && (
           layer.uri ? (
-            <img src={layer.uri} alt="" style={{ width: dw, height: dh, borderRadius: (layer.radius ?? 0) * scale, objectFit: 'cover' }} />
+            <div style={{ width: dw, height: dh, borderRadius: (layer.radius ?? 0) * scale, overflow: 'hidden', position: 'relative' }}>
+              <img
+                src={layer.uri}
+                alt=""
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                  transform: `translate(${layer.photoTx ?? 0}px, ${layer.photoTy ?? 0}px) scale(${layer.photoScale ?? 1})`,
+                }}
+              />
+            </div>
           ) : (
             <div style={{ width: dw, height: dh, borderRadius: (layer.radius ?? 0) * scale, background: '#f0e6ea', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <PhotoPlaceholderIcon size={dw * 0.28} />

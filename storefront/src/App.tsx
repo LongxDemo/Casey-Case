@@ -418,7 +418,7 @@ function Editor({ design, onBack, session }: { design: ReturnType<typeof useDesi
   const {
     design: d, selectedId, adjustFrameId, adjustHole, supabaseId, setSupabaseId, select, setBackground, setModel,
     enterAdjustMode, exitAdjustMode,
-    addSticker, addText, addImage, fitImageToCase, addFrame, setFramePhoto, fitFramePhoto, fitFrame, setImageUri, updateLayer, removeLayer, duplicateLayer, bringToFront,
+    addSticker, addText, addImage, fitImageToCase, addFrame, setFramePhoto, fitFramePhoto, fitFrame, setImageUri, fitImagePhoto, updateLayer, removeLayer, duplicateLayer, bringToFront,
   } = design;
   const model = MODELS[d.modelId] ?? phoneModels[0];
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -523,9 +523,9 @@ function Editor({ design, onBack, session }: { design: ReturnType<typeof useDesi
         progress: (_key: string, current: number, total: number) => setBgProgress(total ? Math.round((current / total) * 100) : 0),
       });
       const resultUri = await blobToDataUri(resultBlob);
-      // updateLayer (not setFramePhoto) for frames — swaps just the photo in
+      // updateLayer (not setImageUri/setFramePhoto) — swaps just the photo in
       // place, keeping whatever crop/zoom position the customer already set.
-      if (layer.kind === 'image') setImageUri(id, resultUri);
+      if (layer.kind === 'image') updateLayer(id, { uri: resultUri });
       else if (hole === 2) updateLayer(id, { photo2Uri: resultUri });
       else updateLayer(id, { photoUri: resultUri });
     } catch (err) {
@@ -683,24 +683,28 @@ function Editor({ design, onBack, session }: { design: ReturnType<typeof useDesi
         {d.layers.length === 0 && <p className="panel-hint" style={{ position: 'absolute', bottom: 8 }}>Add stickers, text or a photo 👇</p>}
       </div>
 
-      {selected && selected.kind === 'frame' && adjustFrameId === selected.id && (
+      {selected && (selected.kind === 'frame' || selected.kind === 'image') && adjustFrameId === selected.id && (
         <div className="actions-row">
           <button
             className="action-btn"
-            onClick={() => (adjustHole === 2
-              ? updateLayer(selected.id, { photo2Scale: Math.max(0.5, (selected.photo2Scale ?? 1) / 1.15) })
-              : updateLayer(selected.id, { photoScale: Math.max(0.5, selected.photoScale / 1.15) }))}
+            onClick={() => (selected.kind === 'frame'
+              ? (adjustHole === 2
+                  ? updateLayer(selected.id, { photo2Scale: Math.max(0.5, (selected.photo2Scale ?? 1) / 1.15) })
+                  : updateLayer(selected.id, { photoScale: Math.max(0.5, selected.photoScale / 1.15) }))
+              : updateLayer(selected.id, { photoScale: Math.max(0.5, (selected.photoScale ?? 1) / 1.15) }))}
           >➖ Zoom out</button>
           <button
             className="action-btn"
-            onClick={() => (adjustHole === 2
-              ? updateLayer(selected.id, { photo2Scale: Math.min(4, (selected.photo2Scale ?? 1) * 1.15) })
-              : updateLayer(selected.id, { photoScale: Math.min(4, selected.photoScale * 1.15) }))}
+            onClick={() => (selected.kind === 'frame'
+              ? (adjustHole === 2
+                  ? updateLayer(selected.id, { photo2Scale: Math.min(4, (selected.photo2Scale ?? 1) * 1.15) })
+                  : updateLayer(selected.id, { photoScale: Math.min(4, selected.photoScale * 1.15) }))
+              : updateLayer(selected.id, { photoScale: Math.min(4, (selected.photoScale ?? 1) * 1.15) }))}
           >➕ Zoom in</button>
           <button className="action-btn" onClick={exitAdjustMode}>✓ Done</button>
         </div>
       )}
-      {selected && !(selected.kind === 'frame' && adjustFrameId === selected.id) && (
+      {selected && !((selected.kind === 'frame' || selected.kind === 'image') && adjustFrameId === selected.id) && (
         <div className="actions-row">
           {selected.kind === 'text' && <button className="action-btn" onClick={openTextEditor}>✏️ Edit</button>}
           {selected.kind === 'frame' && !selected.locked && (
@@ -750,6 +754,13 @@ function Editor({ design, onBack, session }: { design: ReturnType<typeof useDesi
           {selected.kind === 'image' && (
             <>
               {!selected.locked && <button className="action-btn" onClick={() => fitImageToCase(selected.id)}>🖼️ Fit to Case</button>}
+              {selected.uri && (
+                <>
+                  <button className="action-btn" onClick={() => enterAdjustMode(selected.id)}>🎯 Adjust Face</button>
+                  <button className="action-btn" onClick={() => fitImagePhoto(selected.id)}>🖼️ Fit</button>
+                  <button className="action-btn" onClick={() => pickImage(selected.id)}>🔁 Replace Photo</button>
+                </>
+              )}
               <button className="action-btn" disabled={bgRemoving === selected.id} onClick={() => handleRemoveBackground(selected.id)}>
                 {bgRemoving === selected.id ? `⏳ ${bgProgress}%` : '✂️ Remove BG'}
               </button>

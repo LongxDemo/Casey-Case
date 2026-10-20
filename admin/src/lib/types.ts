@@ -4,8 +4,10 @@ export type CaseBackground = { id: string; name: string; colors: string[]; patte
 
 export type Layer =
   // uri is nullable — mirrors storefront's ImageLayer, for empty "tap to
-  // add your photo" full-case-wrap placeholders.
-  | { id: string; kind: 'image'; uri: string | null; width: number; height: number; radius?: number; tx: number; ty: number; scale: number; rotation: number; z: number }
+  // add your photo" full-case-wrap placeholders. photoTx/Ty/Scale mirror the
+  // customer's in-circle pan/zoom of the photo (storefront-only to author,
+  // but need to exist here so a saved design's layers render accurately).
+  | { id: string; kind: 'image'; uri: string | null; width: number; height: number; radius?: number; photoTx?: number; photoTy?: number; photoScale?: number; tx: number; ty: number; scale: number; rotation: number; z: number }
   | { id: string; kind: 'sticker'; emoji?: string; uri?: string; size: number; tx: number; ty: number; scale: number; rotation: number; z: number }
   | { id: string; kind: 'text'; text: string; color: string; fontSize: number; fontWeight: string; align: 'left' | 'center' | 'right'; tx: number; ty: number; scale: number; rotation: number; z: number }
   // Fruit/character frame with a face-hole; geometry looked up by frameId

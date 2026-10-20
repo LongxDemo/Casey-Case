@@ -13,7 +13,13 @@ export type LayerBase = { id: string; tx: number; ty: number; scale: number; rot
 // uri is nullable so a template can ship an empty "tap to add your photo"
 // placeholder (same pattern as FrameLayer.photoUri) — used for full-case
 // photo-wrap templates where the customer's own photo covers the whole case.
-export type ImageLayer = LayerBase & { kind: 'image'; uri: string | null; width: number; height: number; radius?: number };
+// photoTx/Ty/Scale let the customer pan/zoom the photo inside this layer's own
+// fixed box (same idea as FrameLayer's photo offset) — optional/defaulted to
+// 0/0/1 since older saved designs and admin templates predate these fields.
+export type ImageLayer = LayerBase & {
+  kind: 'image'; uri: string | null; width: number; height: number; radius?: number;
+  photoTx?: number; photoTy?: number; photoScale?: number;
+};
 export type StickerLayer = LayerBase & { kind: 'sticker'; emoji?: string; uri?: string; size: number };
 export type TextLayer = LayerBase & {
   kind: 'text'; text: string; color: string; fontSize: number;

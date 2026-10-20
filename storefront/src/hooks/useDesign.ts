@@ -85,7 +85,7 @@ export function useDesign(initialModelId: string) {
     const maxW = 160;
     const ratio = height / width;
     const w = Math.min(width, maxW);
-    const layer: Layer = { id: uid(), kind: 'image', uri, width: w, height: w * ratio, radius: 12, tx: 0, ty: 0, scale: 1, rotation: 0, z: nextZ(design.layers) };
+    const layer: Layer = { id: uid(), kind: 'image', uri, width: w, height: w * ratio, radius: 12, photoTx: 0, photoTy: 0, photoScale: 1, tx: 0, ty: 0, scale: 1, rotation: 0, z: nextZ(design.layers) };
     setDesign((d) => ({ ...d, layers: [...d.layers, layer] }));
     setSelectedId(layer.id);
   };
@@ -140,12 +140,25 @@ export function useDesign(initialModelId: string) {
         ? { ...l, tx: 0, ty: 0, scale: FRAME_DEFS[l.frameId]?.defaultScale ?? 1, rotation: 0 }
         : l)),
     }));
-  // Fills an empty "tap to add your photo" image-layer placeholder (full-
-  // case-wrap templates) — mirrors setFramePhoto's role for frame layers.
+  // Fills an empty "tap to add your photo" image-layer placeholder, or swaps
+  // in a whole new photo via the "Replace Photo" button — mirrors
+  // setFramePhoto's role (and its reset-on-replace: a new photo starts
+  // centered/unzoomed rather than inheriting the old one's crop). Background
+  // removal re-uses the SAME uri with new transparency, not a new photo, so
+  // it goes through updateLayer directly instead of this, keeping whatever
+  // pan/zoom the customer already set.
   const setImageUri = (id: string, uri: string) =>
     setDesign((d) => ({
       ...d,
-      layers: d.layers.map((l) => (l.id === id && l.kind === 'image' ? { ...l, uri } : l)),
+      layers: d.layers.map((l) => (l.id === id && l.kind === 'image' ? { ...l, uri, photoTx: 0, photoTy: 0, photoScale: 1 } : l)),
+    }));
+  // Re-centers an image layer's photo back to the default centered cover-fit
+  // (photoTx/Ty 0, photoScale 1) — an escape hatch for when dragging/zooming
+  // in Adjust mode has left it looking off, mirroring fitFramePhoto.
+  const fitImagePhoto = (id: string) =>
+    setDesign((d) => ({
+      ...d,
+      layers: d.layers.map((l) => (l.id === id && l.kind === 'image' ? { ...l, photoTx: 0, photoTy: 0, photoScale: 1 } : l)),
     }));
   const updateLayer = (id: string, patch: Partial<Layer>) =>
     setDesign((d) => ({ ...d, layers: d.layers.map((l) => (l.id === id ? ({ ...l, ...patch } as Layer) : l)) }));
@@ -167,6 +180,6 @@ export function useDesign(initialModelId: string) {
   return {
     design, selectedId, adjustFrameId, adjustHole, supabaseId, setSupabaseId, startBlank, startFromTemplate, loadDesign, setModel, setBackground, select,
     enterAdjustMode, exitAdjustMode,
-    addSticker, addText, addImage, fitImageToCase, addFrame, setFramePhoto, fitFramePhoto, fitFrame, setImageUri, updateLayer, removeLayer, duplicateLayer, bringToFront,
+    addSticker, addText, addImage, fitImageToCase, addFrame, setFramePhoto, fitFramePhoto, fitFrame, setImageUri, fitImagePhoto, updateLayer, removeLayer, duplicateLayer, bringToFront,
   };
 }
