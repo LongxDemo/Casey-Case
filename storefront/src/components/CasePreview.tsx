@@ -228,6 +228,19 @@ function CameraImageModule({ image, pxPerMm }: { image: NonNullable<CameraSpec['
   );
 }
 
+// The classic "tap to add an image" glyph (mountain + sun) — reads as "add
+// a photo here" at a glance, unlike the camera emoji it replaced, which
+// people mistook for "this is the phone's camera lens". Matches the icon
+// used in EditableLayer.tsx's live editor canvas.
+function PhotoPlaceholderIcon({ size }: { size: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24">
+      <circle cx="7.5" cy="7.5" r="1.8" fill="#b9a6ad" />
+      <path d="M3 18l5-6 4 4.5 3-4 6 5.5H3z" fill="#b9a6ad" />
+    </svg>
+  );
+}
+
 export function LayerView({ layer, scale }: { layer: Layer; scale: number }) {
   const transform = `translate(-50%, -50%) translate(${layer.tx * scale}px, ${layer.ty * scale}px) scale(${layer.scale}) rotate(${layer.rotation}rad)`;
   const base: React.CSSProperties = {
@@ -251,8 +264,8 @@ export function LayerView({ layer, scale }: { layer: Layer; scale: number }) {
     return layer.uri ? (
       <img src={layer.uri} alt="" style={{ ...base, width: w, height: h, borderRadius: r, objectFit: 'cover' }} />
     ) : (
-      <div style={{ ...base, width: w, height: h, borderRadius: r, background: '#f0e6ea', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: Math.min(w, h) * 0.16 }}>
-        📷
+      <div style={{ ...base, width: w, height: h, borderRadius: r, background: '#f0e6ea', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <PhotoPlaceholderIcon size={Math.min(w, h) * 0.32} />
       </div>
     );
   }

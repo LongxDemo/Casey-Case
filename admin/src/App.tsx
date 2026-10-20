@@ -141,8 +141,8 @@ function Login() {
 
 /* ───────────────────────── Overview ───────────────────────── */
 function Overview() {
-  const [designs, setDesigns] = useState<DesignRow[]>(mockDesigns);
-  const [orders, setOrders] = useState<OrderRow[]>(mockOrders);
+  const [designs, setDesigns] = useState<DesignRow[]>(hasSupabase ? [] : mockDesigns);
+  const [orders, setOrders] = useState<OrderRow[]>(hasSupabase ? [] : mockOrders);
 
   useEffect(() => {
     if (!supabase) return;
@@ -185,7 +185,7 @@ function Stat({ n, l }: { n: string; l: string }) {
 function FrontPageEditor() {
   const [fp, setFp] = useState<FrontPage>(mockFrontPage);
   const [saved, setSaved] = useState(false);
-  const [templates, setTemplates] = useState<TemplateRow[]>(mockTemplates);
+  const [templates, setTemplates] = useState<TemplateRow[]>(hasSupabase ? [] : mockTemplates);
 
   useEffect(() => {
     if (!supabase) return;
@@ -240,7 +240,7 @@ function FrontPageEditor() {
 const DESIGN_STATUSES = ['new', 'contacted', 'done'];
 
 function Designs() {
-  const [designs, setDesigns] = useState<DesignRow[]>(mockDesigns);
+  const [designs, setDesigns] = useState<DesignRow[]>(hasSupabase ? [] : mockDesigns);
   useEffect(() => {
     if (!supabase) return;
     supabase.from('designs').select('*').neq('status', 'draft').order('created_at', { ascending: false }).then(({ data }) => data && setDesigns(data as DesignRow[]));
@@ -342,7 +342,7 @@ async function promoteDesign(d: DesignRow) {
 
 /* ───────────────────────── Gallery ───────────────────────── */
 function Gallery({ role, onNew, onEdit }: { role: Role; onNew: () => void; onEdit: (t: TemplateRow) => void }) {
-  const [templates, setTemplates] = useState<TemplateRow[]>(mockTemplates);
+  const [templates, setTemplates] = useState<TemplateRow[]>(hasSupabase ? [] : mockTemplates);
   useEffect(() => {
     if (!supabase) return;
     supabase.from('templates').select('*').order('sort', { ascending: true }).then(({ data }) => data && setTemplates(data as TemplateRow[]));
@@ -446,7 +446,7 @@ function Gallery({ role, onNew, onEdit }: { role: Role; onNew: () => void; onEdi
 
 /* ───────────────────────── Backgrounds ───────────────────────── */
 function Backgrounds({ role }: { role: Role }) {
-  const [rows, setRows] = useState<BackgroundRow[]>(mockBackgrounds);
+  const [rows, setRows] = useState<BackgroundRow[]>(hasSupabase ? [] : mockBackgrounds);
   const [name, setName] = useState('');
   const [color1, setColor1] = useState('#FF7EC0');
   const [color2, setColor2] = useState('#FF3E9A');
@@ -542,7 +542,7 @@ function Backgrounds({ role }: { role: Role }) {
 
 /* ───────────────────────── Orders ───────────────────────── */
 function Orders({ role }: { role: Role }) {
-  const [orders, setOrders] = useState<OrderRow[]>(mockOrders);
+  const [orders, setOrders] = useState<OrderRow[]>(hasSupabase ? [] : mockOrders);
   useEffect(() => {
     if (!supabase) return;
     supabase.from('orders').select('*, order_items(id, model_id, quantity, price_cents, preview_url)').order('created_at', { ascending: false }).then(({ data }) => data && setOrders(data as OrderRow[]));
@@ -634,7 +634,7 @@ const genPassword = () => {
 };
 
 function Admins({ myUserId }: { myUserId: string }) {
-  const [rows, setRows] = useState<AdminRow[]>(mockAdmins);
+  const [rows, setRows] = useState<AdminRow[]>(hasSupabase ? [] : mockAdmins);
   const [showAdd, setShowAdd] = useState(false);
   const [newEmail, setNewEmail] = useState('');
   const [newPassword, setNewPassword] = useState(genPassword());

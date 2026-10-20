@@ -28,6 +28,18 @@ export function layerBaseSize(l: Layer): { w: number; h: number } {
 // requests a photo upload; a real drag still just moves the whole layer.
 const TAP_THRESHOLD_PX = 6;
 
+// The classic "tap to add an image" glyph (mountain + sun) — reads as "add
+// a photo here" at a glance, unlike the camera emoji it replaced, which
+// people mistook for "this is the phone's camera lens".
+function PhotoPlaceholderIcon({ size }: { size: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24">
+      <circle cx="7.5" cy="7.5" r="1.8" fill="#b9a6ad" />
+      <path d="M3 18l5-6 4 4.5 3-4 6 5.5H3z" fill="#b9a6ad" />
+    </svg>
+  );
+}
+
 export function EditableLayer({
   layer,
   selected,
@@ -170,8 +182,8 @@ export function EditableLayer({
           layer.uri ? (
             <img src={layer.uri} alt="" style={{ width: dw, height: dh, borderRadius: (layer.radius ?? 0) * scale, objectFit: 'cover' }} />
           ) : (
-            <div style={{ width: dw, height: dh, borderRadius: (layer.radius ?? 0) * scale, background: '#f0e6ea', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: dw * 0.14 }}>
-              📷
+            <div style={{ width: dw, height: dh, borderRadius: (layer.radius ?? 0) * scale, background: '#f0e6ea', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <PhotoPlaceholderIcon size={dw * 0.28} />
             </div>
           )
         )}
@@ -210,8 +222,8 @@ export function EditableLayer({
                     }}
                   />
                 ) : (
-                  <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: dw * 0.14 }}>
-                    📷
+                  <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <PhotoPlaceholderIcon size={dw * 0.28} />
                   </div>
                 )}
               </div>
@@ -242,8 +254,8 @@ export function EditableLayer({
                       }}
                     />
                   ) : (
-                    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: dw * 0.14 }}>
-                      📷
+                    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <PhotoPlaceholderIcon size={dw * 0.28} />
                     </div>
                   )}
                 </div>

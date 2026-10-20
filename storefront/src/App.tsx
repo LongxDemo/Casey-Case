@@ -8,7 +8,7 @@ import { backgrounds, BASE_PRICE_CENTS, stickerPacks, templates as staticTemplat
 import { CANVAS_BASE, MODELS, phoneModels, sizeForModel } from './lib/types';
 import type { FrontPage, Layer, Template, TextLayer } from './lib/types';
 import { FRAME_DEFS, frameOrder } from './lib/frames';
-import { supabase } from './lib/supabase';
+import { hasSupabase, supabase } from './lib/supabase';
 import type { Session } from '@supabase/supabase-js';
 
 type View = 'home' | 'pickModel' | 'editor';
@@ -179,11 +179,13 @@ type SavedDesignRow = { id: string; model_id: string; background: import('./lib/
 // The 4 brands our print vendor actually supports (autovendpro, device 668 /
 // shop 332) — matches their own brand-picker screen exactly, so every tab
 // here has real models behind it instead of a generic "Android" catch-all.
-const BRAND_TABS: { brand: string; label: string }[] = [
+// Xiaomi and OPPO are hidden entirely for now (2026-10-20) — no case stock
+// for those brands at all yet. Samsung stock is on the way, so its tab stays
+// visible but disabled ("Coming soon") instead of disappearing. Flip these
+// back to normal tabs once stock arrives.
+const BRAND_TABS: { brand: string; label: string; comingSoon?: boolean }[] = [
   { brand: 'iPhone', label: 'iPhone' },
-  { brand: 'Samsung', label: 'Samsung' },
-  { brand: 'Xiaomi', label: 'Xiaomi' },
-  { brand: 'OPPO', label: 'OPPO' },
+  { brand: 'Samsung', label: 'Samsung', comingSoon: true },
 ];
 
 const DEFAULT_FRONT_PAGE: FrontPage = {
@@ -205,7 +207,7 @@ function Home({
   onOpenSaved: (row: SavedDesignRow) => void;
   session: Session | null;
 }) {
-  const [galleryTemplates, setGalleryTemplates] = useState<Template[]>(staticTemplates);
+  const [galleryTemplates, setGalleryTemplates] = useState<Template[]>(hasSupabase ? [] : staticTemplates);
   const [fp, setFp] = useState<FrontPage>(DEFAULT_FRONT_PAGE);
   const [myDesigns, setMyDesigns] = useState<SavedDesignRow[]>([]);
   const [loginOpen, setLoginOpen] = useState(false);
@@ -350,7 +352,7 @@ function Home({
         <h2 className="explainer-title">How It Works ✨</h2>
         <div className="explainer-list">
           {[
-            { icon: '📱', title: 'Choose your phone', desc: 'Pick from iPhone, Samsung, Xiaomi, or OPPO models for a perfect fit.' },
+            { icon: '📱', title: 'Choose your phone', desc: 'Pick from iPhone models for a perfect fit (Samsung coming soon).' },
             { icon: '🖼️', title: 'Design your case', desc: 'Add photos, stickers, text, or start from a template.' },
             { icon: '🛒', title: 'Place your order', desc: 'Share your design and contact info — no payment needed yet.' },
             { icon: '📦', title: "We'll reach out", desc: "Casey confirms the details and gets your case made." },
@@ -386,7 +388,15 @@ function PickModel({ onBack, onPick }: { onBack: () => void; onPick: (modelId: s
         <div className="section-header"><h2 className="section-title">Pick your phone 📱</h2></div>
         <div className="seg-row">
           {BRAND_TABS.map((b) => (
-            <button key={b.brand} className={`seg ${brand === b.brand ? 'active' : ''}`} onClick={() => setBrand(b.brand)}>{b.label}</button>
+            <button
+              key={b.brand}
+              className={`seg ${brand === b.brand ? 'active' : ''} ${b.comingSoon ? 'disabled' : ''}`}
+              disabled={b.comingSoon}
+              onClick={() => !b.comingSoon && setBrand(b.brand)}
+            >
+              {b.label}
+              {b.comingSoon && <span className="seg-badge">Soon</span>}
+            </button>
           ))}
         </div>
         <div className="chip-row">
@@ -900,7 +910,15 @@ function ModelPicker({ modelId, onSetModel }: { modelId: string; onSetModel: (id
     <>
       <div className="seg-row">
         {BRAND_TABS.map((b) => (
-          <button key={b.brand} className={`seg ${brand === b.brand ? 'active' : ''}`} onClick={() => chooseBrand(b.brand)}>{b.label}</button>
+          <button
+            key={b.brand}
+            className={`seg ${brand === b.brand ? 'active' : ''} ${b.comingSoon ? 'disabled' : ''}`}
+            disabled={b.comingSoon}
+            onClick={() => !b.comingSoon && chooseBrand(b.brand)}
+          >
+            {b.label}
+            {b.comingSoon && <span className="seg-badge">Soon</span>}
+          </button>
         ))}
       </div>
       <div className="hscroll">
