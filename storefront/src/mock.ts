@@ -37,6 +37,10 @@ export const backgrounds: CaseBackground[] = [
   { id: 'bunnypink', name: 'Bunny Pink', colors: ['#FFE3F0', '#FFB8DA'] },
   { id: 'puppytan', name: 'Puppy Tan', colors: ['#FFECD2', '#FFD199'] },
   { id: 'kittylilac', name: 'Kitty Lilac', colors: ['#EDE1FB', '#C9A6F5'] },
+  // Appended rather than inserted earlier in the list — every template above
+  // references its background by numeric `backgrounds[n]` index, so adding
+  // an entry anywhere but the end would silently reassign their colors.
+  { id: 'solidblack', name: 'Black', colors: ['#000000', '#000000'] },
 ];
 
 export const stickerPacks: StickerPack[] = [

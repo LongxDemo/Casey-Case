@@ -6,7 +6,7 @@ import { LocationPicker } from './components/LocationPicker';
 import { useDesign } from './hooks/useDesign';
 import { backgrounds, BASE_PRICE_CENTS, stickerPacks, templates as staticTemplates } from './mock';
 import { CANVAS_BASE, MODELS, phoneModels, sizeForModel } from './lib/types';
-import type { FrontPage, Layer, Template, TextLayer } from './lib/types';
+import type { Design, FrontPage, Layer, Template, TextLayer } from './lib/types';
 import { FRAME_DEFS, frameOrder } from './lib/frames';
 import { hasSupabase, supabase } from './lib/supabase';
 import type { Session } from '@supabase/supabase-js';
@@ -99,17 +99,78 @@ function blobToDataUri(blob: Blob): Promise<string> {
   });
 }
 
+// Lets a guest (no login) pick up their in-progress design after closing the
+// tab/browser — login via Google/Facebook is still testing-only (see the
+// commit that added it), so most customers have no account-backed way to
+// save a draft yet. localStorage has no expiry of its own, so a cutoff is
+// enforced on READ: a draft older than this is treated as abandoned and
+// silently dropped rather than resurrected looking stale/confusing.
+const GUEST_DESIGN_KEY = 'cc_guest_design';
+const GUEST_DESIGN_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
+
+function saveGuestDesign(design: Design) {
+  try {
+    localStorage.setItem(GUEST_DESIGN_KEY, JSON.stringify({ savedAt: Date.now(), design }));
+  } catch {
+    // Storage full/unavailable (e.g. private browsing) — losing the local
+    // backup isn't worth surfacing to the customer.
+  }
+}
+function loadGuestDesign(): Design | null {
+  try {
+    const raw = localStorage.getItem(GUEST_DESIGN_KEY);
+    if (!raw) return null;
+    const { savedAt, design } = JSON.parse(raw) as { savedAt: number; design: Design };
+    if (Date.now() - savedAt > GUEST_DESIGN_MAX_AGE_MS) {
+      localStorage.removeItem(GUEST_DESIGN_KEY);
+      return null;
+    }
+    return design;
+  } catch {
+    return null;
+  }
+}
+function clearGuestDesign() {
+  try {
+    localStorage.removeItem(GUEST_DESIGN_KEY);
+  } catch {
+    // Nothing to do if storage itself is unavailable.
+  }
+}
+
 export default function App() {
   const [view, setView] = useState<View>('home');
   const design = useDesign(phoneModels[0].id);
   const [session, setSession] = useState<Session | null>(null);
+  // Starts true when there's no login to wait on at all, so a guest's draft
+  // resumes immediately rather than waiting on a session check that will
+  // never resolve to anything.
+  const [sessionChecked, setSessionChecked] = useState(!hasSupabase);
 
   useEffect(() => {
     if (!supabase) return;
-    supabase.auth.getSession().then(({ data }) => setSession(data.session));
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session);
+      setSessionChecked(true);
+    });
     const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => setSession(s));
     return () => sub.subscription.unsubscribe();
   }, []);
+
+  // Silently resume a guest's last in-progress design once we know they're
+  // NOT logged in — waiting on sessionChecked avoids flashing an old guest
+  // draft open for a split second before an actual logged-in session loads.
+  // Logged-in customers already get their drafts back via "My Designs" on
+  // Home, keyed to their account rather than this device.
+  useEffect(() => {
+    if (!sessionChecked || session) return;
+    const saved = loadGuestDesign();
+    if (saved && saved.layers.length > 0) {
+      design.restoreDesign(saved);
+      setView('editor');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionChecked, session]);
 
   const openBlank = () => setView('pickModel');
   const confirmModel = (modelId: string) => {
@@ -156,8 +217,30 @@ export default function App() {
     }
   };
 
+  // Mirrors autosaveDraft, but for guests: no account to attach a Supabase
+  // row to, so the draft goes to localStorage instead — the ONLY path that
+  // writes GUEST_DESIGN_KEY, so it can't go stale relative to the Supabase
+  // draft a logged-in customer gets.
+  const persistGuestDraft = () => {
+    if (session) return;
+    if (design.design.layers.length === 0) {
+      clearGuestDesign();
+      return;
+    }
+    saveGuestDesign(design.design);
+  };
+
   const leaveEditor = () => {
     void autosaveDraft();
+    persistGuestDraft();
+    setView('home');
+  };
+
+  // Used instead of leaveEditor once an order has actually been placed — the
+  // design is done, not "in progress", so the guest draft it would otherwise
+  // get re-saved as (by leaveEditor's persistGuestDraft) is cleared instead.
+  const handleOrderSent = () => {
+    clearGuestDesign();
     setView('home');
   };
 
@@ -167,7 +250,7 @@ export default function App() {
         <Home onBlank={openBlank} onTemplate={openTemplate} onOpenSaved={openSaved} session={session} />
       )}
       {view === 'pickModel' && <PickModel onBack={() => setView('home')} onPick={confirmModel} />}
-      {view === 'editor' && <Editor design={design} onBack={leaveEditor} session={session} />}
+      {view === 'editor' && <Editor design={design} onBack={leaveEditor} onSent={handleOrderSent} session={session} />}
     </div>
   );
 }
@@ -414,7 +497,7 @@ function PickModel({ onBack, onPick }: { onBack: () => void; onPick: (modelId: s
 type Tool = 'photo' | 'text' | 'stickers' | 'frames' | 'color' | 'model';
 const TEXT_COLORS = ['#FFFFFF', '#141018', '#FF3E9A', '#D6006E', '#FFD400', '#7B61FF', '#3EC8A0', '#FF5470'];
 
-function Editor({ design, onBack, session }: { design: ReturnType<typeof useDesign>; onBack: () => void; session: Session | null }) {
+function Editor({ design, onBack, onSent, session }: { design: ReturnType<typeof useDesign>; onBack: () => void; onSent: () => void; session: Session | null }) {
   const {
     design: d, selectedId, adjustFrameId, adjustHole, supabaseId, setSupabaseId, select, setBackground, setModel,
     enterAdjustMode, exitAdjustMode,
@@ -894,7 +977,7 @@ function Editor({ design, onBack, session }: { design: ReturnType<typeof useDesi
           supabaseId={supabaseId}
           onSaved={setSupabaseId}
           onClose={() => setOrderModal(false)}
-          onSent={onBack}
+          onSent={onSent}
         />
       )}
     </>

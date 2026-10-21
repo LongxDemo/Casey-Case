@@ -7,8 +7,10 @@ import { FRAME_DEFS } from '../lib/frames';
 let counter = 0;
 const uid = (p = 'l') => `${p}_${Date.now().toString(36)}_${(counter++).toString(36)}`;
 
+const BLANK_DESIGN_BACKGROUND = backgrounds.find((b) => b.id === 'solidblack') ?? backgrounds[0];
+
 function blankDesign(modelId: string): Design {
-  return { id: uid('d'), modelId, background: backgrounds[5], layers: [] };
+  return { id: uid('d'), modelId, background: BLANK_DESIGN_BACKGROUND, layers: [] };
 }
 
 function fromTemplate(t: Template, modelId: string): Design {
@@ -58,6 +60,16 @@ export function useDesign(initialModelId: string) {
     setSelectedId(null);
     setAdjustFrameId(null);
     setSupabaseId(row.id);
+  };
+  // Restores a design with no backing Supabase row (e.g. a guest's
+  // localStorage draft) — unlike loadDesign, supabaseId stays null so the
+  // next autosave inserts a fresh row instead of trying to update one that
+  // was never actually saved there.
+  const restoreDesign = (saved: Design) => {
+    setDesign({ ...saved, id: uid('d') });
+    setSelectedId(null);
+    setAdjustFrameId(null);
+    setSupabaseId(null);
   };
   const setModel = (modelId: string) => setDesign((d) => ({ ...d, modelId }));
   const setBackground = (bg: CaseBackground) => setDesign((d) => ({ ...d, background: bg }));
@@ -178,7 +190,7 @@ export function useDesign(initialModelId: string) {
     setDesign((d) => ({ ...d, layers: d.layers.map((l) => (l.id === id ? { ...l, z: nextZ(d.layers) } : l)) }));
 
   return {
-    design, selectedId, adjustFrameId, adjustHole, supabaseId, setSupabaseId, startBlank, startFromTemplate, loadDesign, setModel, setBackground, select,
+    design, selectedId, adjustFrameId, adjustHole, supabaseId, setSupabaseId, startBlank, startFromTemplate, loadDesign, restoreDesign, setModel, setBackground, select,
     enterAdjustMode, exitAdjustMode,
     addSticker, addText, addImage, fitImageToCase, addFrame, setFramePhoto, fitFramePhoto, fitFrame, setImageUri, fitImagePhoto, updateLayer, removeLayer, duplicateLayer, bringToFront,
   };
