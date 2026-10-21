@@ -418,6 +418,23 @@ function Home({
         </div>
       </div>
 
+      <div className="machine-spot">
+        <img className="machine-spot-img" src="/vending-machine.png" alt="Casey Case vending machine" />
+        <div className="machine-spot-card">
+          <div className="machine-spot-eyebrow">📍 Find the machine</div>
+          <div className="machine-spot-place">Aeon Mall Phnom Penh</div>
+          <div className="machine-spot-detail">1st Floor · near Champion</div>
+          <a
+            className="machine-spot-cta"
+            href="https://maps.app.goo.gl/tatbnBgRwyUGprSz6"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Get Directions →
+          </a>
+        </div>
+      </div>
+
       <div className="section">
         <div className="section-header"><h2 className="section-title">Sticker packs 🎀</h2></div>
         <div className="hscroll">
