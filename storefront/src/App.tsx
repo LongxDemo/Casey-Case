@@ -634,12 +634,14 @@ function Editor({ design, onBack, onSent, session }: { design: ReturnType<typeof
       // instead of saving anything, so there was no way to reach Photos
       // from here (confirmed by the user 2026-09-26: "download in not
       // store in the photo"). The Web Share API's native share sheet has
-      // a "Save Image" action that reliably saves to Photos on iOS, and
-      // Android/desktop browsers that support file sharing get the same
-      // native picker. Only fall back to the classic anchor-download
-      // trick where file sharing isn't supported at all (older desktop
-      // browsers).
-      if (navigator.canShare?.({ files: [file] })) {
+      // a "Save Image" action that reliably saves to Photos there. Gated
+      // to mobile only — desktop Chrome/Edge also pass canShare({files})
+      // but handle <a download> correctly, so routing them through Share
+      // too just pops the OS-level Share sheet instead of a normal
+      // Downloads-folder save (confirmed by the user 2026-10-21 on
+      // Windows: clicking Download opened Share, not a saved file).
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      if (isMobile && navigator.canShare?.({ files: [file] })) {
         await navigator.share({ files: [file], title: filename });
       } else {
         const url = URL.createObjectURL(blob);
