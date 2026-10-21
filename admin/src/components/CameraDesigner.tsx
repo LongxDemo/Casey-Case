@@ -9,6 +9,7 @@ import { MODELS } from '../lib/types';
 import type { PhoneModel } from '../lib/types';
 import type { CameraSpec, IslandShape } from './CameraSVG';
 import { mockCameraSpecs } from '../mock';
+import { legacyCamStyle, legacyRealPhotoRect, loadImageSize } from '../lib/legacyCamera';
 
 const DEFAULT_MODEL_ID = 'ip15pm';
 const RENDER_WIDTH_PX = 380;
@@ -222,6 +223,7 @@ export function CameraDesigner({ role, myUserId }: { role: 'admin' | 'staff'; my
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [importingLegacy, setImportingLegacy] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const refreshConfiguredIds = () => {
@@ -412,6 +414,42 @@ export function CameraDesigner({ role, myUserId }: { role: 'admin' | 'staff'; my
     setPhoto({ url: null, w: null, h: null });
   };
 
+  // Only non-null for models the live storefront already renders with a real
+  // photo via the pre-admin-tool hardcoded system (iPhones, mostly) — see
+  // lib/legacyCamera.ts. Pulls that exact photo + position into draftSpec as
+  // a starting point, WITHOUT saving — the admin reviews it in Live Preview
+  // and can nudge it before Save actually writes a camera_specs row.
+  const importableLegacyStyle = legacyCamStyle(model);
+
+  const importLegacyDesign = async () => {
+    if (!importableLegacyStyle) return;
+    setImportingLegacy(true);
+    try {
+      const rect = legacyRealPhotoRect(importableLegacyStyle, RENDER_WIDTH_PX, renderHeightPx);
+      // Loaded under the admin app's OWN /admin/ base (same file, admin has
+      // its own copy under public/camera/) just to read its native pixel
+      // size — the saved image.url below stays root-relative so the
+      // storefront (no /admin/ base) resolves it correctly.
+      const { w: wPx, h: hPx } = await loadImageSize(`${import.meta.env.BASE_URL}camera/${rect.file}`);
+      const targetWidthMm = rect.width / pxPerMm;
+      setDraftSpec((s) => ({
+        ...s,
+        image: {
+          url: `/camera/${rect.file}`,
+          wPx,
+          hPx,
+          xMm: rect.left / pxPerMm,
+          yMm: rect.top / pxPerMm,
+          scaleMmPerPx: targetWidthMm / wPx,
+        },
+      }));
+    } catch {
+      window.alert("Couldn't load the existing camera photo to import.");
+    } finally {
+      setImportingLegacy(false);
+    }
+  };
+
   const photoWidthPx = (photo.w ?? 0) * photoFit.scale * pxPerMm;
   const photoHeightPx = (photo.h ?? 0) * photoFit.scale * pxPerMm;
   const zoomMin = photo.w ? (model.widthMm / photo.w) * 0.3 : 0.05;
@@ -576,7 +614,16 @@ export function CameraDesigner({ role, myUserId }: { role: 'admin' | 'staff'; my
             )}
           </div>
 
-          <div className="editor-actions-row">
+          {importableLegacyStyle && !draftSpec.image && !configuredIds.has(modelId) && (
+            <div className="notice" style={{ margin: 0, maxWidth: RENDER_WIDTH_PX, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+              <span>This model already has a real photo live on the storefront (from the old system) — import it here to edit it.</span>
+              <button className="btn soft" onClick={importLegacyDesign} disabled={importingLegacy} style={{ flex: 'none' }}>
+                {importingLegacy ? 'Importing…' : '⬇ Import existing design'}
+              </button>
+            </div>
+          )}
+
+          <div className="editor-actions-row" style={{ maxWidth: RENDER_WIDTH_PX, flexWrap: 'wrap' }}>
             <button className="btn soft" onClick={() => fileInputRef.current?.click()}>{photo.url ? '🔁 Replace reference photo' : '📷 Upload reference photo'}</button>
             {photo.url && (
               <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--ink-faint)' }}>
