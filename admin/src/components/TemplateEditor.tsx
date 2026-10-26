@@ -158,9 +158,13 @@ export function TemplateEditor({ onClose, initial }: { onClose: () => void; init
   // A freeform "photo hole" the admin places, sizes and shapes themselves —
   // same underlying `image` layer as the full-case placeholder, just small
   // and round by default — so a custom hole shape never needs a hand-coded
-  // FrameDef. Drag to move, use the corner handle to resize (stays round:
-  // radius is always half the layer's own width, which the handle scales
-  // uniformly), and the Round/Square toggle switches the corner shape.
+  // FrameDef. Drag to move, use the corner handle to resize (the resize
+  // handle only scales width/height together, so it stays whatever shape it
+  // already is), and the Round/Oval/Square toggle switches between a square
+  // box (radius 0), a circle (radius > 0, width == height), and an ellipse
+  // (radius > 0, width != height) — the renderer treats any nonzero radius
+  // as "fully round" and uses a 50% CSS radius so it curves into a true
+  // ellipse rather than a stadium shape whenever the box isn't square.
   const PHOTO_HOLE_SIZE = 140;
   const addPhotoHole = () => {
     const layer: Layer = { id: uid(), kind: 'image', uri: null, width: PHOTO_HOLE_SIZE, height: PHOTO_HOLE_SIZE, radius: PHOTO_HOLE_SIZE / 2, tx: 0, ty: 0, scale: 1, rotation: 0, z: nextZ(layers) };
@@ -286,25 +290,8 @@ export function TemplateEditor({ onClose, initial }: { onClose: () => void; init
       <div className="editor-body">
         <div className="editor-stage-wrap">
           <div className="editor-model-label">{previewModel.brand} {previewModel.name}</div>
-          <CasePreview
-            background={background}
-            layers={layers}
-            modelId={previewModelId}
-            width={EDIT_WIDTH}
-            innerRef={canvasRef}
-            renderLayer={(l) => (
-              <EditableLayer
-                layer={l}
-                selected={l.id === selectedId}
-                scale={scale}
-                canvasRef={canvasRef}
-                onSelect={select}
-                onChange={updateLayer}
-                adjustHole={l.id === adjustFrameId ? adjustHole : null}
-                onRequestPhoto={pickPhoto}
-              />
-            )}
-          />
+          {/* Sits above the canvas (not below the tall case mockup) so it's
+              reachable without hunting down past the whole phone preview. */}
           {selected && selected.kind === 'frame' && adjustFrameId === selected.id ? (
             <div className="editor-actions-row">
               <button
@@ -313,6 +300,7 @@ export function TemplateEditor({ onClose, initial }: { onClose: () => void; init
                   ? updateLayer(selected.id, { photo2Scale: Math.max(0.5, (selected.photo2Scale ?? 1) / 1.15) })
                   : updateLayer(selected.id, { photoScale: Math.max(0.5, selected.photoScale / 1.15) }))}
               >➖ Zoom out</button>
+              <span className="editor-zoom-pct">{Math.round((adjustHole === 2 ? (selected.photo2Scale ?? 1) : selected.photoScale) * 100)}%</span>
               <button
                 className="btn soft"
                 onClick={() => (adjustHole === 2
@@ -326,7 +314,8 @@ export function TemplateEditor({ onClose, initial }: { onClose: () => void; init
               {selected.kind === 'image' && (
                 <>
                   <button className="btn soft" onClick={() => pickPhoto(selected.id)}>{selected.uri ? '🔁 Replace Photo' : '📷 Add Photo'}</button>
-                  <button className="btn soft" onClick={() => updateLayer(selected.id, { radius: selected.width / 2 })}>⚪ Round</button>
+                  <button className="btn soft" onClick={() => updateLayer(selected.id, { width: selected.height, radius: selected.height / 2 })}>⚪ Round</button>
+                  <button className="btn soft" onClick={() => updateLayer(selected.id, { width: selected.height * 1.3, radius: selected.height * 0.65 })}>⬭ Oval</button>
                   <button className="btn soft" onClick={() => updateLayer(selected.id, { radius: 0 })}>▭ Square</button>
                 </>
               )}
@@ -365,6 +354,25 @@ export function TemplateEditor({ onClose, initial }: { onClose: () => void; init
               <button className="btn soft" onClick={() => removeLayer(selected.id)}>🗑️ Delete</button>
             </div>
           )}
+          <CasePreview
+            background={background}
+            layers={layers}
+            modelId={previewModelId}
+            width={EDIT_WIDTH}
+            innerRef={canvasRef}
+            renderLayer={(l) => (
+              <EditableLayer
+                layer={l}
+                selected={l.id === selectedId}
+                scale={scale}
+                canvasRef={canvasRef}
+                onSelect={select}
+                onChange={updateLayer}
+                adjustHole={l.id === adjustFrameId ? adjustHole : null}
+                onRequestPhoto={pickPhoto}
+              />
+            )}
+          />
         </div>
 
         <div className="card editor-panel">

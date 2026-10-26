@@ -280,7 +280,7 @@ function LayerView({ layer, scale }: { layer: Layer; scale: number }) {
     );
   }
   if (layer.kind === 'image') {
-    const w = layer.width * scale, h = layer.height * scale, r = (layer.radius ?? 0) * scale;
+    const w = layer.width * scale, h = layer.height * scale, r = layer.radius ? '50%' : 0;
     return layer.uri ? (
       <div style={{ ...base, width: w, height: h, borderRadius: r, overflow: 'hidden' }}>
         <img

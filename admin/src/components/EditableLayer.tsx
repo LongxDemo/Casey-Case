@@ -176,9 +176,9 @@ export function EditableLayer({
           ))}
         {layer.kind === 'image' && (
           layer.uri ? (
-            <img src={layer.uri} alt="" style={{ width: dw, height: dh, borderRadius: (layer.radius ?? 0) * scale, objectFit: 'cover' }} />
+            <img src={layer.uri} alt="" style={{ width: dw, height: dh, borderRadius: layer.radius ? '50%' : 0, objectFit: 'cover' }} />
           ) : (
-            <div style={{ width: dw, height: dh, borderRadius: (layer.radius ?? 0) * scale, background: '#f0e6ea', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ width: dw, height: dh, borderRadius: layer.radius ? '50%' : 0, background: '#f0e6ea', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <PhotoPlaceholderIcon size={dw * 0.28} />
             </div>
           )

@@ -475,6 +475,56 @@ export function CameraDesigner({ role, myUserId }: { role: 'admin' | 'staff'; my
         <div className="editor-stage-wrap">
           <div className="editor-model-label">{model.brand} {model.name} — {model.widthMm}×{model.heightMm}mm</div>
 
+          {/* Sits above the canvas (not below the tall case mockup) so the
+              zoom sliders are reachable without hunting down past it. */}
+          <div className="editor-actions-row" style={{ maxWidth: RENDER_WIDTH_PX, flexWrap: 'wrap' }}>
+            <button className="btn soft" onClick={() => fileInputRef.current?.click()}>{photo.url ? '🔁 Replace reference photo' : '📷 Upload reference photo'}</button>
+            {photo.url && (
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--ink-faint)' }}>
+                Zoom
+                <input
+                  type="range"
+                  min={zoomMin}
+                  max={zoomMax}
+                  step={(zoomMax - zoomMin) / 200 || 0.001}
+                  value={photoFit.scale}
+                  onChange={(e) => setPhotoFit((f) => ({ ...f, scale: Number(e.target.value) }))}
+                />
+                <span className="editor-zoom-pct">{photo.w ? Math.round((photoFit.scale / (model.widthMm / photo.w)) * 100) : 100}%</span>
+              </label>
+            )}
+            <button className="btn soft" onClick={() => cameraImageInputRef.current?.click()}>{draftSpec.image ? '🔁 Replace camera photo' : '📷 Upload camera photo'}</button>
+            {draftSpec.image && (
+              <>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--ink-faint)' }}>
+                  Zoom
+                  <input
+                    type="range"
+                    min={(model.widthMm / draftSpec.image.wPx) * 0.3}
+                    max={(model.widthMm / draftSpec.image.wPx) * 3}
+                    step={((model.widthMm / draftSpec.image.wPx) * 2.7) / 200 || 0.001}
+                    value={draftSpec.image.scaleMmPerPx}
+                    onChange={(e) => setDraftSpec((s) => (s.image ? { ...s, image: { ...s.image, scaleMmPerPx: Number(e.target.value) } } : s))}
+                  />
+                  <span className="editor-zoom-pct">{Math.round((draftSpec.image.scaleMmPerPx / (model.widthMm / draftSpec.image.wPx)) * 100)}%</span>
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--ink-faint)' }}>
+                  Cutout margin
+                  <input
+                    type="range"
+                    min={0}
+                    max={12}
+                    step={0.1}
+                    value={draftSpec.image.marginMm ?? 1.2}
+                    onChange={(e) => setDraftSpec((s) => (s.image ? { ...s, image: { ...s.image, marginMm: Number(e.target.value) } } : s))}
+                  />
+                  {(draftSpec.image.marginMm ?? 1.2).toFixed(1)}mm
+                </label>
+                <button className="btn ghost" onClick={removeCameraImage}>✕ Remove camera photo</button>
+              </>
+            )}
+          </div>
+
           <div
             style={{ position: 'relative', width: RENDER_WIDTH_PX, height: renderHeightPx, background: '#242428', borderRadius: 18, overflow: 'hidden', touchAction: 'none' }}
             onPointerDown={() => setSelectedKey(null)}
@@ -623,51 +673,6 @@ export function CameraDesigner({ role, myUserId }: { role: 'admin' | 'staff'; my
             </div>
           )}
 
-          <div className="editor-actions-row" style={{ maxWidth: RENDER_WIDTH_PX, flexWrap: 'wrap' }}>
-            <button className="btn soft" onClick={() => fileInputRef.current?.click()}>{photo.url ? '🔁 Replace reference photo' : '📷 Upload reference photo'}</button>
-            {photo.url && (
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--ink-faint)' }}>
-                Zoom
-                <input
-                  type="range"
-                  min={zoomMin}
-                  max={zoomMax}
-                  step={(zoomMax - zoomMin) / 200 || 0.001}
-                  value={photoFit.scale}
-                  onChange={(e) => setPhotoFit((f) => ({ ...f, scale: Number(e.target.value) }))}
-                />
-              </label>
-            )}
-            <button className="btn soft" onClick={() => cameraImageInputRef.current?.click()}>{draftSpec.image ? '🔁 Replace camera photo' : '📷 Upload camera photo'}</button>
-            {draftSpec.image && (
-              <>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--ink-faint)' }}>
-                  Zoom
-                  <input
-                    type="range"
-                    min={(model.widthMm / draftSpec.image.wPx) * 0.3}
-                    max={(model.widthMm / draftSpec.image.wPx) * 3}
-                    step={((model.widthMm / draftSpec.image.wPx) * 2.7) / 200 || 0.001}
-                    value={draftSpec.image.scaleMmPerPx}
-                    onChange={(e) => setDraftSpec((s) => (s.image ? { ...s, image: { ...s.image, scaleMmPerPx: Number(e.target.value) } } : s))}
-                  />
-                </label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--ink-faint)' }}>
-                  Cutout margin
-                  <input
-                    type="range"
-                    min={0}
-                    max={12}
-                    step={0.1}
-                    value={draftSpec.image.marginMm ?? 1.2}
-                    onChange={(e) => setDraftSpec((s) => (s.image ? { ...s, image: { ...s.image, marginMm: Number(e.target.value) } } : s))}
-                  />
-                  {(draftSpec.image.marginMm ?? 1.2).toFixed(1)}mm
-                </label>
-                <button className="btn ghost" onClick={removeCameraImage}>✕ Remove camera photo</button>
-              </>
-            )}
-          </div>
           <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={onPhotoFile} />
           <input ref={cameraImageInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={onCameraImageFile} />
           <p className="page-sub" style={{ maxWidth: RENDER_WIDTH_PX }}>

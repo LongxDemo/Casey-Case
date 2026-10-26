@@ -117,7 +117,8 @@ select.status { padding: 6px 10px; border-radius: 999px; border: 1.5px solid var
 .editor-topbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 24px; }
 .editor-body { display: flex; gap: 28px; align-items: flex-start; flex-wrap: wrap; }
 .editor-stage-wrap { display: flex; flex-direction: column; align-items: center; gap: 16px; }
-.editor-actions-row { display: flex; gap: 8px; }
+.editor-actions-row { display: flex; align-items: center; gap: 8px; }
+.editor-zoom-pct { min-width: 42px; text-align: center; font-size: 13px; font-weight: 800; color: var(--ink-soft); }
 .editor-panel { flex: 1; min-width: 320px; max-width: 420px; }
 .editor-tabbar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 18px; }
 .editor-tool-panel textarea.f { resize: vertical; }
