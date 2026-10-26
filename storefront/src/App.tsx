@@ -263,12 +263,11 @@ type SavedDesignRow = { id: string; model_id: string; background: import('./lib/
 // shop 332) — matches their own brand-picker screen exactly, so every tab
 // here has real models behind it instead of a generic "Android" catch-all.
 // Xiaomi and OPPO are hidden entirely for now (2026-10-20) — no case stock
-// for those brands at all yet. Samsung stock is on the way, so its tab stays
-// visible but disabled ("Coming soon") instead of disappearing. Flip these
-// back to normal tabs once stock arrives.
+// for those brands at all yet. Samsung's case stock and camera module are
+// both in now (2026-10-26), so its tab is a normal enabled tab like iPhone's.
 const BRAND_TABS: { brand: string; label: string; comingSoon?: boolean }[] = [
   { brand: 'iPhone', label: 'iPhone' },
-  { brand: 'Samsung', label: 'Samsung', comingSoon: true },
+  { brand: 'Samsung', label: 'Samsung' },
 ];
 
 const DEFAULT_FRONT_PAGE: FrontPage = {
@@ -452,7 +451,7 @@ function Home({
         <h2 className="explainer-title">How It Works ✨</h2>
         <div className="explainer-list">
           {[
-            { icon: '📱', title: 'Choose your phone', desc: 'Pick from iPhone models for a perfect fit (Samsung coming soon).' },
+            { icon: '📱', title: 'Choose your phone', desc: 'Pick from iPhone or Samsung models for a perfect fit.' },
             { icon: '🖼️', title: 'Design your case', desc: 'Add photos, stickers, text, or start from a template.' },
             { icon: '🛒', title: 'Place your order', desc: 'Share your design and contact info — no payment needed yet.' },
             { icon: '📦', title: "We'll reach out", desc: "Casey confirms the details and gets your case made." },
