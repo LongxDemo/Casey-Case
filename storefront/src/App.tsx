@@ -593,6 +593,11 @@ function Editor({ design, onBack, onSent, session }: { design: ReturnType<typeof
         } else {
           setFramePhoto(target.id, uri, target.hole);
         }
+        // The default crop (centered, unzoomed) rarely frames a face well —
+        // drop straight into Adjust mode so the pan/zoom controls are right
+        // there instead of leaving what can look like a broken placement.
+        select(target.id);
+        enterAdjustMode(target.id, target.hole);
         return;
       }
       addImage(uri, width, height);
