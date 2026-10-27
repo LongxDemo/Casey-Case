@@ -38,6 +38,22 @@ export type FrameLayer = LayerBase & {
 };
 
 export type Layer = ImageLayer | StickerLayer | TextLayer | FrameLayer;
+
+// Clamps a photo's pan offset to how far `scale` (the zoom-in multiplier on
+// top of object-fit: cover's own full-coverage render) lets it move. cover
+// already clips its cropped content to exactly `containerW x containerH` —
+// that clip travels with the element, so panning at scale 1 has zero room
+// before it slides the box off an edge and exposes whatever's behind the
+// hole; the image's own aspect ratio plays no part in it. Only scale > 1
+// (zooming in) creates real pannable overflow, proportional to how far past 1.
+export function clampPhotoOffset(opts: {
+  tx: number; ty: number; scale: number; containerW: number; containerH: number;
+}): { tx: number; ty: number } {
+  const { tx, ty, scale, containerW, containerH } = opts;
+  const maxTx = Math.max(0, (containerW * scale - containerW) / 2);
+  const maxTy = Math.max(0, (containerH * scale - containerH) / 2);
+  return { tx: Math.max(-maxTx, Math.min(maxTx, tx)), ty: Math.max(-maxTy, Math.min(maxTy, ty)) };
+}
 export type DistributiveOmit<T, K extends keyof any> = T extends any ? Omit<T, K> : never;
 export type LayerSpec = DistributiveOmit<Layer, 'id'>;
 

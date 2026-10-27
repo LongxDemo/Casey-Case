@@ -1,7 +1,31 @@
 import React from 'react';
 import type { Layer } from '../lib/types';
+import { clampPhotoOffset } from '../lib/types';
 import { FRAME_DEFS } from '../lib/frames';
 import type { FrameDef } from '../lib/frames';
+
+// The box a layer's photo must fully cover, plus its current zoom —
+// everything clampPhotoOffset needs to keep pan/zoom from uncovering that
+// box. Shared between the drag handler here and the zoom in/out buttons in
+// App.tsx, which must re-clamp on every scale change (shrinking the zoom
+// shrinks how far the photo can be panned).
+export function photoContainerFor(layer: Layer, adjustHole: 1 | 2 | null, canvasScale: number):
+  { containerW: number; containerH: number; photoScale: number } | null {
+  if (layer.kind === 'image') {
+    return { containerW: layer.width * canvasScale, containerH: layer.height * canvasScale, photoScale: layer.photoScale ?? 1 };
+  }
+  if (layer.kind === 'frame') {
+    const def = FRAME_DEFS[layer.frameId];
+    if (!def) return null;
+    const hole = adjustHole === 2 && def.hole2 ? def.hole2 : def.hole;
+    const containerW = (hole.wPct / 100) * def.width * canvasScale;
+    const containerH = (hole.hPct / 100) * def.height * canvasScale;
+    return adjustHole === 2
+      ? { containerW, containerH, photoScale: layer.photo2Scale ?? 1 }
+      : { containerW, containerH, photoScale: layer.photoScale };
+  }
+  return null;
+}
 
 // Which hole (if any) a local point (in % of the frame's own box) falls
 // inside — used only to disambiguate hole1 vs hole2 on a two-hole frame;
@@ -93,8 +117,16 @@ export function EditableLayer({
       // canvas scale and this layer's own scale, so undo both to keep the
       // drag tracking the pointer 1:1.
       const divisor = scale * layer.scale;
-      if (layer.kind === 'frame' && adjustHole === 2) onChange(layer.id, { photo2Tx: startTx + dx / divisor, photo2Ty: startTy + dy / divisor });
-      else onChange(layer.id, { photoTx: startTx + dx / divisor, photoTy: startTy + dy / divisor });
+      const rawTx = startTx + dx / divisor;
+      const rawTy = startTy + dy / divisor;
+      const info = photoContainerFor(layer, adjustHole, scale);
+      // Clamped to the photo's own cover-fit coverage — otherwise dragging
+      // can slide it past the hole's edge and expose whatever's behind.
+      const { tx, ty } = info
+        ? clampPhotoOffset({ tx: rawTx, ty: rawTy, scale: info.photoScale, containerW: info.containerW, containerH: info.containerH })
+        : { tx: rawTx, ty: rawTy };
+      if (layer.kind === 'frame' && adjustHole === 2) onChange(layer.id, { photo2Tx: tx, photo2Ty: ty });
+      else onChange(layer.id, { photoTx: tx, photoTy: ty });
     } else if (!layer.locked) {
       // Locked (admin-template) layers don't move as a whole — only the
       // photo inside one of their holes can be repositioned (handled above).

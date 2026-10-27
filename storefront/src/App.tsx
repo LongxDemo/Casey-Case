@@ -1,11 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { toBlob } from 'html-to-image';
 import { CameraModule, CasePreview, camStyleFor, cameraZoneRect } from './components/CasePreview';
-import { EditableLayer } from './components/EditableLayer';
+import { EditableLayer, photoContainerFor } from './components/EditableLayer';
 import { LocationPicker } from './components/LocationPicker';
 import { useDesign } from './hooks/useDesign';
 import { backgrounds, BASE_PRICE_CENTS, stickerPacks, templates as staticTemplates } from './mock';
-import { CANVAS_BASE, MODELS, phoneModels, sizeForModel } from './lib/types';
+import { CANVAS_BASE, MODELS, phoneModels, sizeForModel, clampPhotoOffset } from './lib/types';
 import type { Design, FrontPage, Layer, Template, TextLayer } from './lib/types';
 import { FRAME_DEFS, frameOrder } from './lib/frames';
 import { hasSupabase, supabase } from './lib/supabase';
@@ -640,6 +640,34 @@ function Editor({ design, onBack, onSent, session }: { design: ReturnType<typeof
     }
   };
 
+  // Zooms the photo inside a frame hole / image layer by `factor` (<1 to
+  // zoom out, >1 to zoom in), clamped to [1, 4] — 1 is object-fit: cover's
+  // own full-coverage scale, so it can't go lower without leaving a gap.
+  // Re-clamps the existing pan offset against the new scale in the same
+  // update: zooming out shrinks how far the photo can be panned, so a pan
+  // that was valid at the old scale can go out of bounds at the new one.
+  const zoomPhoto = (factor: number) => {
+    if (!selected) return;
+    const info = photoContainerFor(selected, adjustHole, scale);
+    const clamp = (currentScale: number, currentTx: number, currentTy: number) => {
+      const newScale = Math.max(1, Math.min(4, currentScale * factor));
+      const { tx, ty } = info
+        ? clampPhotoOffset({ tx: currentTx, ty: currentTy, scale: newScale, containerW: info.containerW, containerH: info.containerH })
+        : { tx: currentTx, ty: currentTy };
+      return { newScale, tx, ty };
+    };
+    if (selected.kind === 'frame' && adjustHole === 2) {
+      const { newScale, tx, ty } = clamp(selected.photo2Scale ?? 1, selected.photo2Tx ?? 0, selected.photo2Ty ?? 0);
+      updateLayer(selected.id, { photo2Scale: newScale, photo2Tx: tx, photo2Ty: ty });
+    } else if (selected.kind === 'frame') {
+      const { newScale, tx, ty } = clamp(selected.photoScale, selected.photoTx, selected.photoTy);
+      updateLayer(selected.id, { photoScale: newScale, photoTx: tx, photoTy: ty });
+    } else if (selected.kind === 'image') {
+      const { newScale, tx, ty } = clamp(selected.photoScale ?? 1, selected.photoTx ?? 0, selected.photoTy ?? 0);
+      updateLayer(selected.id, { photoScale: newScale, photoTx: tx, photoTy: ty });
+    }
+  };
+
   const [downloading, setDownloading] = useState(false);
   const downloadDesign = async () => {
     if (!canvasRef.current || downloading) return;
@@ -791,22 +819,8 @@ function Editor({ design, onBack, onSent, session }: { design: ReturnType<typeof
 
       {selected && (selected.kind === 'frame' || selected.kind === 'image') && adjustFrameId === selected.id && (
         <div className="actions-row">
-          <button
-            className="action-btn"
-            onClick={() => (selected.kind === 'frame'
-              ? (adjustHole === 2
-                  ? updateLayer(selected.id, { photo2Scale: Math.max(0.5, (selected.photo2Scale ?? 1) / 1.15) })
-                  : updateLayer(selected.id, { photoScale: Math.max(0.5, selected.photoScale / 1.15) }))
-              : updateLayer(selected.id, { photoScale: Math.max(0.5, (selected.photoScale ?? 1) / 1.15) }))}
-          >➖ Zoom out</button>
-          <button
-            className="action-btn"
-            onClick={() => (selected.kind === 'frame'
-              ? (adjustHole === 2
-                  ? updateLayer(selected.id, { photo2Scale: Math.min(4, (selected.photo2Scale ?? 1) * 1.15) })
-                  : updateLayer(selected.id, { photoScale: Math.min(4, selected.photoScale * 1.15) }))
-              : updateLayer(selected.id, { photoScale: Math.min(4, (selected.photoScale ?? 1) * 1.15) }))}
-          >➕ Zoom in</button>
+          <button className="action-btn" onClick={() => zoomPhoto(1 / 1.15)}>➖ Zoom out</button>
+          <button className="action-btn" onClick={() => zoomPhoto(1.15)}>➕ Zoom in</button>
           <button className="action-btn" onClick={exitAdjustMode}>✓ Done</button>
         </div>
       )}
