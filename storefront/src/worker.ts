@@ -70,27 +70,34 @@ export default {
 
     try {
       const preview = form.get('preview');
+      // Camera overlay included — a preview of how the real case looks, not
+      // what should be printed (see 'print' below).
       if (preview instanceof File && preview.size > 0) {
         const tg = new FormData();
         tg.append('chat_id', env.TELEGRAM_CHAT_ID);
         tg.append('caption', caption);
         tg.append('photo', preview, 'design.png');
         await telegram(env, 'sendPhoto', tg);
-
-        // sendPhoto above compresses/resizes for the chat thumbnail, which
-        // blurs exactly the camera-cutout edge Casey needs to see precisely
-        // — this is the ONLY file in the submission with that cutout masked
-        // out, so also send it as an uncompressed document.
-        const tgDoc = new FormData();
-        tgDoc.append('chat_id', env.TELEGRAM_CHAT_ID);
-        tgDoc.append('document', preview, 'design-print-ready.png');
-        tgDoc.append('caption', 'Full-quality design with camera cutout masked — use this to see exactly where it goes, not the compressed photo above.');
-        await telegram(env, 'sendDocument', tgDoc);
       } else {
         const tg = new FormData();
         tg.append('chat_id', env.TELEGRAM_CHAT_ID);
         tg.append('text', caption);
         await telegram(env, 'sendMessage', tg);
+      }
+
+      // Camera overlay hidden, full quality — this is the actual file to
+      // feed the printing machine (design wraps continuously; the camera
+      // hole gets die-cut after printing, so it shouldn't be painted black
+      // in the art). sendPhoto above compresses/resizes for the chat
+      // thumbnail, so send this separately as an uncompressed document too.
+      const print = form.get('print');
+      const printFile = print instanceof File && print.size > 0 ? print : preview;
+      if (printFile instanceof File && printFile.size > 0) {
+        const tgDoc = new FormData();
+        tgDoc.append('chat_id', env.TELEGRAM_CHAT_ID);
+        tgDoc.append('document', printFile, 'design-print-ready.png');
+        tgDoc.append('caption', 'Full-quality print-ready design (camera cutout left continuous — die-cut after printing).');
+        await telegram(env, 'sendDocument', tgDoc);
       }
 
       // Customer's original photos at full quality, for printing — NOT

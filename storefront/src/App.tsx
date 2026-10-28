@@ -521,6 +521,11 @@ function Editor({ design, onBack, onSent, session }: { design: ReturnType<typeof
   } = design;
   const model = MODELS[d.modelId] ?? phoneModels[0];
   const canvasRef = useRef<HTMLDivElement>(null);
+  // Lets PlaceOrderModal hide the camera-module overlay for a second,
+  // print-only capture (admin's downloadable file) without touching React
+  // state — a direct style flip is synchronous, so no re-render to wait on
+  // before the capture runs.
+  const cameraOverlayRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   // When set, the next file picked goes to that frame layer's photo (in the
   // given hole) instead of creating a new standalone image layer.
@@ -760,7 +765,7 @@ function Editor({ design, onBack, onSent, session }: { design: ReturnType<typeof
               CasePreview (gallery cards, admin) — was missing here, so the
               editor let a photo/design show through under the camera
               module even though the gallery preview already blocked it. */}
-          <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+          <div ref={cameraOverlayRef} style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
             {(() => {
               const camStyle = camStyleFor(model);
               // See CasePreview.tsx for why 'ip-vert' skips this generic
@@ -1010,6 +1015,7 @@ function Editor({ design, onBack, onSent, session }: { design: ReturnType<typeof
           design={d}
           modelLabel={`${model.brand} ${model.name}`}
           canvasRef={canvasRef}
+          cameraOverlayRef={cameraOverlayRef}
           session={session}
           supabaseId={supabaseId}
           onSaved={setSupabaseId}
@@ -1109,6 +1115,7 @@ function PlaceOrderModal({
   design,
   modelLabel,
   canvasRef,
+  cameraOverlayRef,
   session,
   supabaseId,
   onSaved,
@@ -1118,6 +1125,7 @@ function PlaceOrderModal({
   design: ReturnType<typeof useDesign>['design'];
   modelLabel: string;
   canvasRef: React.RefObject<HTMLDivElement | null>;
+  cameraOverlayRef: React.RefObject<HTMLDivElement | null>;
   session: Session | null;
   supabaseId: string | null;
   onSaved: (id: string) => void;
@@ -1141,13 +1149,30 @@ function PlaceOrderModal({
     setSending(true);
     setSendError('');
     try {
-      // Print-ready snapshot straight off the editor canvas — the ONLY file
-      // in this submission with the camera cutout actually masked out (the
-      // raw photos below are unmasked originals). At pixelRatio 6 this is
-      // print-resolution (~300dpi) for every model in the catalog, so this
-      // file, not the raw photos, is what should go to the printer. Captured
-      // once and reused for both the Telegram notification and order storage.
+      // Customer-facing snapshot straight off the editor canvas, camera-bump
+      // overlay included — this is what shows in "Your Design" thumbnails
+      // and the admin order list, a preview of how the real case looks. At
+      // pixelRatio 6 this is print-resolution (~300dpi) for every model in
+      // the catalog. Captured once and reused for the Telegram notification
+      // and order storage.
       const previewBlob = canvasRef.current ? await captureDesignBlob(canvasRef.current, { pixelRatio: 6 }) : null;
+
+      // Second capture, camera overlay hidden — this is the file admin
+      // downloads to feed the printing machine. The black camera-bump
+      // overlay above is only there to preview how the real case looks;
+      // the actual print should wrap continuously under where the camera
+      // cutout gets die-cut afterward, not have it painted black in the art.
+      let printBlob: Blob | null = null;
+      if (canvasRef.current && cameraOverlayRef.current) {
+        const overlay = cameraOverlayRef.current;
+        const prevDisplay = overlay.style.display;
+        overlay.style.display = 'none';
+        try {
+          printBlob = await captureDesignBlob(canvasRef.current, { pixelRatio: 6 });
+        } finally {
+          overlay.style.display = prevDisplay;
+        }
+      }
 
       // Notify Casey on Telegram — best-effort. This is just a heads-up
       // ping, not the order's record of truth, so a failure here (e.g.
@@ -1164,7 +1189,8 @@ function PlaceOrderModal({
         }
         form.append('note', note.trim());
         form.append('model', modelLabel);
-        if (previewBlob) form.append('preview', previewBlob, 'design-print-ready.png');
+        if (previewBlob) form.append('preview', previewBlob, 'design.png');
+        if (printBlob) form.append('print', printBlob, 'design-print-ready.png');
         // Customer's uploaded photos at original quality, for reference/re-
         // editing only — NOT masked, so printing these directly instead of
         // design-print-ready.png above will bleed image content into the
@@ -1198,6 +1224,7 @@ function PlaceOrderModal({
       if (supabase) {
         const layers = await uploadPhotoLayers(design.layers);
         const previewUrl = previewBlob ? await uploadToStorage(previewBlob) : null;
+        const printUrl = printBlob ? await uploadToStorage(printBlob) : null;
 
         const designRow = {
           model_id: design.modelId,
@@ -1219,19 +1246,30 @@ function PlaceOrderModal({
           const { error } = await supabase.from('designs').update(designRow).eq('id', designId);
           if (error) throw new Error(`saving your design — ${error.message}`);
         } else {
-          const { data, error } = await supabase.from('designs').insert({
+          // Generate the id client-side and skip .select() here: guest rows
+          // (user_id null) aren't readable under RLS (designs_read_own only
+          // allows reading your own row), and INSERT ... RETURNING requires
+          // the new row to pass the SELECT policy too — asking for it back
+          // would roll the whole insert back with a misleading RLS error.
+          const newId = crypto.randomUUID();
+          const { error } = await supabase.from('designs').insert({
             ...designRow,
+            id: newId,
             user_id: session?.user.id ?? null,
-          }).select('id').single();
+          });
           if (error) throw new Error(`saving your design — ${error.message}`);
-          const newId: string = data.id;
           designId = newId;
           onSaved(newId);
         }
         if (!designId) throw new Error('missing design id');
 
         const fulfillment = address.trim() ? 'ship' : 'pickup';
-        const { data: order, error: orderError } = await supabase.from('orders').insert({
+        // Same reasoning as the design insert above: orders_read_own only
+        // allows reading your own row, so a guest order can't be read back
+        // via RETURNING — generate the id client-side and skip .select().
+        const orderId = crypto.randomUUID();
+        const { error: orderError } = await supabase.from('orders').insert({
+          id: orderId,
           order_no: `CK-${crypto.randomUUID().slice(0, 8).toUpperCase()}`,
           user_id: session?.user.id ?? null,
           email: email.trim() || null,
@@ -1242,16 +1280,17 @@ function PlaceOrderModal({
           subtotal_cents: BASE_PRICE_CENTS,
           shipping_cents: 0,
           total_cents: BASE_PRICE_CENTS,
-        }).select('id').single();
+        });
         if (orderError) throw new Error(`placing your order — ${orderError.message}`);
 
         const { error: itemError } = await supabase.from('order_items').insert({
-          order_id: order.id,
+          order_id: orderId,
           design_id: designId,
           model_id: design.modelId,
           quantity: 1,
           price_cents: BASE_PRICE_CENTS,
           preview_url: previewUrl,
+          print_url: printUrl,
         });
         if (itemError) throw new Error(`placing your order — ${itemError.message}`);
       }

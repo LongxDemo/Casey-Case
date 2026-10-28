@@ -47,6 +47,7 @@ export type OrderItemRow = {
   quantity: number;
   price_cents: number;
   preview_url: string | null;
+  print_url: string | null;
 };
 
 export type OrderRow = {

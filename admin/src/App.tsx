@@ -545,7 +545,7 @@ function Orders({ role }: { role: Role }) {
   const [orders, setOrders] = useState<OrderRow[]>(hasSupabase ? [] : mockOrders);
   useEffect(() => {
     if (!supabase) return;
-    supabase.from('orders').select('*, order_items(id, model_id, quantity, price_cents, preview_url)').order('created_at', { ascending: false }).then(({ data }) => data && setOrders(data as OrderRow[]));
+    supabase.from('orders').select('*, order_items(id, model_id, quantity, price_cents, preview_url, print_url)').order('created_at', { ascending: false }).then(({ data }) => data && setOrders(data as OrderRow[]));
   }, []);
 
   const setStatus = async (id: string, status: string) => {
@@ -575,6 +575,23 @@ function Orders({ role }: { role: Role }) {
 
   const total = useMemo(() => orders.reduce((a, o) => a + o.total_cents, 0), [orders]);
 
+  // preview_url is a public Supabase Storage URL on a different origin, so a
+  // plain <a download> gets ignored by the browser (it just navigates). Fetch
+  // it ourselves and save the blob instead so "download" actually downloads.
+  const downloadPreview = async (url: string, filename: string) => {
+    try {
+      const blob = await (await fetch(url)).blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(blobUrl);
+    } catch {
+      window.open(url, '_blank');
+    }
+  };
+
   return (
     <>
       <h1 className="page-title">Orders</h1>
@@ -590,11 +607,24 @@ function Orders({ role }: { role: Role }) {
               return (
                 <tr key={o.id}>
                   <td>
-                    {item?.preview_url ? (
-                      <img src={item.preview_url} alt="" style={{ width: 48, height: 48, objectFit: 'cover', borderRadius: 8 }} />
-                    ) : (
-                      <div style={{ width: 48, height: 48, borderRadius: 8, background: 'var(--surface-2, #f2f2f5)' }} />
-                    )}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      {item?.preview_url ? (
+                        <a href={item.preview_url} target="_blank" rel="noopener noreferrer" title="View full size">
+                          <img src={item.preview_url} alt="" style={{ width: 48, height: 48, objectFit: 'cover', borderRadius: 8 }} />
+                        </a>
+                      ) : (
+                        <div style={{ width: 48, height: 48, borderRadius: 8, background: 'var(--surface-2, #f2f2f5)' }} />
+                      )}
+                      {(item?.print_url ?? item?.preview_url) && (
+                        <button
+                          className="tpl-delete"
+                          title="Download print-ready design (camera cutout left continuous, no overlay)"
+                          onClick={() => downloadPreview(item!.print_url ?? item!.preview_url!, `${o.order_no}-${item!.model_id ?? 'design'}.png`)}
+                        >
+                          ⬇️
+                        </button>
+                      )}
+                    </div>
                     <div style={{ fontSize: 11, color: 'var(--ink-faint)', marginTop: 4 }}>
                       {MODELS[item?.model_id ?? '']?.name ?? item?.model_id ?? '—'}
                     </div>

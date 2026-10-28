@@ -153,8 +153,10 @@ create table if not exists order_items (
   model_id     text,
   quantity     int not null default 1,
   price_cents  int not null default 1990,
-  preview_url  text
+  preview_url  text,
+  print_url    text -- camera-free, full-bleed file for admin to feed the printer
 );
+alter table order_items add column if not exists print_url text;
 
 -- ─────────────────────────────────────────────────────────────
 -- Admins (dashboard access)
