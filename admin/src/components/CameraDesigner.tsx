@@ -5,20 +5,21 @@ import { CameraShapeHandle } from './CameraShapeHandle';
 import type { ShapePatch } from './CameraShapeHandle';
 import { supabase } from '../lib/supabase';
 import { invalidateCameraSpecsCache } from '../lib/cameraSpecs';
-import { MODELS } from '../lib/types';
+import { MODELS, phoneModels } from '../lib/types';
 import type { PhoneModel } from '../lib/types';
+import { isCustomModel, deletePhoneModel } from '../lib/customModels';
+import { AddModelModal } from './AddModelModal';
 import type { CameraSpec, IslandShape } from './CameraSVG';
 import { mockCameraSpecs } from '../mock';
 import { legacyCamStyle, legacyRealPhotoRect, loadImageSize } from '../lib/legacyCamera';
 
 const DEFAULT_MODEL_ID = 'ip15pm';
 const RENDER_WIDTH_PX = 380;
-const phoneModels = Object.values(MODELS);
+// Xiaomi and OPPO are hidden here too — no case stock for those brands yet,
+// same reasoning as the storefront's brand tabs.
 const BRAND_TABS: { brand: string; label: string }[] = [
   { brand: 'iPhone', label: 'iPhone' },
   { brand: 'Samsung', label: 'Samsung' },
-  { brand: 'Xiaomi', label: 'Xiaomi' },
-  { brand: 'OPPO', label: 'OPPO' },
 ];
 
 function blankSpec(model: PhoneModel): CameraSpec {
@@ -224,7 +225,18 @@ export function CameraDesigner({ role, myUserId }: { role: 'admin' | 'staff'; my
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [importingLegacy, setImportingLegacy] = useState(false);
+  const [addModelOpen, setAddModelOpen] = useState(false);
+  const [, forceModelListRefresh] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const removeCustom = async (e: React.MouseEvent, m: PhoneModel) => {
+    e.stopPropagation();
+    if (!window.confirm(`Remove ${m.brand} ${m.name} from the model list? Any camera design saved for it stays in the database but won't show here anymore.`)) return;
+    const { error } = await deletePhoneModel(m.id);
+    if (error) { window.alert(`Couldn't remove: ${error}`); return; }
+    if (modelId === m.id) setModelId(DEFAULT_MODEL_ID);
+    forceModelListRefresh((v) => v + 1);
+  };
 
   const refreshConfiguredIds = () => {
     if (!supabase) return;
@@ -689,24 +701,45 @@ export function CameraDesigner({ role, myUserId }: { role: 'admin' | 'staff'; my
         </div>
 
         <div className="editor-tool-panel" style={{ flex: '1 1 320px', minWidth: 260, maxWidth: 420 }}>
-          <div className="editor-tabbar" style={{ marginBottom: 12 }}>
-            {BRAND_TABS.map((b) => (
-              <button
-                key={b.brand}
-                className={`chip-pick ${model.brand === b.brand ? 'on' : ''}`}
-                onClick={() => { const first = phoneModels.find((m) => m.brand === b.brand); if (first) setModelId(first.id); }}
-              >
-                {b.label}
-              </button>
-            ))}
+          <div className="editor-tabbar" style={{ marginBottom: 12, justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {BRAND_TABS.map((b) => (
+                <button
+                  key={b.brand}
+                  className={`chip-pick ${model.brand === b.brand ? 'on' : ''}`}
+                  onClick={() => { const first = phoneModels.find((m) => m.brand === b.brand); if (first) setModelId(first.id); }}
+                >
+                  {b.label}
+                </button>
+              ))}
+            </div>
+            <button className="btn soft" onClick={() => setAddModelOpen(true)}>+ Add Model</button>
           </div>
           <div className="editor-model-grid" style={{ marginBottom: 20 }}>
             {phoneModels.filter((m) => m.brand === model.brand).map((m) => (
-              <button key={m.id} className={`chip-pick ${modelId === m.id ? 'on' : ''}`} onClick={() => setModelId(m.id)}>
-                {configuredIds.has(m.id) ? '✓ ' : ''}{m.name}
-              </button>
+              <div key={m.id} style={{ position: 'relative' }}>
+                <button className={`chip-pick ${modelId === m.id ? 'on' : ''}`} onClick={() => setModelId(m.id)}>
+                  {configuredIds.has(m.id) ? '✓ ' : ''}{m.name}
+                </button>
+                {role === 'admin' && isCustomModel(m.id) && (
+                  <button
+                    className="tpl-delete"
+                    style={{ position: 'absolute', top: -8, right: -8, width: 20, height: 20, fontSize: 10 }}
+                    title={`Remove ${m.name}`}
+                    onClick={(e) => removeCustom(e, m)}
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
             ))}
           </div>
+          {addModelOpen && (
+            <AddModelModal
+              onClose={() => setAddModelOpen(false)}
+              onAdded={(m) => { setAddModelOpen(false); setModelId(m.id); }}
+            />
+          )}
 
           {draftSpec.image ? (
             <p className="page-sub">

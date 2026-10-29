@@ -3,7 +3,7 @@ import type { ChangeEvent } from 'react';
 import { CasePreview } from './CasePreview';
 import { EditableLayer } from './EditableLayer';
 import { hasSupabase, supabase } from '../lib/supabase';
-import { aspectOf, CANVAS_BASE, MODELS, sizeForModel } from '../lib/types';
+import { aspectOf, CANVAS_BASE, MODELS, phoneModels, sizeForModel } from '../lib/types';
 import type { BackgroundRow, CaseBackground, Layer, TemplateRow } from '../lib/types';
 import { FRAME_DEFS, frameOrder } from '../lib/frames';
 import { mockBackgrounds, stickerPacks } from '../mock';
@@ -17,12 +17,11 @@ const TEXT_COLORS = ['#FFFFFF', '#141018', '#FF3E9A', '#D6006E', '#FFD400', '#7B
 // customer can actually use this template with.
 const DEFAULT_PREVIEW_MODEL_ID = 'ip15pm';
 const EDIT_WIDTH = 340;
-const phoneModels = Object.values(MODELS);
+// Xiaomi and OPPO are hidden here too — no case stock for those brands yet,
+// same reasoning as the storefront's brand tabs.
 const BRAND_TABS: { brand: string; label: string }[] = [
   { brand: 'iPhone', label: 'iPhone' },
   { brand: 'Samsung', label: 'Samsung' },
-  { brand: 'Xiaomi', label: 'Xiaomi' },
-  { brand: 'OPPO', label: 'OPPO' },
 ];
 
 let counter = 0;

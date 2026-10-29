@@ -74,6 +74,7 @@ export type Template = {
   accent: string;
   background: CaseBackground;
   layers: LayerSpec[];
+  preview_model_id?: string | null;
 };
 
 // Admin-controlled home page content (front_page table, single row id=1).
@@ -179,10 +180,13 @@ export const MODELS: Record<string, PhoneModel> = {
   oppoA74: { id: 'oppoA74', brand: 'OPPO', name: 'A74', heightMm: 165.3, widthMm: 75.1 },
 };
 
-export const phoneModels: PhoneModel[] = Object.values(MODELS);
+// Every other module reads the device catalog through these two exports
+// (not MODELS directly) so admin-added models — merged in by
+// addCustomModels() below — show up without re-importing anything.
+export let phoneModels: PhoneModel[] = Object.values(MODELS);
 
 // Widest real device in the catalog — the anchor other models scale against.
-export const REFERENCE_WIDTH_MM = Math.max(...phoneModels.map((m) => m.widthMm));
+export let REFERENCE_WIDTH_MM = Math.max(...phoneModels.map((m) => m.widthMm));
 
 /** Render size for a model so relative real-world scale is preserved: pass the
  *  pixel width the WIDEST phone in the catalog should render at, and every
@@ -190,6 +194,33 @@ export const REFERENCE_WIDTH_MM = Math.max(...phoneModels.map((m) => m.widthMm))
 export function sizeForModel(model: PhoneModel, refWidthPx: number) {
   const pxPerMm = refWidthPx / REFERENCE_WIDTH_MM;
   return { width: model.widthMm * pxPerMm, height: model.heightMm * pxPerMm };
+}
+
+// Templates with no admin-picked preview device (preview_model_id null) fall
+// back to one of these, varied per template so the gallery doesn't read as
+// the same phone repeated over and over.
+let PREVIEW_FALLBACK_POOL = phoneModels.filter((m) => m.brand === 'iPhone' || m.brand === 'Samsung');
+export function fallbackPreviewModelId(seed: string): string {
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) hash = (hash * 31 + seed.charCodeAt(i)) >>> 0;
+  return PREVIEW_FALLBACK_POOL[hash % PREVIEW_FALLBACK_POOL.length].id;
+}
+
+// Rows from the phone_models table (added via the admin "Add Model" flow)
+// merge into the hardcoded catalog above at runtime, so a brand-new phone
+// works everywhere immediately — no code change or deploy needed. Called
+// once after the storefront loads; recomputes every derived list above so
+// nothing keeps using a stale pre-merge snapshot.
+function recomputeDerivedCatalog() {
+  phoneModels = Object.values(MODELS);
+  REFERENCE_WIDTH_MM = Math.max(...phoneModels.map((m) => m.widthMm));
+  PREVIEW_FALLBACK_POOL = phoneModels.filter((m) => m.brand === 'iPhone' || m.brand === 'Samsung');
+}
+
+export function addCustomModels(rows: PhoneModel[]) {
+  if (!rows.length) return;
+  for (const m of rows) MODELS[m.id] = m;
+  recomputeDerivedCatalog();
 }
 
 export const CANVAS_BASE = 320;

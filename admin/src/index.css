@@ -110,6 +110,11 @@ select.status { padding: 6px 10px; border-radius: 999px; border: 1.5px solid var
 .notice { background: var(--petal); border-radius: 14px; padding: 14px 18px; color: var(--pink-dark); font-weight: 600; font-size: 14px; margin-bottom: 20px; }
 .empty { text-align: center; color: var(--ink-faint); padding: 60px 0; font-weight: 600; }
 
+.modal-backdrop { position: fixed; inset: 0; background: rgba(20,16,24,0.45); display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 50; }
+.modal-card { background: var(--white); border-radius: 24px; padding: 22px; width: 100%; max-width: 420px; max-height: 88vh; overflow-y: auto; }
+.modal-title { font-size: 17px; font-weight: 900; margin: 0 0 4px; }
+.modal-sub { color: var(--ink-faint); font-size: 13px; font-weight: 600; margin: 0 0 14px; }
+
 .gallery-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
 .gallery-header .btn { flex-shrink: 0; }
 

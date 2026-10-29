@@ -20,6 +20,17 @@ create table if not exists phone_models (
   sort        int not null default 0,
   created_at  timestamptz not null default now()
 );
+-- Repurposed 2026-10-29 to back the admin "Add Model" flow: rows here merge
+-- into the hardcoded MODELS catalog (admin/storefront lib/types.ts) at
+-- runtime, so new phones can be added without a code deploy. height_mm/
+-- width_mm match that catalog's PhoneModel shape; the original aspect/camera/
+-- active/sort columns were never read by the app, so they're dropped.
+alter table phone_models add column if not exists height_mm numeric;
+alter table phone_models add column if not exists width_mm numeric;
+alter table phone_models drop column if exists aspect;
+alter table phone_models drop column if exists camera;
+alter table phone_models drop column if exists active;
+alter table phone_models drop column if exists sort;
 
 -- ─────────────────────────────────────────────────────────────
 -- Catalog: sticker packs + stickers
@@ -304,9 +315,10 @@ create policy admins_update_role on admins for update using (has_role('admin')) 
 -- ─────────────────────────────────────────────────────────────
 -- Camera module specs (admin-authored, replaces hand-estimated geometry)
 -- ─────────────────────────────────────────────────────────────
--- model_id matches the hardcoded MODELS catalog key in admin/storefront's
--- lib/types.ts (e.g. 'ip15pm') — that catalog isn't itself in the DB (see
--- the unused phone_models table above), so no FK here, just a free-text key.
+-- model_id matches a key in the hardcoded MODELS catalog in admin/storefront's
+-- lib/types.ts (e.g. 'ip15pm') OR a row added via the admin "Add Model" flow
+-- (phone_models table above) — no FK here since the hardcoded half of the
+-- catalog isn't a DB row, just a free-text key.
 create table if not exists camera_specs (
   model_id            text primary key,
   spec                jsonb not null,              -- CameraSpec: { mounting, island, lenses, flash, sensors }

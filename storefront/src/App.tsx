@@ -5,7 +5,8 @@ import { EditableLayer, photoContainerFor } from './components/EditableLayer';
 import { LocationPicker } from './components/LocationPicker';
 import { useDesign } from './hooks/useDesign';
 import { backgrounds, BASE_PRICE_CENTS, stickerPacks, templates as staticTemplates } from './mock';
-import { CANVAS_BASE, MODELS, phoneModels, sizeForModel, clampPhotoOffset } from './lib/types';
+import { CANVAS_BASE, MODELS, phoneModels, sizeForModel, clampPhotoOffset, fallbackPreviewModelId } from './lib/types';
+import { useCustomModels } from './lib/customModels';
 import type { Design, FrontPage, Layer, Template, TextLayer } from './lib/types';
 import { FRAME_DEFS, frameOrder } from './lib/frames';
 import { hasSupabase, supabase } from './lib/supabase';
@@ -139,6 +140,7 @@ function clearGuestDesign() {
 }
 
 export default function App() {
+  useCustomModels();
   const [view, setView] = useState<View>('home');
   const design = useDesign(phoneModels[0].id);
   const [session, setSession] = useState<Session | null>(null);
@@ -403,7 +405,7 @@ function Home({
           {orderedTemplates.map((t) => (
             <button key={t.id} className="tpl-card" onClick={() => onTemplate(t)}>
               <CasePreview
-                modelId={phoneModels[0].id}
+                modelId={t.preview_model_id ?? fallbackPreviewModelId(t.id)}
                 background={t.background}
                 layers={t.layers.map((l, i) => ({ ...l, id: `${t.id}_${i}`, z: (l as any).z ?? i + 1 })) as any}
                 width={126}

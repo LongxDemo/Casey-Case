@@ -4,7 +4,8 @@ import { CasePreview } from './components/CasePreview';
 import { TemplateEditor } from './components/TemplateEditor';
 import { CameraDesigner } from './components/CameraDesigner';
 import { hasSupabase, supabase } from './lib/supabase';
-import { MODELS } from './lib/types';
+import { fallbackPreviewModelId, MODELS } from './lib/types';
+import { useCustomModels } from './lib/customModels';
 import type { AdminRow, BackgroundRow, DesignRow, FrontPage, OrderRow, TemplateRow } from './lib/types';
 import { mockAdmins, mockBackgrounds, mockDesigns, mockFrontPage, mockOrders, mockTemplates } from './mock';
 
@@ -16,6 +17,7 @@ const ORDER_STATUSES = ['pending', 'paid', 'printing', 'shipped', 'ready_pickup'
 const money = (c: number) => `$${(c / 100).toFixed(2)}`;
 
 export default function App() {
+  useCustomModels();
   const [session, setSession] = useState<boolean>(!hasSupabase); // demo mode = logged in
   const [isAdmin, setIsAdmin] = useState<boolean>(!hasSupabase);
   // 'admin' can delete things and manage other admins' roles; 'staff' can't.
@@ -393,14 +395,14 @@ function Gallery({ role, onNew, onEdit }: { role: Role; onNew: () => void; onEdi
         <div className="tpl-grid">
           {sorted.map((t) => (
             <div className="card tpl-card" key={t.id}>
-              <CasePreview modelId={t.preview_model_id ?? null} background={t.background} layers={t.layers} width={140} />
+              <CasePreview modelId={t.preview_model_id ?? fallbackPreviewModelId(t.id)} background={t.background} layers={t.layers} width={140} />
               <select
                 className="tpl-model-select"
                 value={t.preview_model_id ?? ''}
                 onChange={(e) => patch(t.id, { preview_model_id: e.target.value || null })}
                 title="Preview device (cosmetic only — doesn't change which phones this style is offered for)"
               >
-                <option value="">Default (15 Pro Max)</option>
+                <option value="">Default (random)</option>
                 {Object.values(MODELS).map((m) => (
                   <option key={m.id} value={m.id}>{m.brand} {m.name}</option>
                 ))}
