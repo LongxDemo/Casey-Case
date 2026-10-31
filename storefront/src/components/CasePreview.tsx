@@ -1,4 +1,9 @@
-import { useId } from 'react';
+// AUTO-GENERATED from /shared/CasePreview.tsx — do not edit this copy.
+// Edit the source file, then run `node shared/sync.mjs` (or just
+// `npm install` in admin/ or storefront/, which does it automatically).
+
+import { Fragment, useId } from 'react';
+import type { ReactNode, Ref } from 'react';
 import { CANVAS_BASE, MODELS, sizeForModel } from '../lib/types';
 import type { CaseBackground, Layer, PhoneModel } from '../lib/types';
 import { FRAME_DEFS } from '../lib/frames';
@@ -6,21 +11,39 @@ import { CameraSVG, cameraCutoutPath } from './CameraSVG';
 import type { CameraSpec } from './CameraSVG';
 import { useCameraSpecs } from '../lib/cameraSpecs';
 
+const camera = (file: string) => `${import.meta.env.BASE_URL}camera/${file}`;
+
 export function CasePreview({
   background,
   layers,
   modelId,
   width,
+  renderLayer,
+  innerRef,
+  cameraSpecOverride,
 }: {
   background: CaseBackground | null;
   layers: Layer[];
   modelId: string | null;
   /** Render width for the WIDEST phone in the catalog — other models scale down proportionally (real relative size, not a fixed box). */
   width: number;
+  /** Swaps the static per-layer rendering (LayerView) for a caller-supplied
+   *  one — used by the admin Template Editor to render interactive
+   *  EditableLayer overlays in exactly the same stacking position (under
+   *  the camera-module cutout) as the static design, instead of duplicating
+   *  this component's background/camera-module rendering logic. */
+  renderLayer?: (layer: Layer, scale: number) => ReactNode;
+  /** Exposes the sized/clipped root element — the admin Template Editor
+   *  needs this as EditableLayer's canvasRef for its drag/rotate math. */
+  innerRef?: Ref<HTMLDivElement>;
+  /** Lets CameraDesigner preview an in-progress (unsaved) spec instead of
+   *  whatever's live in camera_specs for this model — true WYSIWYG with no
+   *  separate preview-rendering code. */
+  cameraSpecOverride?: CameraSpec | null;
 }) {
   const model = (modelId && MODELS[modelId]) || MODELS.ip15pm;
   const liveCameraSpecs = useCameraSpecs();
-  const cameraSpec = modelId ? liveCameraSpecs[modelId] : undefined;
+  const cameraSpec = cameraSpecOverride ?? (modelId ? liveCameraSpecs[modelId] : undefined);
   const { width: renderWidth, height } = sizeForModel(model, width);
   const scale = renderWidth / CANVAS_BASE;
   const radius = renderWidth * 0.2;
@@ -45,6 +68,7 @@ export function CasePreview({
 
   return (
     <div
+      ref={innerRef}
       style={{
         width: renderWidth,
         height,
@@ -64,7 +88,7 @@ export function CasePreview({
       }}
     >
       {ordered.map((l) => (
-        <LayerView key={l.id} layer={l} scale={scale} />
+        renderLayer ? <Fragment key={l.id}>{renderLayer(l, scale)}</Fragment> : <LayerView key={l.id} layer={l} scale={scale} />
       ))}
       {/* The camera bump area is its own unprinted panel on a real case —
           the print doesn't run underneath it, but DOES show through right
@@ -125,7 +149,7 @@ export function CasePreview({
             if (camStyle === 's26u') {
               return (
                 <img
-                  src="/camera/s26u.png"
+                  src={camera('s26u.png')}
                   alt=""
                   style={{
                     position: 'absolute',
@@ -369,8 +393,7 @@ export function LayerView({ layer, scale }: { layer: Layer; scale: number }) {
   );
 }
 
-/* ───────────────────────── Realistic camera module (CSS) ─────────────────────────
-   Mirrors admin/src/components/CasePreview.tsx — same brand→layout mapping. */
+/* ───────────────────────── Realistic camera module (CSS) ───────────────────────── */
 
 // From the iPhone 17 generation, the Pros and the Air use a full-width camera
 // plateau flush with the top of the phone — 'ip17-plateau' (triple lens) and
@@ -808,7 +831,7 @@ export function CameraModule({ style, width: W, height: H, tint }: { style: CamS
     // model; this one is the design machine's own screenshot, so trust it.
     const mx = W * 0.06, my = W * 0.03;
     const pw = W - mx * 2, bh = pw * (141 / 222);
-    return <img src="/camera/i17pro-silver.png" alt="" style={{ position: 'absolute', left: mx, top: my, width: pw, height: bh }} />;
+    return <img src={camera('i17pro-silver.png')} alt="" style={{ position: 'absolute', left: mx, top: my, width: pw, height: bh }} />;
   }
   if (style === 'ip17-air') {
     // Real photo of the actual Air camera bar. Source was a JPEG re-export
@@ -826,7 +849,7 @@ export function CameraModule({ style, width: W, height: H, tint }: { style: CamS
     // wrongly shrank it to while also fixing the oversized black zone.
     const mx = W * 0.05, my = H * 0.035;
     const pw = W - mx * 2, bh = pw * (215 / 584);
-    return <img src="/camera/i17air-skyblue.png" alt="" style={{ position: 'absolute', left: mx, top: my, width: pw, height: bh }} />;
+    return <img src={camera('i17air-skyblue.png')} alt="" style={{ position: 'absolute', left: mx, top: my, width: pw, height: bh }} />;
   }
   if (style === 'ip-vert') {
     // Real photo of the actual iPhone 17/16 camera (plate + separate flash
@@ -873,7 +896,7 @@ export function CameraModule({ style, width: W, height: H, tint }: { style: CamS
         <div style={{ position: 'absolute', left: pill.left - rim, top: pill.top - rim, width: pill.w + rim * 2, height: pill.h + rim * 2, borderRadius: 999, background: tint }} />
         <div style={{ position: 'absolute', left: bridge.left, top: bridge.top, width: bridge.w, height: bridge.h, background: tint }} />
         <div style={{ position: 'absolute', left: flash.left - rim, top: flash.top - rim, width: flash.w + rim * 2, height: flash.h + rim * 2, borderRadius: '50%', background: tint }} />
-        <img src="/camera/ip17-blue.png" alt="" style={{ position: 'absolute', left: mx, top: my, width: pw, height: bh }} />
+        <img src={camera('ip17-blue.png')} alt="" style={{ position: 'absolute', left: mx, top: my, width: pw, height: bh }} />
       </>
     );
   }
@@ -887,7 +910,7 @@ export function CameraModule({ style, width: W, height: H, tint }: { style: CamS
     // modules — confirms the same lens/flash/LiDAR layout as the earlier
     // silver-colorway asset it replaces, just pixel-verified now.
     const s = W * 0.5, inset = W * 0.04;
-    return <img src="/camera/ip15pro-square.png" alt="" style={{ position: 'absolute', left: inset, top: inset, width: s, height: s * (335 / 321) }} />;
+    return <img src={camera('ip15pro-square.png')} alt="" style={{ position: 'absolute', left: inset, top: inset, width: s, height: s * (335 / 321) }} />;
   }
   if (style === 'ip11pro-square') {
     // Real photo of the 11 Pro/Pro Max triple-lens module, cropped directly
@@ -896,41 +919,41 @@ export function CameraModule({ style, width: W, height: H, tint }: { style: CamS
     // via the PNG's alpha channel + connected-components, pixel-exact to
     // its own bounding box.
     const s = W * 0.5, px = W * 0.05, py = H * 0.04, sh = s * (233 / 215);
-    return <img src="/camera/ip11pro-square.png" alt="" style={{ position: 'absolute', left: px, top: py, width: s, height: sh }} />;
+    return <img src={camera('ip11pro-square.png')} alt="" style={{ position: 'absolute', left: px, top: py, width: s, height: sh }} />;
   }
   if (style === 'ip12pro-square') {
     // Real photo of the 12 Pro/Pro Max triple-lens + LiDAR module, cropped
     // directly from the user's print-template reference
     // (12-PRO-T-FRAME-scaled.png) the same way as ip11pro-square.
     const s = W * 0.5, px = W * 0.05, py = H * 0.04, sh = s * (255 / 238);
-    return <img src="/camera/ip12pro-square.png" alt="" style={{ position: 'absolute', left: px, top: py, width: s, height: sh }} />;
+    return <img src={camera('ip12pro-square.png')} alt="" style={{ position: 'absolute', left: px, top: py, width: s, height: sh }} />;
   }
   if (style === 'ip13pro-square') {
     // Real photo of the 13 Pro/Pro Max triple-lens module, cropped directly
     // from the user's print-template reference (13-PRO-T-FRAME-scaled.png)
     // the same way as ip11pro-square/ip12pro-square.
     const s = W * 0.5, px = W * 0.05, py = H * 0.04, sh = s * (316 / 306);
-    return <img src="/camera/ip13pro-square.png" alt="" style={{ position: 'absolute', left: px, top: py, width: s, height: sh }} />;
+    return <img src={camera('ip13pro-square.png')} alt="" style={{ position: 'absolute', left: px, top: py, width: s, height: sh }} />;
   }
   if (style === 'ip14pro-square') {
     // Real photo of the 14 Pro/Pro Max triple-lens module, cropped directly
     // from the user's print-template reference (14-PRO-MAX-T-FRAME-scaled.png)
     // the same way as ip13pro-square.
     const s = W * 0.5, px = W * 0.05, py = H * 0.04, sh = s * (338 / 326);
-    return <img src="/camera/ip14pro-square.png" alt="" style={{ position: 'absolute', left: px, top: py, width: s, height: sh }} />;
+    return <img src={camera('ip14pro-square.png')} alt="" style={{ position: 'absolute', left: px, top: py, width: s, height: sh }} />;
   }
   if (style === 'ip13-diag') {
     // Real photo of the 13/14 diagonal dual-lens module, cropped directly
     // from the user's print-template reference (13-T-FRAME-scaled.png).
     const s = W * 0.45, px = W * 0.05, py = H * 0.04, sh = s * (244 / 243);
-    return <img src="/camera/ip13-diag.png" alt="" style={{ position: 'absolute', left: px, top: py, width: s, height: sh }} />;
+    return <img src={camera('ip13-diag.png')} alt="" style={{ position: 'absolute', left: px, top: py, width: s, height: sh }} />;
   }
   if (style === 'ip15-diag') {
     // Real photo of the 15 (non-Pro) diagonal dual-lens module, cropped
     // directly from the user's print-template reference
     // (15-T-FRAME-scaled.png).
     const s = W * 0.45, px = W * 0.05, py = H * 0.04, sh = s * (265 / 264);
-    return <img src="/camera/ip15-diag.png" alt="" style={{ position: 'absolute', left: px, top: py, width: s, height: sh }} />;
+    return <img src={camera('ip15-diag.png')} alt="" style={{ position: 'absolute', left: px, top: py, width: s, height: sh }} />;
   }
   if (style === 'ip-square') {
     // Spec table bump figures for 15 Pro/16 Pro/16 Pro Max average ~0.50 of
@@ -977,7 +1000,7 @@ export function CameraModule({ style, width: W, height: H, tint }: { style: CamS
     // the crop is pixel-exact to the plate's own bounding box, no dead
     // margin on any side.
     const s = W * 0.45, px = W * 0.05, py = H * 0.04, sh = s * (226 / 200);
-    return <img src="/camera/ip11-dualvert.png" alt="" style={{ position: 'absolute', left: px, top: py, width: s, height: sh }} />;
+    return <img src={camera('ip11-dualvert.png')} alt="" style={{ position: 'absolute', left: px, top: py, width: s, height: sh }} />;
   }
   if (style === 'samsung' || style === 'samsung-ultra') {
     // S/A-series and the Fold's rear: a tall blank channel clearing the
@@ -1004,7 +1027,7 @@ export function CameraModule({ style, width: W, height: H, tint }: { style: CamS
     // unlike the older 'samsung-ultra' CSS style's bare individually-
     // mounted lenses with no shared plate.
     const s = W * 0.36, px = W * 0.05, py = H * 0.03, sh = s * (486 / 315);
-    return <img src="/camera/s26u.png" alt="" style={{ position: 'absolute', left: px, top: py, width: s, height: sh }} />;
+    return <img src={camera('s26u.png')} alt="" style={{ position: 'absolute', left: px, top: py, width: s, height: sh }} />;
   }
   if (style === 'xiaomi') {
     // Xiaomi 14 / Redmi Note: rounded-square island, three lenses plus the

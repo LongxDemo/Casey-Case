@@ -5,8 +5,30 @@
 // independent of the layer's own position) as the customer editor.
 import React from 'react';
 import type { Layer } from '../lib/types';
+import { clampPhotoOffset } from '../lib/types';
 import { FRAME_DEFS } from '../lib/frames';
 import type { FrameDef } from '../lib/frames';
+
+// The box a layer's photo must fully cover, plus its current zoom —
+// everything clampPhotoOffset needs to keep pan/zoom from uncovering that
+// box. Mirrors storefront/src/components/EditableLayer.tsx.
+function photoContainerFor(layer: Layer, adjustHole: 1 | 2 | null, canvasScale: number):
+  { containerW: number; containerH: number; photoScale: number } | null {
+  if (layer.kind === 'image') {
+    return { containerW: layer.width * canvasScale, containerH: layer.height * canvasScale, photoScale: layer.photoScale ?? 1 };
+  }
+  if (layer.kind === 'frame') {
+    const def = FRAME_DEFS[layer.frameId];
+    if (!def) return null;
+    const hole = adjustHole === 2 && def.hole2 ? def.hole2 : def.hole;
+    const containerW = (hole.wPct / 100) * def.width * canvasScale;
+    const containerH = (hole.hPct / 100) * def.height * canvasScale;
+    return adjustHole === 2
+      ? { containerW, containerH, photoScale: layer.photo2Scale ?? 1 }
+      : { containerW, containerH, photoScale: layer.photoScale };
+  }
+  return null;
+}
 
 // Which hole (if any) a local point (in % of the frame's own box) falls
 // inside — used only to disambiguate hole1 vs hole2 on a two-hole frame;
@@ -78,9 +100,13 @@ export function EditableLayer({
     e.stopPropagation();
     onSelect(layer.id);
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
-    const useAdjust = adjustHole && layer.kind === 'frame';
-    const startTx = useAdjust ? (adjustHole === 2 ? (layer.photo2Tx ?? 0) : layer.photoTx) : layer.tx;
-    const startTy = useAdjust ? (adjustHole === 2 ? (layer.photo2Ty ?? 0) : layer.photoTy) : layer.ty;
+    const useAdjust = adjustHole && (layer.kind === 'frame' || layer.kind === 'image');
+    const startTx = useAdjust
+      ? layer.kind === 'frame' ? (adjustHole === 2 ? (layer.photo2Tx ?? 0) : layer.photoTx) : (layer.photoTx ?? 0)
+      : layer.tx;
+    const startTy = useAdjust
+      ? layer.kind === 'frame' ? (adjustHole === 2 ? (layer.photo2Ty ?? 0) : layer.photoTy) : (layer.photoTy ?? 0)
+      : layer.ty;
     dragState.current = { startTx, startTy, startX: e.clientX, startY: e.clientY, moved: false };
   };
   const onBodyPointerMove = (e: React.PointerEvent) => {
@@ -89,13 +115,21 @@ export function EditableLayer({
     const dx = e.clientX - startX;
     const dy = e.clientY - startY;
     if (Math.abs(dx) > TAP_THRESHOLD_PX || Math.abs(dy) > TAP_THRESHOLD_PX) dragState.current.moved = true;
-    if (adjustHole && layer.kind === 'frame') {
+    if (adjustHole && (layer.kind === 'frame' || layer.kind === 'image')) {
       // photoTx/Ty live inside a box that's already scaled by both the
       // canvas scale and this layer's own scale, so undo both to keep the
       // drag tracking the pointer 1:1.
       const divisor = scale * layer.scale;
-      if (adjustHole === 2) onChange(layer.id, { photo2Tx: startTx + dx / divisor, photo2Ty: startTy + dy / divisor });
-      else onChange(layer.id, { photoTx: startTx + dx / divisor, photoTy: startTy + dy / divisor });
+      const rawTx = startTx + dx / divisor;
+      const rawTy = startTy + dy / divisor;
+      const info = photoContainerFor(layer, adjustHole, scale);
+      // Clamped to the photo's own cover-fit coverage — otherwise dragging
+      // can slide it past the hole's edge and expose whatever's behind.
+      const { tx, ty } = info
+        ? clampPhotoOffset({ tx: rawTx, ty: rawTy, scale: info.photoScale, containerW: info.containerW, containerH: info.containerH })
+        : { tx: rawTx, ty: rawTy };
+      if (layer.kind === 'frame' && adjustHole === 2) onChange(layer.id, { photo2Tx: tx, photo2Ty: ty });
+      else onChange(layer.id, { photoTx: tx, photoTy: ty });
     } else {
       onChange(layer.id, { tx: startTx + dx / scale, ty: startTy + dy / scale });
     }

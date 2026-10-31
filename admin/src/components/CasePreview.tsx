@@ -1,3 +1,7 @@
+// AUTO-GENERATED from /shared/CasePreview.tsx — do not edit this copy.
+// Edit the source file, then run `node shared/sync.mjs` (or just
+// `npm install` in admin/ or storefront/, which does it automatically).
+
 import { Fragment, useId } from 'react';
 import type { ReactNode, Ref } from 'react';
 import { CANVAS_BASE, MODELS, sizeForModel } from '../lib/types';
@@ -211,7 +215,7 @@ export function CasePreview({
   );
 }
 
-// A real camera photo (uploaded in the Cameras admin page) used in place of
+// A real camera photo (uploaded in the admin Cameras page) used in place of
 // the hand-drawn island/lenses/flash/sensors shapes. Drawn twice — once
 // blackened as the die-cut cutout silhouette, once at full color on top —
 // the same proven technique as the hardcoded s26u real photo below, just
@@ -261,7 +265,7 @@ function PhotoPlaceholderIcon({ size }: { size: number }) {
   );
 }
 
-function LayerView({ layer, scale }: { layer: Layer; scale: number }) {
+export function LayerView({ layer, scale }: { layer: Layer; scale: number }) {
   const transform = `translate(-50%, -50%) translate(${layer.tx * scale}px, ${layer.ty * scale}px) scale(${layer.scale}) rotate(${layer.rotation}rad)`;
   const base: React.CSSProperties = {
     position: 'absolute',
@@ -389,19 +393,18 @@ function LayerView({ layer, scale }: { layer: Layer; scale: number }) {
   );
 }
 
-/* ───────────────────────── Realistic camera module (CSS) ─────────────────────────
-   Mirrors storefront/src/components/CasePreview.tsx — same brand→layout mapping. */
+/* ───────────────────────── Realistic camera module (CSS) ───────────────────────── */
 
 // From the iPhone 17 generation, the Pros and the Air use a full-width camera
 // plateau flush with the top of the phone — 'ip17-plateau' (triple lens) and
 // 'ip17-air' (single lens). The base 17 kept the 16-style vertical pill, and
 // pre-17 iPhones keep the old cluster styles.
-type CamStyle =
+export type CamStyle =
   | 'ip17-plateau' | 'ip17-air' | 'ip15-square' | 'ip11pro-square' | 'ip12pro-square' | 'ip13pro-square' | 'ip14pro-square' | 'ip13-diag' | 'ip15-diag' | 'ip-square' | 'ip-vert' | 'ip-dual' | 'ip-dual-vert'
   | 'samsung' | 'samsung-ultra' | 's26u'
   | 'xiaomi' | 'oppo' | 'generic';
 
-function camStyleFor(model: PhoneModel): CamStyle {
+export function camStyleFor(model: PhoneModel): CamStyle {
   if (model.brand === 'Samsung') {
     // S26 Ultra uses a real photo (s26u) — a shared metal backing plate
     // connecting all 4 lens housings + flash, visibly different from the

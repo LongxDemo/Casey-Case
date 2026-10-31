@@ -1,3 +1,7 @@
+// AUTO-GENERATED from /shared/frames.ts — do not edit this copy.
+// Edit the source file, then run `node shared/sync.mjs` (or just
+// `npm install` in admin/ or storefront/, which does it automatically).
+
 import { Strawberry } from '../components/frames/Strawberry';
 import { Cherry } from '../components/frames/Cherry';
 import { Peach } from '../components/frames/Peach';
@@ -134,7 +138,7 @@ export const FRAME_DEFS: Record<string, FrameDef> = {
   'strawberry-photo': {
     id: 'strawberry-photo',
     name: 'Strawberry (Real)',
-    image: '/frames/strawberry-photo.png',
+    image: `${import.meta.env.BASE_URL}frames/strawberry-photo.png`,
     width: 640,
     height: 655,
     hole: { xPct: 16.15, yPct: 33.48, wPct: 67.62, hPct: 66.09 },
@@ -144,7 +148,7 @@ export const FRAME_DEFS: Record<string, FrameDef> = {
   'burger-cat': {
     id: 'burger-cat',
     name: 'Burger Cat',
-    image: '/frames/burger-cat.png',
+    image: `${import.meta.env.BASE_URL}frames/burger-cat.png`,
     width: 1080,
     height: 1800,
     hole: { xPct: 50.46, yPct: 39.44, wPct: 31.94, hPct: 15 },
@@ -160,7 +164,7 @@ export const FRAME_DEFS: Record<string, FrameDef> = {
   'strawberry-bow': {
     id: 'strawberry-bow',
     name: 'Strawberry Bows',
-    image: '/frames/strawberry-bow.png',
+    image: `${import.meta.env.BASE_URL}frames/strawberry-bow.png`,
     width: 1414,
     height: 2000,
     hole: { xPct: 30.06, yPct: 42.75, wPct: 38.9, hPct: 27.55 },
@@ -171,7 +175,7 @@ export const FRAME_DEFS: Record<string, FrameDef> = {
   'cozy-hoodie': {
     id: 'cozy-hoodie',
     name: 'Cozy Hoodie',
-    image: '/frames/cozy-hoodie.png',
+    image: `${import.meta.env.BASE_URL}frames/cozy-hoodie.png`,
     width: 1414,
     height: 2000,
     hole: { xPct: 38.19, yPct: 49.6, wPct: 38.19, hPct: 27 },
@@ -182,7 +186,7 @@ export const FRAME_DEFS: Record<string, FrameDef> = {
   'black-beanie': {
     id: 'black-beanie',
     name: 'Black Beanie',
-    image: '/frames/black-beanie.png',
+    image: `${import.meta.env.BASE_URL}frames/black-beanie.png`,
     width: 1414,
     height: 2000,
     hole: { xPct: 29.99, yPct: 54.3, wPct: 39.96, hPct: 28.25 },
@@ -196,13 +200,13 @@ export const FRAME_DEFS: Record<string, FrameDef> = {
   'carrot-tomato': {
     id: 'carrot-tomato',
     name: 'Carrot & Tomato',
-    image: '/frames/carrot-tomato.png',
+    image: `${import.meta.env.BASE_URL}frames/carrot-tomato.png`,
     width: 1414,
     height: 2000,
     hole: { xPct: 13.15, yPct: 42.75, wPct: 30.98, hPct: 17.25 },
     hole2: { xPct: 53.54, yPct: 44.7, wPct: 34.58, hPct: 18.25 },
-    holeMask: '/frames/carrot-tomato-hole1-mask.png',
-    hole2Mask: '/frames/carrot-tomato-hole2-mask.png',
+    holeMask: `${import.meta.env.BASE_URL}frames/carrot-tomato-hole1-mask.png`,
+    hole2Mask: `${import.meta.env.BASE_URL}frames/carrot-tomato-hole2-mask.png`,
     defaultScale: 0.33,
   },
 };

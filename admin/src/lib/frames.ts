@@ -1,5 +1,7 @@
-// Mirrors storefront/src/lib/frames.ts — kept as a second hand-copy since
-// admin/ and storefront/ don't share a package. Keep the two in sync.
+// AUTO-GENERATED from /shared/frames.ts — do not edit this copy.
+// Edit the source file, then run `node shared/sync.mjs` (or just
+// `npm install` in admin/ or storefront/, which does it automatically).
+
 import { Strawberry } from '../components/frames/Strawberry';
 import { Cherry } from '../components/frames/Cherry';
 import { Peach } from '../components/frames/Peach';
@@ -19,26 +21,34 @@ export type FrameDef = {
    *  exactly one of the two is set. */
   Svg?: React.FC<{ style?: React.CSSProperties }>;
   image?: string;
+  /** Intrinsic artboard size (matches the SVG's viewBox, or the PNG's pixel size). */
   width: number;
   height: number;
+  /** Face-hole rect as % of width/height — must match the cutout each SVG
+   *  actually draws, or the transparent hole cut into the photo. */
   hole: { xPct: number; yPct: number; wPct: number; hPct: number };
   /** Second face-hole, for the one frame ('burger-cat') cut from a source
    *  photo with two faces in it — every other frame has just the one. */
   hole2?: { xPct: number; yPct: number; wPct: number; hPct: number };
-  /** Initial layer scale when this frame is added — defaults to 1 (the
-   *  SVG frames' 200x220 artboard already roughly matches case size at
-   *  scale 1). A frame whose source photo is much larger than that (like
-   *  'burger-cat' at 1080x1800) needs a smaller starting scale so it isn't
-   *  added wildly oversized relative to the case. */
-  defaultScale?: number;
-  /** Precise edge mask for a non-oval hole — see storefront/src/lib/frames.ts
-   *  for the full explanation. Omit for round/oval holes. */
+  /** Precise edge mask for a non-oval hole — a PNG the size of the hole's
+   *  own bounding box, opaque where the real cutout is and transparent
+   *  elsewhere (the inverse of the frame image's own alpha there). Applied
+   *  as a CSS mask-image so the photo fills the *actual* cut shape instead
+   *  of just an inscribed ellipse, which otherwise leaves the case
+   *  background peeking through at the corners for non-round holes. Omit
+   *  for round/oval holes, where the ellipse already matches closely. */
   holeMask?: string;
   hole2Mask?: string;
   /** How the customer's photo fills the hole — defaults to 'cover' (crops
    *  to fill, no gaps). 'contain' shows the whole photo, which can leave
    *  background-colored gaps inside the hole. */
   fit?: 'cover' | 'contain';
+  /** Initial layer scale when this frame is added — defaults to 1 (the
+   *  SVG frames' 200x220 artboard already roughly matches case size at
+   *  scale 1). A frame whose source photo is much larger than that (like
+   *  'burger-cat' at 1080x1800) needs a smaller starting scale so it isn't
+   *  added wildly oversized relative to the case. */
+  defaultScale?: number;
 };
 
 export const FRAME_DEFS: Record<string, FrameDef> = {
@@ -183,8 +193,10 @@ export const FRAME_DEFS: Record<string, FrameDef> = {
     defaultScale: 0.33,
   },
   // Carrot + tomato plush pair — two holes, each marked with a non-oval
-  // green blob in the source design. holeMask/hole2Mask clip the preview to
-  // the exact cut shape instead of an inscribed ellipse.
+  // green blob in the source design. holeMask/hole2Mask clip the photo to
+  // the exact cut shape (an inverted crop of the frame PNG's own alpha
+  // channel over each hole's bbox) instead of an inscribed ellipse, which
+  // otherwise left the case background visible at the corners.
   'carrot-tomato': {
     id: 'carrot-tomato',
     name: 'Carrot & Tomato',
@@ -193,9 +205,9 @@ export const FRAME_DEFS: Record<string, FrameDef> = {
     height: 2000,
     hole: { xPct: 13.15, yPct: 42.75, wPct: 30.98, hPct: 17.25 },
     hole2: { xPct: 53.54, yPct: 44.7, wPct: 34.58, hPct: 18.25 },
-    defaultScale: 0.33,
     holeMask: `${import.meta.env.BASE_URL}frames/carrot-tomato-hole1-mask.png`,
     hole2Mask: `${import.meta.env.BASE_URL}frames/carrot-tomato-hole2-mask.png`,
+    defaultScale: 0.33,
   },
 };
 

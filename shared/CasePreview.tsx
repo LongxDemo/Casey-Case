@@ -1,0 +1,1068 @@
+import { Fragment, useId } from 'react';
+import type { ReactNode, Ref } from 'react';
+import { CANVAS_BASE, MODELS, sizeForModel } from '../lib/types';
+import type { CaseBackground, Layer, PhoneModel } from '../lib/types';
+import { FRAME_DEFS } from '../lib/frames';
+import { CameraSVG, cameraCutoutPath } from './CameraSVG';
+import type { CameraSpec } from './CameraSVG';
+import { useCameraSpecs } from '../lib/cameraSpecs';
+
+const camera = (file: string) => `${import.meta.env.BASE_URL}camera/${file}`;
+
+export function CasePreview({
+  background,
+  layers,
+  modelId,
+  width,
+  renderLayer,
+  innerRef,
+  cameraSpecOverride,
+}: {
+  background: CaseBackground | null;
+  layers: Layer[];
+  modelId: string | null;
+  /** Render width for the WIDEST phone in the catalog — other models scale down proportionally (real relative size, not a fixed box). */
+  width: number;
+  /** Swaps the static per-layer rendering (LayerView) for a caller-supplied
+   *  one — used by the admin Template Editor to render interactive
+   *  EditableLayer overlays in exactly the same stacking position (under
+   *  the camera-module cutout) as the static design, instead of duplicating
+   *  this component's background/camera-module rendering logic. */
+  renderLayer?: (layer: Layer, scale: number) => ReactNode;
+  /** Exposes the sized/clipped root element — the admin Template Editor
+   *  needs this as EditableLayer's canvasRef for its drag/rotate math. */
+  innerRef?: Ref<HTMLDivElement>;
+  /** Lets CameraDesigner preview an in-progress (unsaved) spec instead of
+   *  whatever's live in camera_specs for this model — true WYSIWYG with no
+   *  separate preview-rendering code. */
+  cameraSpecOverride?: CameraSpec | null;
+}) {
+  const model = (modelId && MODELS[modelId]) || MODELS.ip15pm;
+  const liveCameraSpecs = useCameraSpecs();
+  const cameraSpec = cameraSpecOverride ?? (modelId ? liveCameraSpecs[modelId] : undefined);
+  const { width: renderWidth, height } = sizeForModel(model, width);
+  const scale = renderWidth / CANVAS_BASE;
+  const radius = renderWidth * 0.2;
+  const colors = background?.colors?.length ? background.colors : ['#FFF5FA', '#FFE9F4'];
+  const ordered = [...(layers || [])].sort((a, b) => a.z - b.z);
+  const keyLight = 'radial-gradient(120% 90% at 26% 10%, rgba(255,255,255,0.25), rgba(255,255,255,0) 55%)';
+  const isGingham = background?.pattern === 'gingham';
+  // Woven picnic-check: two crossing sets of translucent stripes multiplied
+  // over a cream base — a generic textile pattern, not a copied image.
+  const cell = renderWidth * 0.09;
+  const backgroundLayers = isGingham
+    ? {
+        backgroundColor: colors[0],
+        backgroundImage: [
+          keyLight,
+          `repeating-linear-gradient(0deg, ${colors[1]}73 0px, ${colors[1]}73 ${cell}px, transparent ${cell}px, transparent ${cell * 2}px)`,
+          `repeating-linear-gradient(90deg, ${colors[1]}73 0px, ${colors[1]}73 ${cell}px, transparent ${cell}px, transparent ${cell * 2}px)`,
+        ].join(', '),
+        backgroundBlendMode: 'normal, multiply, multiply',
+      }
+    : { background: `${keyLight}, linear-gradient(155deg, ${colors[0]}, ${colors[colors.length - 1]})` };
+
+  return (
+    <div
+      ref={innerRef}
+      style={{
+        width: renderWidth,
+        height,
+        borderRadius: radius,
+        position: 'relative',
+        overflow: 'hidden',
+        ...backgroundLayers,
+        // Grounded product-photo shadow + a crisp 1px seam and thin edge
+        // catch-light instead of a thick colored outline (reads as a sticker).
+        boxShadow: [
+          '0 24px 48px -18px rgba(20,10,20,0.45)',
+          '0 8px 18px -10px rgba(20,10,20,0.3)',
+          'inset 0 0 0 1px rgba(0,0,0,0.1)',
+          'inset 0 1px 1px rgba(255,255,255,0.35)',
+          'inset 0 -1px 2px rgba(0,0,0,0.18)',
+        ].join(', '),
+      }}
+    >
+      {ordered.map((l) => (
+        renderLayer ? <Fragment key={l.id}>{renderLayer(l, scale)}</Fragment> : <LayerView key={l.id} layer={l} scale={scale} />
+      ))}
+      {/* The camera bump area is its own unprinted panel on a real case —
+          the print doesn't run underneath it, but DOES show through right
+          beside the module at the same height (checked against a real
+          case — this only hugs the module's own footprint, it's not a
+          full-width band). Painted over the layers/photo with a hard edge,
+          in the case's own solid color, before the module draws on top. */}
+      {cameraSpec?.image ? (
+        <CameraImageModule image={cameraSpec.image} pxPerMm={renderWidth / model.widthMm} />
+      ) : cameraSpec ? (
+        // Admin-designed camera (Cameras page in the dashboard) — the die-cut
+        // cutout and the plate on top share one source of truth (both derived
+        // from cameraSpec.island), so they can never drift apart like the
+        // hand-tuned CSS zone/module pair below sometimes did.
+        <svg
+          viewBox={`0 0 ${model.widthMm} ${model.heightMm}`}
+          width={renderWidth}
+          height={height}
+          style={{ position: 'absolute', inset: 0 }}
+        >
+          <path d={cameraCutoutPath(cameraSpec.island, 1.2)} fill="#0c0c0f" fillRule="evenodd" />
+          <CameraSVG spec={cameraSpec} tint="#0c0c0f" />
+        </svg>
+      ) : (
+        <>
+          {(() => {
+            const camStyle = camStyleFor(model);
+            // 'ip-vert' (base 17, and 16/16 Plus which share the same module)
+            // is two disconnected real-hardware shapes (lens pill + separate
+            // flash) with a lot of empty space between them inside their own
+            // bounding box — a single rounded-rect zone there reads as an
+            // oversized black slab instead of hugging the module. CameraModule
+            // draws its own tightly-fitted pill+circle background for this
+            // style instead, so skip the generic zone.
+            if (camStyle === 'ip-vert') return null;
+            const zone = cameraZoneRect(camStyle, renderWidth, height);
+            // The zone only needs to hug the module's own real footprint — the
+            // fixed case-body radius, applied to a much smaller box, rounds its
+            // corners way more aggressively than the module's own real hardware
+            // rounding, so a flat black halo bled out from behind the photo on
+            // every side (looked like a cartoon sticker outline instead of part
+            // of the same object). Real-photo compact modules get their own
+            // tighter, proportional radius instead.
+            const compactPhotoStyles: CamStyle[] = ['ip-dual-vert', 'ip11pro-square', 'ip12pro-square', 'ip13pro-square', 'ip14pro-square', 'ip13-diag', 'ip15-diag', 'ip15-square', 's26u'];
+            const zoneRadius = compactPhotoStyles.includes(camStyle) ? Math.min(zone.width, zone.height) * 0.32 : radius;
+            // s26u's module is a single irregular (notched, not rectangular)
+            // hardware shape — a rounded-rect zone always either clips a
+            // corner of the photo or leaves extra flat black showing in the
+            // notch, whichever radius you pick. Hugs the module's real
+            // silhouette instead by drawing the SAME photo again (scaled up
+            // slightly to the rim-inflated zone box) blackened via a filter,
+            // confirmed with the user 2026-09-26. Originally built as a
+            // `mask-image` div instead of an `<img>` — switched 2026-10-01
+            // because Android Chrome rasterizes a scaled CSS mask with hard,
+            // jagged (not anti-aliased) edges, visibly different from desktop;
+            // an `<img>`'s alpha goes through the browser's normal image-
+            // scaling path, which anti-aliases consistently everywhere.
+            if (camStyle === 's26u') {
+              return (
+                <img
+                  src={camera('s26u.png')}
+                  alt=""
+                  style={{
+                    position: 'absolute',
+                    top: zone.top,
+                    left: zone.left,
+                    width: zone.width,
+                    height: zone.height,
+                    filter: 'brightness(0)',
+                  }}
+                />
+              );
+            }
+            return (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: zone.top,
+                  left: zone.left,
+                  width: zone.width,
+                  height: zone.height,
+                  borderRadius: zoneRadius,
+                  background: '#0c0c0f',
+                  boxShadow: '0 1px 0 rgba(0,0,0,0.12)',
+                }}
+              />
+            );
+          })()}
+          {/* Every real case photo we've checked is black plastic underneath —
+              the camera surround is always black, not tinted to whatever
+              decorative color the customer picked for their print. */}
+          <CameraModule style={camStyleFor(model)} width={renderWidth} height={height} tint="#0c0c0f" />
+        </>
+      )}
+      {/* subtle printed-case sheen */}
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          pointerEvents: 'none',
+          background: 'linear-gradient(135deg, rgba(255,255,255,0) 38%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0) 62%)',
+        }}
+      />
+      {/* Real printed cases leave a thin strip of the case's own (black)
+          material unprinted around the edge — the print film never reaches
+          the true edge. Drawn on TOP of the layers/photo so it still shows
+          even on a full edge-to-edge "Fit to Case" photo, matching the
+          actual product. A real `border` instead of an inset box-shadow —
+          confirmed 2026-09-26 the box-shadow rendered fine in an automated
+          WebKit test but was silently missing from the actual iOS Safari-
+          saved image on a real phone. box-sizing: border-box is set
+          globally, so the border draws inward from inset:0 without
+          changing this div's own size. */}
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          pointerEvents: 'none',
+          borderRadius: radius,
+          border: `${Math.max(3, renderWidth * 0.032)}px solid #0c0c0f`,
+        }}
+      />
+    </div>
+  );
+}
+
+// A real camera photo (uploaded in the admin Cameras page) used in place of
+// the hand-drawn island/lenses/flash/sensors shapes. Drawn twice — once
+// blackened as the die-cut cutout silhouette, once at full color on top —
+// the same proven technique as the hardcoded s26u real photo below, just
+// driven by whatever alpha the admin's own cropped upload has instead of a
+// baked-in asset.
+// The die-cut cutout needs a UNIFORM margin around the module's own real
+// silhouette — not a bigger copy of the same (possibly irregular) shape
+// scaled up around its center. For an L-shaped module (e.g. a lens pill with
+// a flash bump sticking out one side), scaling the whole shape up stretches
+// it anisotropically and pushes far corners (like the bump) out much
+// further than near ones, so the margin visibly isn't a consistent ring
+// around the module — confirmed against a real Samsung module upload,
+// 2026-10-19. `feMorphology operator="dilate"` grows the image's own alpha
+// silhouette outward by a fixed pixel radius in every direction (the same
+// way a real manufacturing cutout tolerance works), giving a true uniform
+// halo regardless of the module's shape.
+function CameraImageModule({ image, pxPerMm }: { image: NonNullable<CameraSpec['image']>; pxPerMm: number }) {
+  const filterId = useId();
+  const left = image.xMm * pxPerMm;
+  const top = image.yMm * pxPerMm;
+  const width = image.wPx * image.scaleMmPerPx * pxPerMm;
+  const height = image.hPx * image.scaleMmPerPx * pxPerMm;
+  const radiusPx = (image.marginMm ?? 1.2) * pxPerMm;
+  return (
+    <>
+      <svg width={0} height={0} style={{ position: 'absolute' }} aria-hidden="true">
+        <filter id={filterId} x="-200%" y="-200%" width="500%" height="500%">
+          <feMorphology operator="dilate" radius={radiusPx} />
+        </filter>
+      </svg>
+      <img src={image.url} alt="" style={{ position: 'absolute', left, top, width, height, filter: `url(#${filterId}) brightness(0)` }} />
+      <img src={image.url} alt="" style={{ position: 'absolute', left, top, width, height }} />
+    </>
+  );
+}
+
+// The classic "tap to add an image" glyph (mountain + sun) — reads as "add
+// a photo here" at a glance, unlike the camera emoji it replaced, which
+// people mistook for "this is the phone's camera lens". Matches the icon
+// used in EditableLayer.tsx's live editor canvas.
+function PhotoPlaceholderIcon({ size }: { size: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24">
+      <circle cx="7.5" cy="7.5" r="1.8" fill="#b9a6ad" />
+      <path d="M3 18l5-6 4 4.5 3-4 6 5.5H3z" fill="#b9a6ad" />
+    </svg>
+  );
+}
+
+export function LayerView({ layer, scale }: { layer: Layer; scale: number }) {
+  const transform = `translate(-50%, -50%) translate(${layer.tx * scale}px, ${layer.ty * scale}px) scale(${layer.scale}) rotate(${layer.rotation}rad)`;
+  const base: React.CSSProperties = {
+    position: 'absolute',
+    left: '50%',
+    top: '50%',
+    transform,
+    transformOrigin: 'center',
+  };
+
+  if (layer.kind === 'sticker') {
+    const s = layer.size * scale;
+    return layer.uri ? (
+      <img src={layer.uri} alt="" style={{ ...base, width: s, height: s, objectFit: 'contain' }} />
+    ) : (
+      <div style={{ ...base, fontSize: s * 0.9, lineHeight: 1 }}>{layer.emoji}</div>
+    );
+  }
+  if (layer.kind === 'image') {
+    const w = layer.width * scale, h = layer.height * scale, r = layer.radius ? '50%' : 0;
+    return layer.uri ? (
+      <div style={{ ...base, width: w, height: h, borderRadius: r, overflow: 'hidden' }}>
+        <img
+          src={layer.uri}
+          alt=""
+          style={{
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            transform: `translate(${layer.photoTx ?? 0}px, ${layer.photoTy ?? 0}px) scale(${layer.photoScale ?? 1})`,
+          }}
+        />
+      </div>
+    ) : (
+      <div style={{ ...base, width: w, height: h, borderRadius: r, background: '#f0e6ea', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <PhotoPlaceholderIcon size={Math.min(w, h) * 0.32} />
+      </div>
+    );
+  }
+  if (layer.kind === 'frame') {
+    const def = FRAME_DEFS[layer.frameId];
+    if (!def) return null;
+    const w = def.width * scale;
+    const h = def.height * scale;
+    const { hole } = def;
+    const fit = def.fit ?? 'cover';
+    const FrameSvg = def.Svg;
+    const overlayStyle: React.CSSProperties = { position: 'absolute', inset: 0, width: '100%', height: '100%' };
+    return (
+      <div style={{ ...base, width: w, height: h }}>
+        <div
+          style={{
+            position: 'absolute',
+            left: `${hole.xPct}%`,
+            top: `${hole.yPct}%`,
+            width: `${hole.wPct}%`,
+            height: `${hole.hPct}%`,
+            overflow: 'hidden',
+            background: layer.photoUri ? undefined : '#f0e6ea',
+            ...(def.holeMask
+              ? { maskImage: `url(${def.holeMask})`, WebkitMaskImage: `url(${def.holeMask})`, maskSize: '100% 100%', WebkitMaskSize: '100% 100%', maskRepeat: 'no-repeat', WebkitMaskRepeat: 'no-repeat' }
+              : { borderRadius: '50%' }),
+          }}
+        >
+          {layer.photoUri && (
+            <img
+              src={layer.photoUri}
+              alt=""
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: fit,
+                transform: `translate(${layer.photoTx}px, ${layer.photoTy}px) scale(${layer.photoScale})`,
+              }}
+            />
+          )}
+        </div>
+        {def.hole2 && (
+          <div
+            style={{
+              position: 'absolute',
+              left: `${def.hole2.xPct}%`,
+              top: `${def.hole2.yPct}%`,
+              width: `${def.hole2.wPct}%`,
+              height: `${def.hole2.hPct}%`,
+              overflow: 'hidden',
+              background: layer.photo2Uri ? undefined : '#f0e6ea',
+              ...(def.hole2Mask
+                ? { maskImage: `url(${def.hole2Mask})`, WebkitMaskImage: `url(${def.hole2Mask})`, maskSize: '100% 100%', WebkitMaskSize: '100% 100%', maskRepeat: 'no-repeat', WebkitMaskRepeat: 'no-repeat' }
+                : { borderRadius: '50%' }),
+            }}
+          >
+            {layer.photo2Uri && (
+              <img
+                src={layer.photo2Uri}
+                alt=""
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: fit,
+                  transform: `translate(${layer.photo2Tx}px, ${layer.photo2Ty}px) scale(${layer.photo2Scale})`,
+                }}
+              />
+            )}
+          </div>
+        )}
+        {def.image ? <img src={def.image} alt="" style={overlayStyle} /> : FrameSvg ? <FrameSvg style={overlayStyle} /> : null}
+      </div>
+    );
+  }
+  return (
+    <div
+      style={{
+        ...base,
+        width: 240 * scale,
+        color: layer.color,
+        fontSize: layer.fontSize * scale,
+        fontWeight: layer.fontWeight as any,
+        textAlign: layer.align,
+        lineHeight: 1.1,
+        whiteSpace: 'pre-wrap',
+      }}
+    >
+      {layer.text}
+    </div>
+  );
+}
+
+/* ───────────────────────── Realistic camera module (CSS) ───────────────────────── */
+
+// From the iPhone 17 generation, the Pros and the Air use a full-width camera
+// plateau flush with the top of the phone — 'ip17-plateau' (triple lens) and
+// 'ip17-air' (single lens). The base 17 kept the 16-style vertical pill, and
+// pre-17 iPhones keep the old cluster styles.
+export type CamStyle =
+  | 'ip17-plateau' | 'ip17-air' | 'ip15-square' | 'ip11pro-square' | 'ip12pro-square' | 'ip13pro-square' | 'ip14pro-square' | 'ip13-diag' | 'ip15-diag' | 'ip-square' | 'ip-vert' | 'ip-dual' | 'ip-dual-vert'
+  | 'samsung' | 'samsung-ultra' | 's26u'
+  | 'xiaomi' | 'oppo' | 'generic';
+
+export function camStyleFor(model: PhoneModel): CamStyle {
+  if (model.brand === 'Samsung') {
+    // S26 Ultra uses a real photo (s26u) — a shared metal backing plate
+    // connecting all 4 lens housings + flash, visibly different from the
+    // older Ultra generations' bare individually-mounted lenses with no
+    // shared plate. S24/S23 Ultra stay on the CSS 'samsung-ultra'
+    // approximation until they get their own confirmed reference photo.
+    if (model.id === 's26u') return 's26u';
+    if (model.id === 's24u' || model.id === 's23u') return 'samsung-ultra';
+    return 'samsung'; // slabs: bare vertical lenses
+  }
+  if (model.brand === 'Xiaomi') return 'xiaomi'; // square 2x2 island
+  if (model.brand === 'OPPO') return 'oppo';
+  if (model.brand === 'iPhone') {
+    const n = model.name;
+    if (n.startsWith('17 Pro')) return 'ip17-plateau';
+    if (n === 'Air') return 'ip17-air';
+    // Base 17 kept the 16-style vertical dual pill — only Air and the Pros
+    // moved to the full-width plateau.
+    if (n === '17') return 'ip-vert';
+    // 15 Pro/Pro Max use a real photo (ip15-square) — Apple kept the exact
+    // same camera module design for 16 Pro/Pro Max, so it's reused there
+    // too.
+    if (n === '15 Pro Max' || n === '15 Pro' || n === '16 Pro Max' || n === '16 Pro') return 'ip15-square';
+    // 11 Pro/Pro Max use a real photo (ip11pro-square) — the older
+    // triple-lens design with individual silver lens rings, visibly
+    // different from 15/16 Pro's flush module.
+    if (n === '11 Pro Max' || n === '11 Pro') return 'ip11pro-square';
+    // 12 Pro/Pro Max use their own real photo (ip12pro-square) — confirmed
+    // NOT identical to 11 Pro against real reference photos: 12 Pro added
+    // a LiDAR scanner (a second, larger black dot next to the mic) that 11
+    // Pro doesn't have, plus a visibly duller/darker metallic lens-ring
+    // finish.
+    if (n === '12 Pro Max' || n === '12 Pro') return 'ip12pro-square';
+    // 13 Pro/Pro Max use a real photo (ip13pro-square) — cropped from the
+    // user's own print-template reference (13-PRO-T-FRAME-scaled.png).
+    if (n === '13 Pro Max' || n === '13 Pro') return 'ip13pro-square';
+    // 14 Pro/Pro Max use a real photo (ip14pro-square) — cropped from the
+    // user's own print-template reference (14-PRO-MAX-T-FRAME-scaled.png).
+    // Visibly larger module footprint than 13 Pro's (326x338 vs 306x316 in
+    // the cropped photos), matching Apple's actual bigger camera bump for
+    // this generation — kept as its own entry, not merged with 13 Pro.
+    if (n === '14 Pro Max' || n === '14 Pro') return 'ip14pro-square';
+    if (n.includes('Pro')) return 'ip-square';
+    if (n.startsWith('16')) return 'ip-vert';
+    // 13/14/15 use the diagonal pair; 11/12 stack both lenses vertically
+    // on the module's left (per Apple's dual-camera timeline).
+    if (n.startsWith('12') || n.startsWith('11')) return 'ip-dual-vert';
+    // 13/14 share one catalog model ('14 / 13') and a real photo confirmed
+    // this generation's diagonal pair (ip13-diag).
+    if (n === '14 / 13') return 'ip13-diag';
+    // 15 (plain, non-Pro) is a separate catalog model with its own real
+    // photo (ip15-diag) — confirmed visibly different plate color/lens
+    // ring proportions from 13/14 in the user's reference photos, not
+    // reused.
+    if (n === '15') return 'ip15-diag';
+    return 'ip-dual';
+  }
+  return 'generic';
+}
+
+// Real printed cases don't run the photo/print underneath the camera bump —
+// that whole top section is its own unprinted panel (bare case material),
+// with a hard edge where the print actually starts below it (confirmed
+// against real finished cases — the print doesn't blend under the module).
+// Mirrors each style's own module geometry in CameraModule() below, just
+// returning how far down the unprinted zone needs to reach.
+// Checked against two real finished cases: the unprinted zone HUGS the
+// module's own footprint — the print shows through right beside it at the
+// same height, not just below a full-width band (an earlier version of this
+// wrongly assumed full-width for every style). ip17-air is the real
+// exception — Apple actually builds that as a genuine edge-to-edge bar,
+// so full width is correct there.
+export function cameraZoneRect(style: CamStyle, W: number, H: number): { left: number; top: number; width: number; height: number } {
+  // A generous safety margin, not a tight fit — this zone becomes the actual
+  // print file's keep-out boundary for the vending machine. If it's cut too
+  // close to the real module size, a customer's design can bleed into the
+  // camera bump on the real printed case, which the machine/operator can't
+  // do anything sensible with. Better to block a bit more than necessary.
+  const pad = H * 0.04;
+  switch (style) {
+    case 'ip17-plateau': {
+      // Module width/position (mx, my, pw, bh) match the actual rendered
+      // image exactly — do not touch when adjusting the cutoff line. Only
+      // the zone's own safety-margin padding is tuned here to nudge where
+      // the print starts, independent of the module's real size.
+      const mx = W * 0.06, my = W * 0.03, pw = W - mx * 2, bh = pw * (141 / 222);
+      // Left/right overflow past the case edge must be equal, or the zone's
+      // own corner arc collides with the outer edge-trim stroke asymmetrically
+      // (one side clips clean against the case's own rounding, the other
+      // flattens into a near-square corner) — confirmed against a real
+      // printed case photo, both corners round identically.
+      const sideMargin = mx - pad;
+      return { left: sideMargin, top: 0, width: W - sideMargin * 2, height: my + bh + pad * 0.3 };
+    }
+    case 'ip17-air': {
+      // Module position/aspect match the real cropped photo (584x215)
+      // exactly — do not touch mx/my/bh when adjusting the cutoff line, only
+      // the zone's own pad below is tunable, same rule as ip17-plateau. Width
+      // measured directly off a real full-body product photo (shadow line +
+      // bar's own outline both run to within ~5% of the case edge on each
+      // side) — ~90% width, not the ~70% an earlier pass wrongly shrank it
+      // to while also fixing the oversized black zone.
+      const mx = W * 0.05, my = H * 0.035, pw = W - mx * 2, bh = pw * (215 / 584);
+      return { left: 0, top: 0, width: W, height: my + bh + pad * 0.3 };
+    }
+    case 'ip-vert': {
+      // Matches the real photo's own footprint (1055x1234, ip17-blue.png) at
+      // 50% width — see CameraModule below, do not touch mx/my/pw/bh here
+      // without updating it to match, only the zone's own pad is tunable.
+      const mx = W * 0.05, my = H * 0.045, pw = W * 0.5, bh = pw * (1234 / 1055);
+      return { left: 0, top: 0, width: mx + pw + pad, height: my + bh + pad * 0.3 };
+    }
+    case 'ip15-square': {
+      // Real photo, inset a bit from the true corner (not flush) so the
+      // black margin frames the module evenly on left/top/right — a flush
+      // 0,0 position left zero margin on two sides and all the margin on
+      // the other two, which read as visibly off-center. Aspect ratio
+      // (335/321) confirmed 2026-09-26 against the user's own 15 Pro
+      // print-template reference (ip15pro-square.png) — replaces the
+      // earlier unverified 145/140 estimate. Switched 2026-09-26 to the
+      // same rim/zoneRadius treatment as the other compact real-photo
+      // modules (12 Pro etc.) at the user's request — was previously its
+      // own bespoke framePad + full case radius.
+      const s = W * 0.5, inset = W * 0.04, sh = s * (335 / 321);
+      const rim = s * 0.12;
+      return { left: inset - rim, top: inset - rim, width: s + rim * 2, height: sh + rim * 2 };
+    }
+    case 'ip11pro-square': {
+      // Matches the real photo's own footprint (215x233, ip11pro-square.png,
+      // cropped from the user's 11 Pro print-template reference using the
+      // same alpha-aware connected-components method as ip-dual-vert) —
+      // see CameraModule below, do not touch s/px/py/sh here without
+      // updating it to match. Same thin-rim treatment as ip-dual-vert
+      // (rim = 12% of the module's own width, zoneRadius proportional to
+      // the zone's own size) — see the zoneRadius override where this zone
+      // is drawn.
+      const s = W * 0.5, px = W * 0.05, py = H * 0.04, sh = s * (233 / 215);
+      const rim = s * 0.12;
+      return { left: px - rim, top: py - rim, width: s + rim * 2, height: sh + rim * 2 };
+    }
+    case 'ip12pro-square': {
+      // Matches the real photo's own footprint (238x255, ip12pro-square.png,
+      // cropped from the user's 12 Pro print-template reference the same
+      // alpha-aware connected-components way as ip11pro-square) — see
+      // CameraModule below, do not touch s/px/py/sh here without updating
+      // it to match. Same thin-rim treatment as ip-dual-vert/ip11pro-square.
+      const s = W * 0.5, px = W * 0.05, py = H * 0.04, sh = s * (255 / 238);
+      const rim = s * 0.12;
+      return { left: px - rim, top: py - rim, width: s + rim * 2, height: sh + rim * 2 };
+    }
+    case 'ip13pro-square': {
+      // Matches the real photo's own footprint (306x316, ip13pro-square.png,
+      // cropped from the user's 13 Pro print-template reference the same
+      // alpha-aware connected-components way as ip11pro-square/
+      // ip12pro-square) — see CameraModule below, do not touch s/px/py/sh
+      // here without updating it to match. Same thin-rim treatment.
+      const s = W * 0.5, px = W * 0.05, py = H * 0.04, sh = s * (316 / 306);
+      const rim = s * 0.12;
+      return { left: px - rim, top: py - rim, width: s + rim * 2, height: sh + rim * 2 };
+    }
+    case 'ip14pro-square': {
+      // Matches the real photo's own footprint (326x338, ip14pro-square.png,
+      // cropped from the user's 14 Pro Max print-template reference the same
+      // alpha-aware connected-components way as ip13pro-square) — see
+      // CameraModule below, do not touch s/px/py/sh here without updating
+      // it to match. Same thin-rim treatment.
+      const s = W * 0.5, px = W * 0.05, py = H * 0.04, sh = s * (338 / 326);
+      const rim = s * 0.12;
+      return { left: px - rim, top: py - rim, width: s + rim * 2, height: sh + rim * 2 };
+    }
+    case 'ip13-diag': {
+      // Matches the real photo's own footprint (243x244, ip13-diag.png,
+      // cropped from the user's iPhone 13 print-template reference using
+      // the same alpha-aware connected-components method as ip-dual-vert)
+      // — see CameraModule below, do not touch s/px/py/sh here without
+      // updating it to match. Same thin-rim treatment as the other
+      // real-photo compact modules.
+      const s = W * 0.45, px = W * 0.05, py = H * 0.04, sh = s * (244 / 243);
+      const rim = s * 0.12;
+      return { left: px - rim, top: py - rim, width: s + rim * 2, height: sh + rim * 2 };
+    }
+    case 'ip15-diag': {
+      // Matches the real photo's own footprint (264x265, ip15-diag.png,
+      // cropped from the user's iPhone 15 print-template reference using
+      // the same alpha-aware connected-components method as ip13-diag) —
+      // see CameraModule below, do not touch s/px/py/sh here without
+      // updating it to match. Same thin-rim treatment as the other
+      // real-photo compact modules.
+      const s = W * 0.45, px = W * 0.05, py = H * 0.04, sh = s * (265 / 264);
+      const rim = s * 0.12;
+      return { left: px - rim, top: py - rim, width: s + rim * 2, height: sh + rim * 2 };
+    }
+    case 'ip-square': return { left: 0, top: 0, width: W * 0.5 + pad, height: W * 0.5 + pad };
+    case 'ip-dual': {
+      const s = W * 0.45, px = W * 0.05;
+      return { left: 0, top: 0, width: px + s + pad, height: H * 0.04 + s * 1.04 + pad };
+    }
+    case 'ip-dual-vert': {
+      // Matches the real photo's own footprint (200x226, ip11-dualvert.png,
+      // re-cropped 2026-09-26 directly from the user's iPhone 11 print-
+      // template reference — plate isolated from the case outline via the
+      // PNG's own alpha channel + connected-components, so the crop is
+      // pixel-exact with no dead margin) — see CameraModule below, do not
+      // touch s/px/py/sh here without updating it to match. A thin rim
+      // (5% of the module's own width, same proportion as the 15 Pro's
+      // framePad) is added evenly on all sides so a small strip of the
+      // case's own black shows around the photo like the unprinted panel
+      // on a real case — this is much smaller than the old full `pad`
+      // margin that read as an oversized cartoon halo (see the zoneRadius
+      // override where this zone is drawn, which keeps the rounding
+      // proportional to this small box instead of the case's own radius).
+      const s = W * 0.45, px = W * 0.05, py = H * 0.04, sh = s * (226 / 200);
+      const rim = s * 0.12;
+      return { left: px - rim, top: py - rim, width: s + rim * 2, height: sh + rim * 2 };
+    }
+    case 'samsung': case 'samsung-ultra': {
+      const ld = W * 0.145, lx = W * 0.07;
+      const w = style === 'samsung-ultra' ? ld * 2.5 : ld * 1.3;
+      return { left: 0, top: 0, width: lx - ld * 0.12 + w + pad, height: H * 0.045 + ld * 1.24 * 2 + ld * 1.25 + pad };
+    }
+    case 's26u': {
+      // Matches the real photo's own footprint (315x486, s26u.png, cropped
+      // from the user's S26 Ultra print-template reference using the same
+      // alpha-aware connected-components method as the iPhone real-photo
+      // modules) — see CameraModule below, do not touch s/px/py/sh here
+      // without updating it to match. Same thin-rim treatment as the
+      // compact iPhone modules.
+      // Rim padding must scale each axis by its OWN dimension (not a single
+      // width-derived rim applied to both) — this box's alpha is used as a
+      // CSS mask stretched to 100% 100%, so if its aspect ratio drifts from
+      // the photo's own aspect, the stretched mask shape no longer lines up
+      // with the real photo underneath (confirmed: a flat `s`-derived rim on
+      // both axes left a jagged black sliver along the module's edge).
+      const s = W * 0.36, px = W * 0.05, py = H * 0.03, sh = s * (486 / 315);
+      const rimX = s * 0.12, rimY = sh * 0.12;
+      return { left: px - rimX, top: py - rimY, width: s + rimX * 2, height: sh + rimY * 2 };
+    }
+    case 'xiaomi': {
+      const s = W * 0.44, px = W * 0.06;
+      return { left: 0, top: 0, width: px + s + pad, height: H * 0.045 + s + pad };
+    }
+    case 'oppo': {
+      const ow = W * 0.34, px = W * 0.06;
+      return { left: 0, top: 0, width: px + ow + pad, height: H * 0.04 + ow * 1.72 + pad };
+    }
+    default: {
+      const s = W * 0.3, px = W * 0.06;
+      return { left: 0, top: 0, width: px + s + pad, height: H * 0.04 + s + pad };
+    }
+  }
+}
+
+// On a real printed/molded case, the camera cutout is a blank die-cut
+// hole — the print film can't reach the raised camera bump/plateau, so
+// that whole area is left as bare case material (the case's own molded
+// color) with no lens/flash graphics on it. `tint` is the case's own
+// background color, mixed lighter/darker for the raised-edge shading.
+function plateGradient(tint: string) {
+  // Near-flat: the real plateau is matte with barely-visible shading — a
+  // strong light-to-dark sweep reads as a glossy toy dome.
+  return `linear-gradient(160deg, color-mix(in srgb, ${tint} 92%, white), color-mix(in srgb, ${tint} 88%, black))`;
+}
+
+// The die-cut hole is an actual opening in the case, not printed/molded
+// case material — you see straight through it to the phone's own camera
+// glass/housing underneath, so it can never take on the customer's chosen
+// case color. Render it as the phone's own dark hardware tone instead.
+const EXPOSED_METAL_TINT = '#2c2c31';
+
+function Plate({ l, t, w, h, r, tint, caseTint }: { l: number; t: number; w: number; h: number; r: number | string; tint: string; caseTint: string }) {
+  // The ring framing the die-cut hole IS real case material — it must be
+  // the customer's actual case color, not a fixed white (checked against a
+  // real black case: the ring around the camera is black, not white).
+  const ringColor = `color-mix(in srgb, ${caseTint} 88%, white)`;
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        left: l,
+        top: t,
+        width: w,
+        height: h,
+        borderRadius: r,
+        // Soft top light over near-flat matte metal.
+        background: `linear-gradient(180deg, rgba(255,255,255,0.16), rgba(255,255,255,0) 34%), ${plateGradient(tint)}`,
+        // Crisp thin seam + soft contact shadow reads as a precise molded
+        // edge, plus a case-colored ring so the cutout boundary reads as
+        // real material framing it, not a printed sticker outline.
+        boxShadow: [
+          `0 ${Math.max(1, h * 0.03)}px ${Math.max(2, h * 0.08)}px rgba(10,8,18,0.22)`,
+          `inset 0 0 0 ${Math.max(4, h * 0.07)}px ${ringColor}`,
+          'inset 0 1px 0.5px rgba(255,255,255,0.25)',
+          `inset 0 -${Math.max(1, h * 0.02)}px ${Math.max(1.5, h * 0.04)}px rgba(10,8,18,0.12)`,
+        ].join(', '),
+      }}
+    />
+  );
+}
+
+// A real camera lens is a mostly BLACK barrel — a bright chrome/silver ring
+// is what makes a lens read as a toy/drawing. Concentric dark bands suggest
+// the barrel's depth, the glass itself is near-black and glossy, and the
+// only real color comes from a small, OFF-CENTER, blue-violet-pink
+// coating reflection — never a centered flat white dot.
+function Lens({ size, left, top }: { size: number; left: number; top: number }) {
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        left,
+        top,
+        width: size,
+        height: size,
+        borderRadius: '50%',
+        background: [
+          'radial-gradient(circle at 50% 50%, transparent 74%, rgba(255,255,255,0.05) 77%, transparent 80%)',
+          'radial-gradient(circle at 40% 35%, #2a2a30 0%, #141417 40%, #050506 100%)',
+        ].join(', '),
+        boxShadow: '0 1px 2px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(255,255,255,0.06)',
+      }}
+    >
+      <div
+        style={{
+          position: 'absolute',
+          inset: '22%',
+          borderRadius: '50%',
+          overflow: 'hidden',
+          background: 'radial-gradient(circle at 42% 38%, #1b1e24 0%, #0a0b0e 45%, #000 100%)',
+          boxShadow: 'inset 0 0 3px rgba(0,0,0,0.95), inset 0 0 0 1px rgba(255,255,255,0.05)',
+        }}
+      >
+        <div
+          style={{
+            position: 'absolute',
+            left: '26%',
+            top: '34%',
+            width: '34%',
+            height: '24%',
+            borderRadius: '50%',
+            background: 'linear-gradient(120deg, rgba(130,175,255,0.55), rgba(200,120,240,0.4) 55%, rgba(255,150,190,0.25))',
+            filter: 'blur(0.4px)',
+          }}
+        />
+        <div style={{ position: 'absolute', left: '31%', top: '38%', width: '10%', height: '7%', borderRadius: '50%', background: 'rgba(255,255,255,0.55)' }} />
+      </div>
+    </div>
+  );
+}
+
+// LED flash — warm cream diffuser with a glowing core, not a lens.
+function Flash({ size, left, top }: { size: number; left: number; top: number }) {
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        left,
+        top,
+        width: size,
+        height: size,
+        borderRadius: '50%',
+        overflow: 'hidden',
+        border: `${Math.max(0.6, size * 0.06)}px solid rgba(170,170,190,0.45)`,
+        background: 'radial-gradient(circle at 38% 32%, #fffef8 0%, #f3ecdd 45%, #d8d1c2 100%)',
+        boxShadow: `inset 0 ${Math.max(0.5, size * 0.04)}px ${Math.max(1, size * 0.08)}px rgba(120,110,90,0.35)`,
+      }}
+    >
+      <div
+        style={{
+          position: 'absolute',
+          left: size * 0.3,
+          top: size * 0.3,
+          width: size * 0.4,
+          height: size * 0.4,
+          borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(255,214,140,0.55), rgba(255,214,140,0) 75%)',
+        }}
+      />
+      {size >= 12 && (
+        <div
+          style={{
+            position: 'absolute',
+            left: size * 0.16,
+            top: size * 0.12,
+            width: size * 0.32,
+            height: size * 0.16,
+            borderRadius: size * 0.16,
+            background: 'rgba(255,255,255,0.75)',
+            transform: 'rotate(-18deg)',
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+// Small dark sensor dot — mic pinhole, laser AF, or LiDAR emitter.
+function Dot({ size, left, top }: { size: number; left: number; top: number }) {
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        left,
+        top,
+        width: size,
+        height: size,
+        borderRadius: '50%',
+        background: 'radial-gradient(circle at 35% 30%, #2b2c36 0%, #0b0a10 65%)',
+        border: `${Math.max(0.6, size * 0.08)}px solid rgba(255,255,255,0.16)`,
+        boxShadow: `inset ${size * 0.08}px ${size * 0.1}px ${size * 0.14}px rgba(255,255,255,0.18)`,
+      }}
+    />
+  );
+}
+
+export function CameraModule({ style, width: W, height: H, tint }: { style: CamStyle; width: number; height: number; tint: string }) {
+  if (style === 'ip17-plateau') {
+    // Real photo of the actual 17 Pro/Pro Max camera plateau (silver), not a
+    // CSS recreation — pixel-exact instead of an approximation. Sized to the
+    // image's own aspect ratio so nothing stretches/distorts. Width margin
+    // measured directly (pixel-sampled) off the user's own screenshot of the
+    // actual print/design machine — case outer edge to plateau edge — giving
+    // ~68% module width, ~5.4% top margin. This has changed twice before
+    // because different source photos weren't confirmed to be this exact
+    // model; this one is the design machine's own screenshot, so trust it.
+    const mx = W * 0.06, my = W * 0.03;
+    const pw = W - mx * 2, bh = pw * (141 / 222);
+    return <img src={camera('i17pro-silver.png')} alt="" style={{ position: 'absolute', left: mx, top: my, width: pw, height: bh }} />;
+  }
+  if (style === 'ip17-air') {
+    // Real photo of the actual Air camera bar. Source was a JPEG re-export
+    // of a transparent render on a faint checkerboard matte — the pill's own
+    // edges were too low-contrast against that matte for pixel-level alpha
+    // extraction (checker leaked into any color-distance mask). Cropped to
+    // the pill's measured bounds instead and masked with a true stadium
+    // shape (rounded rect, radius = height/2) — the real module is a pill,
+    // so this gives a clean, exact-geometry cut with zero speckle, unlike
+    // the noisier pixel-threshold approach. Sized to the image's own aspect
+    // ratio (584x215) so nothing stretches — same pattern as the 17 Pro
+    // plateau above. Width measured directly off a real full-body product
+    // photo (shadow line + bar's own outline both run to within ~5% of the
+    // case edge on each side) — ~90% width, not the ~70% an earlier pass
+    // wrongly shrank it to while also fixing the oversized black zone.
+    const mx = W * 0.05, my = H * 0.035;
+    const pw = W - mx * 2, bh = pw * (215 / 584);
+    return <img src={camera('i17air-skyblue.png')} alt="" style={{ position: 'absolute', left: mx, top: my, width: pw, height: bh }} />;
+  }
+  if (style === 'ip-vert') {
+    // Real photo of the actual iPhone 17/16 camera (plate + separate flash
+    // housing) — a real product shot instead of a CSS recreation, same
+    // reasoning as the 17 Pro plateau above (flat CSS with no lens-glass
+    // reflections or metal shading read as an obviously fake flat cutout).
+    // ip17-blue.png (2026-09-26) replaces the earlier lavender crop —
+    // trimmed to its alpha bbox with PIL (1055x1234), so this ratio is
+    // exact, not eyeballed; do not stretch away from it.
+    // Width is NOT a near-full-case inset like the Air/17 Pro plateau above
+    // — this module sits in the top-left corner at real proportions (the
+    // pre-photo CSS had the plate at 42% width; treating this crop's width
+    // as "W minus a small margin" blew it up to 90%+ and swallowed most of
+    // the case in black).
+    // mx/my position the PHOTO's own canvas, but the pill's actual opaque
+    // hardware doesn't start at the photo's (0,0) — there's a real gap
+    // baked into the crop before the pill begins (the canvas has to fit
+    // the flash off to the side too). Positioning the raw photo origin at
+    // a small inset therefore left the pill itself sitting much farther
+    // from the true case corner than intended (confirmed too far by the
+    // user 2026-09-26, then nudged up further at their request) — so
+    // mx/my are solved backwards from where the PILL itself should sit,
+    // not from the photo's own canvas origin.
+    const pillInsetX = W * 0.05, pillInsetY = H * 0.02;
+    const pw = W * 0.5, bh = pw * (1234 / 1055);
+    const mx = pillInsetX - (215 / 1055) * pw, my = pillInsetY - (113 / 1234) * bh;
+    // The photo is two disconnected hardware pieces (lens pill + separate
+    // flash housing) with real empty space between them — CasePreview.tsx's
+    // caller skips the generic rounded-rect zone for this style and relies
+    // on these two hugging shapes instead. Bounding boxes below are the
+    // photo's own alpha-channel islands (pixel-measured via PIL/scipy
+    // connected-components against ip17-blue.png, 1055x1234): pill
+    // x[215,748] y[113,1124], flash x[787,985] y[513,715].
+    const rim = pw * 0.08;
+    const pill = { left: mx + (215 / 1055) * pw, top: my + (113 / 1234) * bh, w: (533 / 1055) * pw, h: (1011 / 1234) * bh };
+    const flash = { left: mx + (787 / 1055) * pw, top: my + (513 / 1234) * bh, w: (198 / 1055) * pw, h: (202 / 1234) * bh };
+    // Real hardware connects the pill to the flash housing via a short neck
+    // (confirmed against a 16 Plus print-template reference, 2026-09-26) —
+    // without it the two shapes read as floating/disconnected.
+    const bridgeH = flash.h * 0.55;
+    const bridge = { left: pill.left + pill.w - rim, top: (pill.top + pill.h / 2 + flash.top + flash.h / 2) / 2 - bridgeH / 2, w: flash.left + rim - (pill.left + pill.w - rim), h: bridgeH };
+    return (
+      <>
+        <div style={{ position: 'absolute', left: pill.left - rim, top: pill.top - rim, width: pill.w + rim * 2, height: pill.h + rim * 2, borderRadius: 999, background: tint }} />
+        <div style={{ position: 'absolute', left: bridge.left, top: bridge.top, width: bridge.w, height: bridge.h, background: tint }} />
+        <div style={{ position: 'absolute', left: flash.left - rim, top: flash.top - rim, width: flash.w + rim * 2, height: flash.h + rim * 2, borderRadius: '50%', background: tint }} />
+        <img src={camera('ip17-blue.png')} alt="" style={{ position: 'absolute', left: mx, top: my, width: pw, height: bh }} />
+      </>
+    );
+  }
+  if (style === 'ip15-square') {
+    // Real photo of the 15 Pro/Pro Max camera module — pixel-exact instead
+    // of a CSS approximation. Inset from the corner (matches cameraZoneRect
+    // above) so the black frames it evenly instead of sitting flush in the
+    // corner. Re-cropped 2026-09-26 from the user's own print-template
+    // reference (15-PRO-T-FRAME-scaled.png, black titanium) using the same
+    // alpha-aware connected-components method as the other real-photo
+    // modules — confirms the same lens/flash/LiDAR layout as the earlier
+    // silver-colorway asset it replaces, just pixel-verified now.
+    const s = W * 0.5, inset = W * 0.04;
+    return <img src={camera('ip15pro-square.png')} alt="" style={{ position: 'absolute', left: inset, top: inset, width: s, height: s * (335 / 321) }} />;
+  }
+  if (style === 'ip11pro-square') {
+    // Real photo of the 11 Pro/Pro Max triple-lens module, cropped directly
+    // from the user's print-template reference (11-PRO-T-FRAME-scaled.png)
+    // the same way as ip-dual-vert — plate isolated from the case outline
+    // via the PNG's alpha channel + connected-components, pixel-exact to
+    // its own bounding box.
+    const s = W * 0.5, px = W * 0.05, py = H * 0.04, sh = s * (233 / 215);
+    return <img src={camera('ip11pro-square.png')} alt="" style={{ position: 'absolute', left: px, top: py, width: s, height: sh }} />;
+  }
+  if (style === 'ip12pro-square') {
+    // Real photo of the 12 Pro/Pro Max triple-lens + LiDAR module, cropped
+    // directly from the user's print-template reference
+    // (12-PRO-T-FRAME-scaled.png) the same way as ip11pro-square.
+    const s = W * 0.5, px = W * 0.05, py = H * 0.04, sh = s * (255 / 238);
+    return <img src={camera('ip12pro-square.png')} alt="" style={{ position: 'absolute', left: px, top: py, width: s, height: sh }} />;
+  }
+  if (style === 'ip13pro-square') {
+    // Real photo of the 13 Pro/Pro Max triple-lens module, cropped directly
+    // from the user's print-template reference (13-PRO-T-FRAME-scaled.png)
+    // the same way as ip11pro-square/ip12pro-square.
+    const s = W * 0.5, px = W * 0.05, py = H * 0.04, sh = s * (316 / 306);
+    return <img src={camera('ip13pro-square.png')} alt="" style={{ position: 'absolute', left: px, top: py, width: s, height: sh }} />;
+  }
+  if (style === 'ip14pro-square') {
+    // Real photo of the 14 Pro/Pro Max triple-lens module, cropped directly
+    // from the user's print-template reference (14-PRO-MAX-T-FRAME-scaled.png)
+    // the same way as ip13pro-square.
+    const s = W * 0.5, px = W * 0.05, py = H * 0.04, sh = s * (338 / 326);
+    return <img src={camera('ip14pro-square.png')} alt="" style={{ position: 'absolute', left: px, top: py, width: s, height: sh }} />;
+  }
+  if (style === 'ip13-diag') {
+    // Real photo of the 13/14 diagonal dual-lens module, cropped directly
+    // from the user's print-template reference (13-T-FRAME-scaled.png).
+    const s = W * 0.45, px = W * 0.05, py = H * 0.04, sh = s * (244 / 243);
+    return <img src={camera('ip13-diag.png')} alt="" style={{ position: 'absolute', left: px, top: py, width: s, height: sh }} />;
+  }
+  if (style === 'ip15-diag') {
+    // Real photo of the 15 (non-Pro) diagonal dual-lens module, cropped
+    // directly from the user's print-template reference
+    // (15-T-FRAME-scaled.png).
+    const s = W * 0.45, px = W * 0.05, py = H * 0.04, sh = s * (265 / 264);
+    return <img src={camera('ip15-diag.png')} alt="" style={{ position: 'absolute', left: px, top: py, width: s, height: sh }} />;
+  }
+  if (style === 'ip-square') {
+    // Spec table bump figures for 15 Pro/16 Pro/16 Pro Max average ~0.50 of
+    // body width (38-40mm on 70.6-77.6mm bodies). Flush against the case's
+    // own top-left corner, not inset from it.
+    const s = W * 0.5, px = 0, py = 0;
+    const ld = s * 0.36;
+    return (
+      <>
+        <Plate l={px} t={py} w={s} h={s} r={s * 0.28} tint={EXPOSED_METAL_TINT} caseTint={tint} />
+        <Lens size={ld} left={px + s * 0.08} top={py + s * 0.08} />
+        <Lens size={ld} left={px + s * 0.08} top={py + s * 0.5} />
+        <Lens size={ld} left={px + s * 0.44} top={py + s * 0.29} />
+        {/* Flash top-right, LiDAR bottom-right — checked against a real
+            photo: there's no third small mic dot between them. */}
+        <Flash size={ld * 0.4} left={px + s * 0.72} top={py + s * 0.12} />
+        <Dot size={ld * 0.34} left={px + s * 0.72} top={py + s * 0.7} />
+      </>
+    );
+  }
+  if (style === 'ip-dual') {
+    // Spec table bump figures for 11/12/13/14 average ~0.45 of body width
+    // (30-35mm on 71.5-75.7mm bodies). Measured against a real 13/14 case
+    // photo: the module is nearly SQUARE (~1.04x taller than wide).
+    const s = W * 0.45, px = W * 0.05, py = H * 0.04, sh = s * 1.04;
+    const ld = s * 0.42;
+    return (
+      <>
+        <Plate l={px} t={py} w={s} h={sh} r={s * 0.32} tint={EXPOSED_METAL_TINT} caseTint={tint} />
+        <Lens size={ld} left={px + s * 0.06} top={py + s * 0.06} />
+        <Lens size={ld} left={px + s - ld - s * 0.06} top={py + sh - ld - s * 0.06} />
+        <Flash size={s * 0.18} left={px + s * 0.68} top={py + s * 0.12} />
+        <Dot size={s * 0.08} left={px + s * 0.2} top={py + sh - s * 0.28} />
+      </>
+    );
+  }
+  if (style === 'ip-dual-vert') {
+    // Base 11/12 (not Pro) — real photo cropped directly from the user's
+    // iPhone 11 print-template reference (11-T-FRAME-scaled.png). The plate
+    // is opaque while the case body around it is transparent (alpha 0) in
+    // that source, so the plate was isolated from the case outline (which
+    // is also opaque and nearly touches it at the top-left corner) via
+    // alpha-aware connected-components (PIL/scipy) rather than eyeballed —
+    // the crop is pixel-exact to the plate's own bounding box, no dead
+    // margin on any side.
+    const s = W * 0.45, px = W * 0.05, py = H * 0.04, sh = s * (226 / 200);
+    return <img src={camera('ip11-dualvert.png')} alt="" style={{ position: 'absolute', left: px, top: py, width: s, height: sh }} />;
+  }
+  if (style === 'samsung' || style === 'samsung-ultra') {
+    // S/A-series and the Fold's rear: a tall blank channel clearing the
+    // individually-mounted vertical lenses (plus the Ultra's periscope
+    // column on the right).
+    const ld = W * 0.145, lx = W * 0.07, ty = H * 0.045, gap = ld * 1.24;
+    const w = style === 'samsung-ultra' ? ld * 2.5 : ld * 1.3;
+    return (
+      <>
+        <Plate l={lx - ld * 0.12} t={ty - ld * 0.12} w={w} h={gap * 2 + ld * 1.25} r={ld * 0.35} tint={EXPOSED_METAL_TINT} caseTint={tint} />
+        <Lens size={ld} left={lx} top={ty} />
+        <Lens size={ld} left={lx} top={ty + gap} />
+        <Lens size={ld} left={lx} top={ty + gap * 2} />
+        {style === 'samsung-ultra' && <Lens size={ld * 0.78} left={lx + ld * 1.5} top={ty + gap * 1.45} />}
+        {style === 'samsung-ultra' && <Dot size={ld * 0.22} left={lx + ld * 1.6} top={ty + gap * 0.95} />}
+        <Flash size={ld * 0.3} left={lx + ld * 1.5} top={ty + gap * 0.45} />
+      </>
+    );
+  }
+  if (style === 's26u') {
+    // Real photo of the S26 Ultra camera module, cropped directly from the
+    // user's print-template reference (S26-ULTRA-T-FRAME-scaled.png) — a
+    // shared metal backing plate connecting all 4 lens housings + flash,
+    // unlike the older 'samsung-ultra' CSS style's bare individually-
+    // mounted lenses with no shared plate.
+    const s = W * 0.36, px = W * 0.05, py = H * 0.03, sh = s * (486 / 315);
+    return <img src={camera('s26u.png')} alt="" style={{ position: 'absolute', left: px, top: py, width: s, height: sh }} />;
+  }
+  if (style === 'xiaomi') {
+    // Xiaomi 14 / Redmi Note: rounded-square island, three lenses plus the
+    // flash in the fourth corner of the grid.
+    const s = W * 0.44, px = W * 0.06, py = H * 0.045;
+    const ld = s * 0.36;
+    return (
+      <>
+        <Plate l={px} t={py} w={s} h={s} r={s * 0.28} tint={EXPOSED_METAL_TINT} caseTint={tint} />
+        <Lens size={ld} left={px + s * 0.1} top={py + s * 0.1} />
+        <Lens size={ld} left={px + s * 0.54} top={py + s * 0.1} />
+        <Lens size={ld} left={px + s * 0.1} top={py + s * 0.54} />
+        <Flash size={ld * 0.55} left={px + s * 0.54 + ld * 0.22} top={py + s * 0.54 + ld * 0.22} />
+      </>
+    );
+  }
+  if (style === 'oppo') {
+    // Reno 11: tall oval island — one big main lens, one medium secondary,
+    // asymmetric like the real dual-camera (not two equal circles).
+    const ow = W * 0.34, oh = ow * 1.72, px = W * 0.06, py = H * 0.04;
+    const l1 = ow * 0.74, l2 = ow * 0.56;
+    return (
+      <>
+        <Plate l={px} t={py} w={ow} h={oh} r={ow / 2} tint={EXPOSED_METAL_TINT} caseTint={tint} />
+        <Lens size={l1} left={px + (ow - l1) / 2} top={py + ow * 0.16} />
+        <Lens size={l2} left={px + (ow - l2) / 2} top={py + oh - l2 - ow * 0.34} />
+        <Dot size={ow * 0.1} left={px + ow * 0.45} top={py + oh - ow * 0.18} />
+        <Flash size={ow * 0.16} left={px + ow * 1.18} top={py + ow * 0.18} />
+      </>
+    );
+  }
+  const s = W * 0.3, px = W * 0.06, py = H * 0.04;
+  const ld = s * 0.4;
+  return (
+    <>
+      <Plate l={px} t={py} w={s} h={s} r={s * 0.3} tint={EXPOSED_METAL_TINT} caseTint={tint} />
+      <Lens size={ld} left={px + s * 0.12} top={py + s * 0.12} />
+      <Lens size={ld} left={px + s * 0.5} top={py + s * 0.12} />
+      <Lens size={ld} left={px + s * 0.12} top={py + s * 0.5} />
+    </>
+  );
+}

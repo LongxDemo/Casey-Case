@@ -1,0 +1,210 @@
+import { Strawberry } from '../components/frames/Strawberry';
+import { Cherry } from '../components/frames/Cherry';
+import { Peach } from '../components/frames/Peach';
+import { Watermelon } from '../components/frames/Watermelon';
+import { Orange } from '../components/frames/Orange';
+import { Donut } from '../components/frames/Donut';
+import { Bear } from '../components/frames/Bear';
+import { Bunny } from '../components/frames/Bunny';
+import { Dog } from '../components/frames/Dog';
+import { Cat } from '../components/frames/Cat';
+
+export type FrameDef = {
+  id: string;
+  name: string;
+  /** Hand-drawn vector frames use Svg; real photographic frames (shot/cut
+   *  from an actual product photo, transparent PNG) use `image` instead —
+   *  exactly one of the two is set. */
+  Svg?: React.FC<{ style?: React.CSSProperties }>;
+  image?: string;
+  /** Intrinsic artboard size (matches the SVG's viewBox, or the PNG's pixel size). */
+  width: number;
+  height: number;
+  /** Face-hole rect as % of width/height — must match the cutout each SVG
+   *  actually draws, or the transparent hole cut into the photo. */
+  hole: { xPct: number; yPct: number; wPct: number; hPct: number };
+  /** Second face-hole, for the one frame ('burger-cat') cut from a source
+   *  photo with two faces in it — every other frame has just the one. */
+  hole2?: { xPct: number; yPct: number; wPct: number; hPct: number };
+  /** Precise edge mask for a non-oval hole — a PNG the size of the hole's
+   *  own bounding box, opaque where the real cutout is and transparent
+   *  elsewhere (the inverse of the frame image's own alpha there). Applied
+   *  as a CSS mask-image so the photo fills the *actual* cut shape instead
+   *  of just an inscribed ellipse, which otherwise leaves the case
+   *  background peeking through at the corners for non-round holes. Omit
+   *  for round/oval holes, where the ellipse already matches closely. */
+  holeMask?: string;
+  hole2Mask?: string;
+  /** How the customer's photo fills the hole — defaults to 'cover' (crops
+   *  to fill, no gaps). 'contain' shows the whole photo, which can leave
+   *  background-colored gaps inside the hole. */
+  fit?: 'cover' | 'contain';
+  /** Initial layer scale when this frame is added — defaults to 1 (the
+   *  SVG frames' 200x220 artboard already roughly matches case size at
+   *  scale 1). A frame whose source photo is much larger than that (like
+   *  'burger-cat' at 1080x1800) needs a smaller starting scale so it isn't
+   *  added wildly oversized relative to the case. */
+  defaultScale?: number;
+};
+
+export const FRAME_DEFS: Record<string, FrameDef> = {
+  strawberry: {
+    id: 'strawberry',
+    name: 'Strawberry',
+    Svg: Strawberry,
+    width: 200,
+    height: 220,
+    hole: { xPct: 17.5, yPct: 22.73, wPct: 65, hPct: 68.18 },
+  },
+  cherry: {
+    id: 'cherry',
+    name: 'Cherry',
+    Svg: Cherry,
+    width: 200,
+    height: 220,
+    hole: { xPct: 17.5, yPct: 31.82, wPct: 65, hPct: 59.09 },
+  },
+  peach: {
+    id: 'peach',
+    name: 'Peach',
+    Svg: Peach,
+    width: 200,
+    height: 220,
+    hole: { xPct: 18.5, yPct: 31.82, wPct: 63, hPct: 57.27 },
+  },
+  watermelon: {
+    id: 'watermelon',
+    name: 'Watermelon',
+    Svg: Watermelon,
+    width: 200,
+    height: 220,
+    hole: { xPct: 16, yPct: 20.45, wPct: 68, hPct: 61.82 },
+  },
+  orange: {
+    id: 'orange',
+    name: 'Orange',
+    Svg: Orange,
+    width: 200,
+    height: 220,
+    hole: { xPct: 18, yPct: 30.91, wPct: 64, hPct: 58.18 },
+  },
+  donut: {
+    id: 'donut',
+    name: 'Donut',
+    Svg: Donut,
+    width: 200,
+    height: 220,
+    hole: { xPct: 27, yPct: 33.64, wPct: 46, hPct: 41.82 },
+  },
+  bear: {
+    id: 'bear',
+    name: 'Bear',
+    Svg: Bear,
+    width: 200,
+    height: 220,
+    hole: { xPct: 16, yPct: 32.73, wPct: 68, hPct: 61.82 },
+  },
+  bunny: {
+    id: 'bunny',
+    name: 'Bunny',
+    Svg: Bunny,
+    width: 200,
+    height: 220,
+    hole: { xPct: 16, yPct: 32.73, wPct: 68, hPct: 61.82 },
+  },
+  dog: {
+    id: 'dog',
+    name: 'Dog',
+    Svg: Dog,
+    width: 200,
+    height: 220,
+    hole: { xPct: 16, yPct: 32.73, wPct: 68, hPct: 61.82 },
+  },
+  cat: {
+    id: 'cat',
+    name: 'Cat',
+    Svg: Cat,
+    width: 200,
+    height: 220,
+    hole: { xPct: 16, yPct: 32.73, wPct: 68, hPct: 61.82 },
+  },
+  // Real photographic frame (cut from an actual strawberry-hood product
+  // photo the user supplied, transparent PNG with a true cut-out hole) —
+  // not hand-drawn SVG like the cartoon 'strawberry' above.
+  'strawberry-photo': {
+    id: 'strawberry-photo',
+    name: 'Strawberry (Real)',
+    image: `${import.meta.env.BASE_URL}frames/strawberry-photo.png`,
+    width: 640,
+    height: 655,
+    hole: { xPct: 16.15, yPct: 33.48, wPct: 67.62, hPct: 66.09 },
+  },
+  // Two-face real photo (cat-in-burger-costume + star + strawberry hood) —
+  // the only frame with a second hole (hole2), cut from the cat's face.
+  'burger-cat': {
+    id: 'burger-cat',
+    name: 'Burger Cat',
+    image: `${import.meta.env.BASE_URL}frames/burger-cat.png`,
+    width: 1080,
+    height: 1800,
+    hole: { xPct: 50.46, yPct: 39.44, wPct: 31.94, hPct: 15 },
+    hole2: { xPct: 15.28, yPct: 27.5, wPct: 31.94, hPct: 15.28 },
+    // Matches the image's height to a typical case's rendered height —
+    // width ends up a bit wider than the case (clipped at the edges), which
+    // keeps the full top-to-bottom composition instead of cropping it.
+    defaultScale: 0.37,
+  },
+  // Strawberry-and-bows pattern template — hole position measured from a
+  // solid-green placeholder circle the user drew in their own design
+  // (detected and cut to transparent programmatically, not eyeballed).
+  'strawberry-bow': {
+    id: 'strawberry-bow',
+    name: 'Strawberry Bows',
+    image: `${import.meta.env.BASE_URL}frames/strawberry-bow.png`,
+    width: 1414,
+    height: 2000,
+    hole: { xPct: 30.06, yPct: 42.75, wPct: 38.9, hPct: 27.55 },
+    defaultScale: 0.33,
+  },
+  // Trash-bag-beanie + red hoodie character — hole measured the same
+  // green-screen way as 'strawberry-bow'.
+  'cozy-hoodie': {
+    id: 'cozy-hoodie',
+    name: 'Cozy Hoodie',
+    image: `${import.meta.env.BASE_URL}frames/cozy-hoodie.png`,
+    width: 1414,
+    height: 2000,
+    hole: { xPct: 38.19, yPct: 49.6, wPct: 38.19, hPct: 27 },
+    defaultScale: 0.33,
+  },
+  // Trash-bag-beanie character, bare shoulders — hole measured the same
+  // green-screen way as 'strawberry-bow'.
+  'black-beanie': {
+    id: 'black-beanie',
+    name: 'Black Beanie',
+    image: `${import.meta.env.BASE_URL}frames/black-beanie.png`,
+    width: 1414,
+    height: 2000,
+    hole: { xPct: 29.99, yPct: 54.3, wPct: 39.96, hPct: 28.25 },
+    defaultScale: 0.33,
+  },
+  // Carrot + tomato plush pair — two holes, each marked with a non-oval
+  // green blob in the source design. holeMask/hole2Mask clip the photo to
+  // the exact cut shape (an inverted crop of the frame PNG's own alpha
+  // channel over each hole's bbox) instead of an inscribed ellipse, which
+  // otherwise left the case background visible at the corners.
+  'carrot-tomato': {
+    id: 'carrot-tomato',
+    name: 'Carrot & Tomato',
+    image: `${import.meta.env.BASE_URL}frames/carrot-tomato.png`,
+    width: 1414,
+    height: 2000,
+    hole: { xPct: 13.15, yPct: 42.75, wPct: 30.98, hPct: 17.25 },
+    hole2: { xPct: 53.54, yPct: 44.7, wPct: 34.58, hPct: 18.25 },
+    holeMask: `${import.meta.env.BASE_URL}frames/carrot-tomato-hole1-mask.png`,
+    hole2Mask: `${import.meta.env.BASE_URL}frames/carrot-tomato-hole2-mask.png`,
+    defaultScale: 0.33,
+  },
+};
+
+export const frameOrder: string[] = ['strawberry', 'cherry', 'peach', 'watermelon', 'orange', 'donut', 'bear', 'bunny', 'dog', 'cat', 'strawberry-photo', 'burger-cat', 'strawberry-bow', 'cozy-hoodie', 'black-beanie', 'carrot-tomato'];

@@ -1,3 +1,7 @@
+// AUTO-GENERATED from /shared/CameraSVG.tsx — do not edit this copy.
+// Edit the source file, then run `node shared/sync.mjs` (or just
+// `npm install` in admin/ or storefront/, which does it automatically).
+
 import { useId } from 'react';
 
 // All distances in mm, in the phone body's own coordinate space: origin
