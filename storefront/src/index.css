@@ -172,6 +172,12 @@ input, textarea, select { font-family: inherit; }
 .modal-card { background: #fff; border-radius: 24px; padding: 22px; width: 100%; max-width: 380px; max-height: 88vh; overflow-y: auto; }
 .modal-title { font-size: 17px; font-weight: 900; margin: 0 0 4px; }
 .modal-sub { color: var(--ink-soft); font-size: 13px; font-weight: 600; margin: 0 0 14px; }
+
+/* Crop modal */
+.crop-stage { position: relative; margin: 0 auto; overflow: hidden; border-radius: 12px; touch-action: none; background: #000; }
+.crop-stage img { display: block; touch-action: none; user-select: none; -webkit-user-drag: none; }
+.crop-rect { position: absolute; border: 2px solid #fff; box-shadow: 0 0 0 2000px rgba(0,0,0,0.55); cursor: move; touch-action: none; }
+.crop-handle { position: absolute; right: -10px; bottom: -10px; width: 22px; height: 22px; border-radius: 50%; background: var(--pink); border: 3px solid #fff; box-shadow: 0 2px 6px rgba(0,0,0,0.3); cursor: nwse-resize; touch-action: none; }
 label { display: block; font-size: 12px; font-weight: 700; color: var(--ink-soft); margin: 10px 0 5px; }
 input.f, textarea.f { width: 100%; padding: 12px 14px; border-radius: 12px; border: 1.5px solid var(--line); background: var(--petal); font-size: 15px; font-weight: 600; color: var(--ink); outline: none; }
 input.f:focus, textarea.f:focus { border-color: var(--pink); }

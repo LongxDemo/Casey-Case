@@ -541,6 +541,10 @@ function Editor({ design, onBack, onSent, session }: { design: ReturnType<typeof
   // When set, the next file picked goes to that frame layer's photo (in the
   // given hole) instead of creating a new standalone image layer.
   const uploadTarget = useRef<{ id: string; hole: 1 | 2 } | null>(null);
+  // Set the instant a photo is picked, before it ever reaches a layer — the
+  // crop modal reads from this, then onFileChange's target/addImage logic
+  // runs on whatever the customer confirms instead of the raw upload.
+  const [cropState, setCropState] = useState<{ uri: string; aspect: number | null; target: { id: string; hole: 1 | 2 } | null } | null>(null);
 
   const [tool, setTool] = useState<Tool>('stickers');
   const [activePack, setActivePack] = useState(stickerPacks[0].id);
@@ -603,23 +607,46 @@ function Editor({ design, onBack, onSent, session }: { design: ReturnType<typeof
     uploadTarget.current = null;
     e.target.value = '';
     if (!file) return;
-    loadAndResizeImage(file).then(({ uri, width, height }) => {
+    loadAndResizeImage(file).then(({ uri }) => {
+      // A frame hole has a fixed shape, so its crop must match that aspect
+      // exactly — object-fit: cover would otherwise silently crop whatever
+      // the customer picked anyway, just without them seeing it happen.
+      // Replacing an existing image layer's photo locks to ITS current box
+      // for the same reason. A brand-new standalone photo has no box yet
+      // (addImage sizes one to fit the photo), so it crops free-form.
+      let aspect: number | null = null;
       if (target) {
         const targetLayer = d.layers.find((l) => l.id === target.id);
         if (targetLayer?.kind === 'image') {
-          setImageUri(target.id, uri);
-        } else {
-          setFramePhoto(target.id, uri, target.hole);
+          aspect = targetLayer.width / targetLayer.height;
+        } else if (targetLayer?.kind === 'frame') {
+          const def = FRAME_DEFS[targetLayer.frameId];
+          const hole = target.hole === 2 ? def?.hole2 : def?.hole;
+          if (def && hole) aspect = (hole.wPct * def.width) / (hole.hPct * def.height);
         }
-        // The default crop (centered, unzoomed) rarely frames a face well —
-        // drop straight into Adjust mode so the pan/zoom controls are right
-        // there instead of leaving what can look like a broken placement.
-        select(target.id);
-        enterAdjustMode(target.id, target.hole);
-        return;
       }
-      addImage(uri, width, height);
+      setCropState({ uri, aspect, target });
     });
+  };
+
+  const cancelCrop = () => setCropState(null);
+  const confirmCrop = (uri: string, width: number, height: number) => {
+    const target = cropState?.target ?? null;
+    setCropState(null);
+    if (target) {
+      const targetLayer = d.layers.find((l) => l.id === target.id);
+      if (targetLayer?.kind === 'image') {
+        setImageUri(target.id, uri);
+      } else {
+        setFramePhoto(target.id, uri, target.hole);
+      }
+      // The crop already framed the photo how the customer wants — still
+      // drop into Adjust mode so pan/zoom is right there for fine-tuning.
+      select(target.id);
+      enterAdjustMode(target.id, target.hole);
+      return;
+    }
+    addImage(uri, width, height);
   };
 
   // Runs entirely on-device (no photo ever leaves the customer's phone) via
@@ -1056,6 +1083,10 @@ function Editor({ design, onBack, onSent, session }: { design: ReturnType<typeof
           onSent={onSent}
         />
       )}
+
+      {cropState && (
+        <CropModal uri={cropState.uri} aspect={cropState.aspect} onCancel={cancelCrop} onConfirm={confirmCrop} />
+      )}
     </>
   );
 }
@@ -1407,6 +1438,134 @@ function FacebookMark() {
       <circle cx="24" cy="24" r="24" fill="#1877F2" />
       <path fill="#fff" d="M30.2 30.8l1-6.5h-6.2v-4.2c0-1.8.7-3.4 3.6-3.4h3V10.8c-1-.1-3-.3-5.4-.3-5.4 0-9.1 3.1-9.1 8.9v4.9h-6v6.5h6V40h6.9V30.8z" />
     </svg>
+  );
+}
+
+// Shown right after picking/replacing a photo, before it ever reaches a
+// layer — a fixed-aspect crop (frame hole / existing image layer) matches
+// what the hole or box will actually show, instead of leaving the customer
+// to discover the "wrong" part got cropped only after it's already placed.
+// A brand-new standalone photo has no box yet to match, so aspect is null
+// and the crop rectangle resizes freely.
+const MAX_CROP_OUTPUT_DIM = 1600;
+function CropModal({
+  uri,
+  aspect,
+  onCancel,
+  onConfirm,
+}: {
+  uri: string;
+  aspect: number | null;
+  onCancel: () => void;
+  onConfirm: (uri: string, width: number, height: number) => void;
+}) {
+  const imgRef = useRef<HTMLImageElement>(null);
+  const [disp, setDisp] = useState<{ w: number; h: number } | null>(null);
+  const [rect, setRect] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
+  const dragRef = useRef<{ mode: 'move' | 'resize'; startX: number; startY: number; rect: { x: number; y: number; w: number; h: number } } | null>(null);
+
+  const onImgLoad = () => {
+    const img = imgRef.current;
+    if (!img) return;
+    const MAX_DISP_W = 320;
+    const MAX_DISP_H = 420;
+    const scale = Math.min(1, MAX_DISP_W / img.naturalWidth, MAX_DISP_H / img.naturalHeight);
+    const dw = Math.round(img.naturalWidth * scale);
+    const dh = Math.round(img.naturalHeight * scale);
+    setDisp({ w: dw, h: dh });
+    if (aspect) {
+      let rw = dw, rh = dw / aspect;
+      if (rh > dh) { rh = dh; rw = dh * aspect; }
+      setRect({ x: (dw - rw) / 2, y: (dh - rh) / 2, w: rw, h: rh });
+    } else {
+      setRect({ x: 0, y: 0, w: dw, h: dh });
+    }
+  };
+
+  const onRectPointerDown = (e: React.PointerEvent) => {
+    if (!rect) return;
+    (e.currentTarget as Element).setPointerCapture(e.pointerId);
+    dragRef.current = { mode: 'move', startX: e.clientX, startY: e.clientY, rect };
+  };
+  const onHandlePointerDown = (e: React.PointerEvent) => {
+    e.stopPropagation();
+    if (!rect) return;
+    (e.currentTarget as Element).setPointerCapture(e.pointerId);
+    dragRef.current = { mode: 'resize', startX: e.clientX, startY: e.clientY, rect };
+  };
+  const onStagePointerMove = (e: React.PointerEvent) => {
+    const drag = dragRef.current;
+    if (!drag || !disp) return;
+    const dx = e.clientX - drag.startX;
+    const dy = e.clientY - drag.startY;
+    const r = drag.rect;
+    if (drag.mode === 'move') {
+      const x = Math.max(0, Math.min(disp.w - r.w, r.x + dx));
+      const y = Math.max(0, Math.min(disp.h - r.h, r.y + dy));
+      setRect({ ...r, x, y });
+      return;
+    }
+    const MIN = 40;
+    let w = Math.min(Math.max(MIN, r.w + dx), disp.w - r.x);
+    let h = aspect ? w / aspect : Math.min(Math.max(MIN, r.h + dy), disp.h - r.y);
+    if (aspect && r.y + h > disp.h) {
+      h = disp.h - r.y;
+      w = h * aspect;
+    }
+    setRect({ ...r, w, h });
+  };
+  const onStagePointerUp = () => { dragRef.current = null; };
+
+  const handleConfirm = () => {
+    const img = imgRef.current;
+    if (!img || !rect || !disp) return;
+    const scaleX = img.naturalWidth / disp.w;
+    const scaleY = img.naturalHeight / disp.h;
+    const sx = rect.x * scaleX, sy = rect.y * scaleY, sw = rect.w * scaleX, sh = rect.h * scaleY;
+    const outScale = Math.min(1, MAX_CROP_OUTPUT_DIM / Math.max(sw, sh));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(sw * outScale);
+    canvas.height = Math.round(sh * outScale);
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.drawImage(img, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
+    onConfirm(canvas.toDataURL('image/jpeg', 0.9), canvas.width, canvas.height);
+  };
+
+  return (
+    <div className="modal-backdrop">
+      <div className="modal-card">
+        <h3 className="modal-title">Crop your photo</h3>
+        <p className="modal-sub">Drag to reposition, drag the corner to resize.</p>
+        <div
+          className="crop-stage"
+          style={disp ? { width: disp.w, height: disp.h } : undefined}
+          onPointerMove={onStagePointerMove}
+          onPointerUp={onStagePointerUp}
+        >
+          <img
+            ref={imgRef}
+            src={uri}
+            alt=""
+            onLoad={onImgLoad}
+            style={disp ? { width: disp.w, height: disp.h } : { width: 0, height: 0 }}
+          />
+          {rect && (
+            <div
+              className="crop-rect"
+              style={{ left: rect.x, top: rect.y, width: rect.w, height: rect.h }}
+              onPointerDown={onRectPointerDown}
+            >
+              <div className="crop-handle" onPointerDown={onHandlePointerDown} />
+            </div>
+          )}
+        </div>
+        <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
+          <button className="btn ghost" style={{ flex: 1 }} onClick={onCancel}>Cancel</button>
+          <button className="btn" style={{ flex: 1 }} onClick={handleConfirm} disabled={!rect}>Use Photo</button>
+        </div>
+      </div>
+    </div>
   );
 }
 
