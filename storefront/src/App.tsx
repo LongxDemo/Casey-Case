@@ -1,11 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { toBlob } from 'html-to-image';
-import { CameraModule, CasePreview, camStyleFor, cameraZoneRect } from './components/CasePreview';
+import { CameraImageModule, CameraModule, CasePreview, camStyleFor, cameraZoneRect } from './components/CasePreview';
+import { CameraSVG, cameraCutoutPath } from './components/CameraSVG';
 import { EditableLayer, photoContainerFor } from './components/EditableLayer';
 import { LocationPicker } from './components/LocationPicker';
 import { useDesign } from './hooks/useDesign';
 import { backgrounds, BASE_PRICE_CENTS, stickerPacks, templates as staticTemplates } from './mock';
 import { CANVAS_BASE, MODELS, phoneModels, sizeForModel, clampPhotoOffset, fallbackPreviewModelId } from './lib/types';
+import { useCameraSpecs } from './lib/cameraSpecs';
 import { useCustomModels } from './lib/customModels';
 import type { Design, FrontPage, Layer, Template, TextLayer } from './lib/types';
 import { FRAME_DEFS, frameOrder } from './lib/frames';
@@ -586,6 +588,8 @@ function Editor({ design, onBack, onSent, session }: { design: ReturnType<typeof
   const { width: canvasW, height: canvasH } = sizeForModel(model, 300);
   const scale = canvasW / CANVAS_BASE;
   const radius = canvasW * 0.2;
+  const liveCameraSpecs = useCameraSpecs();
+  const cameraSpec = liveCameraSpecs[d.modelId];
   const selected = d.layers.find((l) => l.id === selectedId) ?? null;
   const ordered = [...d.layers].sort((a, b) => a.z - b.z);
 
@@ -770,37 +774,57 @@ function Editor({ design, onBack, onSent, session }: { design: ReturnType<typeof
               onRequestPhoto={pickImage}
             />
           ))}
-          {/* Same camera keep-out zone + case rim as the read-only
-              CasePreview (gallery cards, admin) — was missing here, so the
-              editor let a photo/design show through under the camera
-              module even though the gallery preview already blocked it. */}
+          {/* Same camera rendering as the read-only CasePreview (gallery
+              cards, admin) — an admin-uploaded real photo/cutout takes
+              priority over the hand-drawn CSS approximation, same decision
+              order as CasePreview.tsx. This used to only replicate the CSS
+              zone + CameraModule branch, so a model with a real uploaded
+              camera photo (set in the admin Cameras page) rendered the
+              generic CSS lenses here while every other preview (gallery
+              card, admin) correctly showed the real photo. */}
           <div ref={cameraOverlayRef} style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
-            {(() => {
-              const camStyle = camStyleFor(model);
-              // See CasePreview.tsx for why 'ip-vert' skips this generic
-              // zone — CameraModule draws its own tightly-fitted pill+circle
-              // background for it instead.
-              if (camStyle === 'ip-vert') return null;
-              const zone = cameraZoneRect(camStyle, canvasW, canvasH);
-              return (
-                <div
-                  style={{
-                    position: 'absolute',
-                    top: zone.top,
-                    left: zone.left,
-                    width: zone.width,
-                    height: zone.height,
-                    borderRadius: radius,
-                    background: '#0c0c0f',
-                    boxShadow: '0 1px 0 rgba(0,0,0,0.12)',
-                  }}
-                />
-              );
-            })()}
-            {/* Every real case photo we've checked is black plastic
-                underneath — the camera surround is always black, not
-                tinted to whatever decorative color was picked. */}
-            <CameraModule style={camStyleFor(model)} width={canvasW} height={canvasH} tint="#0c0c0f" />
+            {cameraSpec?.image ? (
+              <CameraImageModule image={cameraSpec.image} pxPerMm={canvasW / model.widthMm} />
+            ) : cameraSpec ? (
+              <svg
+                viewBox={`0 0 ${model.widthMm} ${model.heightMm}`}
+                width={canvasW}
+                height={canvasH}
+                style={{ position: 'absolute', inset: 0 }}
+              >
+                <path d={cameraCutoutPath(cameraSpec.island, 1.2)} fill="#0c0c0f" fillRule="evenodd" />
+                <CameraSVG spec={cameraSpec} tint="#0c0c0f" />
+              </svg>
+            ) : (
+              <>
+                {(() => {
+                  const camStyle = camStyleFor(model);
+                  // See CasePreview.tsx for why 'ip-vert' skips this generic
+                  // zone — CameraModule draws its own tightly-fitted pill+circle
+                  // background for it instead.
+                  if (camStyle === 'ip-vert') return null;
+                  const zone = cameraZoneRect(camStyle, canvasW, canvasH);
+                  return (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: zone.top,
+                        left: zone.left,
+                        width: zone.width,
+                        height: zone.height,
+                        borderRadius: radius,
+                        background: '#0c0c0f',
+                        boxShadow: '0 1px 0 rgba(0,0,0,0.12)',
+                      }}
+                    />
+                  );
+                })()}
+                {/* Every real case photo we've checked is black plastic
+                    underneath — the camera surround is always black, not
+                    tinted to whatever decorative color was picked. */}
+                <CameraModule style={camStyleFor(model)} width={canvasW} height={canvasH} tint="#0c0c0f" />
+              </>
+            )}
           </div>
           <div
             style={{

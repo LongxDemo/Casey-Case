@@ -232,7 +232,7 @@ export function CasePreview({
 // silhouette outward by a fixed pixel radius in every direction (the same
 // way a real manufacturing cutout tolerance works), giving a true uniform
 // halo regardless of the module's shape.
-function CameraImageModule({ image, pxPerMm }: { image: NonNullable<CameraSpec['image']>; pxPerMm: number }) {
+export function CameraImageModule({ image, pxPerMm }: { image: NonNullable<CameraSpec['image']>; pxPerMm: number }) {
   const filterId = useId();
   const left = image.xMm * pxPerMm;
   const top = image.yMm * pxPerMm;
