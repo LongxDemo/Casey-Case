@@ -6,7 +6,12 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, content-type",
+  // supabase-js's functions.invoke() always sends apikey and x-client-info
+  // alongside authorization/content-type — a preflight that doesn't allow
+  // all four fails in the browser (blocked before the actual POST is even
+  // sent), surfacing as "Failed to send a request to the Edge Function"
+  // with no server-side log at all, since the request never arrives.
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
 // Always 200 — errors travel as { ok: false, error } in the body instead of
