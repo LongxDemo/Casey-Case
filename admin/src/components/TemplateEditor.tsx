@@ -43,10 +43,6 @@ function loadAndResizeImage(file: File): Promise<string> {
       img.onload = () => {
         const { naturalWidth: w, naturalHeight: h } = img;
         const scale = Math.min(1, MAX_UPLOAD_DIM / Math.max(w, h));
-        if (scale === 1) {
-          resolve(reader.result as string);
-          return;
-        }
         const cw = Math.round(w * scale), ch = Math.round(h * scale);
         const canvas = document.createElement('canvas');
         canvas.width = cw;
@@ -56,6 +52,9 @@ function loadAndResizeImage(file: File): Promise<string> {
           resolve(reader.result as string);
           return;
         }
+        // Always draw through canvas, even at full size, so the stored bytes
+        // are always a decoded-and-re-encoded image rather than the original
+        // file's raw bytes (mirrors storefront/src/App.tsx).
         ctx.drawImage(img, 0, 0, cw, ch);
         resolve(canvas.toDataURL('image/jpeg', 0.85));
       };
@@ -65,18 +64,20 @@ function loadAndResizeImage(file: File): Promise<string> {
   });
 }
 
-// Mirrors storefront's uploadDataUri/uploadPhotoLayers — moves any base64
-// photo onto the same `design-photos` storage bucket customer uploads use,
-// and swaps the data: URI for the public URL, so the templates row (and
-// every Gallery/home-screen fetch of it) stays small.
+// Mirrors storefront's uploadDataUri/uploadPhotoLayers — routes through the
+// upload-image edge function (same `design-photos` bucket customer uploads
+// use), which re-validates the real file content and re-encodes it
+// server-side rather than trusting the browser, then swaps the data: URI for
+// the public URL so the templates row (and every Gallery/home-screen fetch
+// of it) stays small.
 async function uploadDataUri(uri: string): Promise<string> {
   const blob = await (await fetch(uri)).blob();
-  const ext = (blob.type.split('/')[1] || 'png').replace('jpeg', 'jpg');
-  const path = `${crypto.randomUUID()}.${ext}`;
-  const { error } = await supabase!.storage.from('design-photos').upload(path, blob, { contentType: blob.type });
+  const form = new FormData();
+  form.append('file', blob);
+  const { data, error } = await supabase!.functions.invoke('upload-image', { body: form });
   if (error) throw new Error(`photo upload — ${error.message}`);
-  const { data } = supabase!.storage.from('design-photos').getPublicUrl(path);
-  return data.publicUrl;
+  if (!data?.ok) throw new Error(`photo upload — ${data?.error || 'unknown error'}`);
+  return data.publicUrl as string;
 }
 async function uploadPhotoLayers(layers: Layer[]): Promise<Layer[]> {
   if (!supabase) return layers;

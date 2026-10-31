@@ -54,12 +54,14 @@ function loadImageFile(file: File, format: 'image/jpeg' | 'image/png' = 'image/j
       img.onload = () => {
         const { naturalWidth: w, naturalHeight: h } = img;
         const scale = Math.min(1, MAX_UPLOAD_DIM / Math.max(w, h));
-        if (scale === 1) { resolve({ dataUri: reader.result as string, width: w, height: h }); return; }
         const cw = Math.round(w * scale), ch = Math.round(h * scale);
         const canvas = document.createElement('canvas');
         canvas.width = cw; canvas.height = ch;
         const ctx = canvas.getContext('2d');
         if (!ctx) { resolve({ dataUri: reader.result as string, width: w, height: h }); return; }
+        // Always draw through canvas, even at full size, so the stored bytes
+        // are always a decoded-and-re-encoded image rather than the original
+        // file's raw bytes (mirrors storefront/src/App.tsx).
         ctx.drawImage(img, 0, 0, cw, ch);
         resolve({ dataUri: format === 'image/png' ? canvas.toDataURL('image/png') : canvas.toDataURL('image/jpeg', 0.9), width: cw, height: ch });
       };
@@ -69,14 +71,23 @@ function loadImageFile(file: File, format: 'image/jpeg' | 'image/png' = 'image/j
   });
 }
 
-async function uploadDesignPhoto(dataUri: string, folder: string): Promise<string> {
+// Routes through the upload-image edge function — same re-validation/
+// re-encoding every other upload gets, rather than writing raw bytes
+// straight to Storage with the anon key. `camera-modules` lands in the
+// public `design-photos` bucket (customers' case renders use it); the bare
+// `admin-assets` bucket is private — reference photos are an editor-only aid
+// never shown to customers, so there's no public URL to hand back, only a
+// storage path the admin app resolves to a signed URL when displaying it.
+async function uploadDesignPhoto(dataUri: string, target: { bucket: 'design-photos'; folder: 'camera-modules' } | { bucket: 'admin-assets' }): Promise<{ publicUrl?: string; path?: string }> {
   const blob = await (await fetch(dataUri)).blob();
-  const ext = (blob.type.split('/')[1] || 'png').replace('jpeg', 'jpg');
-  const path = `${folder}/${crypto.randomUUID()}.${ext}`;
-  const { error } = await supabase!.storage.from('design-photos').upload(path, blob, { contentType: blob.type });
+  const form = new FormData();
+  form.append('file', blob);
+  form.append('bucket', target.bucket);
+  if ('folder' in target) form.append('folder', target.folder);
+  const { data, error } = await supabase!.functions.invoke('upload-image', { body: form });
   if (error) throw new Error(error.message);
-  const { data } = supabase!.storage.from('design-photos').getPublicUrl(path);
-  return data.publicUrl;
+  if (!data?.ok) throw new Error(data?.error || 'unknown error');
+  return { publicUrl: data.publicUrl, path: data.path };
 }
 
 function loadImageEl(dataUri: string): Promise<HTMLImageElement> {
@@ -218,6 +229,23 @@ export function CameraDesigner({ role, myUserId }: { role: 'admin' | 'staff'; my
   const model = MODELS[modelId] ?? MODELS[DEFAULT_MODEL_ID];
   const [draftSpec, setDraftSpec] = useState<CameraSpec>(() => mockCameraSpecs[DEFAULT_MODEL_ID] ?? blankSpec(model));
   const [photo, setPhoto] = useState<PhotoState>({ url: null, w: null, h: null });
+  // photo.url is the canonical stored value: a data: URI while editing, a
+  // bare storage path once uploaded to the private `admin-assets` bucket, or
+  // (for rows saved before this bucket existed) a legacy full https:// URL.
+  // Only a data:/http value is directly usable as an <img src> — a bare path
+  // needs a signed URL resolved first, since the bucket isn't public.
+  const [refDisplayUrl, setRefDisplayUrl] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    const url = photo.url;
+    if (!url) { setRefDisplayUrl(null); return; }
+    if (url.startsWith('data:') || url.startsWith('http')) { setRefDisplayUrl(url); return; }
+    if (!supabase) { setRefDisplayUrl(null); return; }
+    supabase.storage.from('admin-assets').createSignedUrl(url, 3600).then(({ data }) => {
+      if (!cancelled) setRefDisplayUrl(data?.signedUrl ?? null);
+    });
+    return () => { cancelled = true; };
+  }, [photo.url]);
   const [photoFit, setPhotoFit] = useState<PhotoFit>({ xMm: 0, yMm: 0, scale: 0.2 });
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [configuredIds, setConfiguredIds] = useState<Set<string>>(new Set());
@@ -290,8 +318,8 @@ export function CameraDesigner({ role, myUserId }: { role: 'admin' | 'staff'; my
     setPhotoFit({ xMm: 0, yMm: 0, scale: model.widthMm / width });
     if (supabase) {
       try {
-        const url = await uploadDesignPhoto(dataUri, 'camera-refs');
-        setPhoto((p) => ({ ...p, url }));
+        const { path } = await uploadDesignPhoto(dataUri, { bucket: 'admin-assets' });
+        setPhoto((p) => ({ ...p, url: path ?? p.url }));
       } catch (err) {
         window.alert(`Photo upload failed: ${err instanceof Error ? err.message : err}`);
       }
@@ -318,8 +346,8 @@ export function CameraDesigner({ role, myUserId }: { role: 'admin' | 'staff'; my
     }));
     if (supabase) {
       try {
-        const url = await uploadDesignPhoto(cropped.dataUri, 'camera-modules');
-        setDraftSpec((s) => (s.image ? { ...s, image: { ...s.image, url } } : s));
+        const { publicUrl } = await uploadDesignPhoto(cropped.dataUri, { bucket: 'design-photos', folder: 'camera-modules' });
+        if (publicUrl) setDraftSpec((s) => (s.image ? { ...s, image: { ...s.image, url: publicUrl } } : s));
       } catch (err) {
         window.alert(`Camera photo upload failed: ${err instanceof Error ? err.message : err}`);
       }
@@ -542,9 +570,9 @@ export function CameraDesigner({ role, myUserId }: { role: 'admin' | 'staff'; my
             onPointerDown={() => setSelectedKey(null)}
           >
             <div style={{ position: 'absolute', inset: 0, border: '2px dashed rgba(255,255,255,0.3)', borderRadius: Math.min(RENDER_WIDTH_PX, renderHeightPx) * 0.14, pointerEvents: 'none' }} />
-            {photo.url && (
+            {refDisplayUrl && (
               <img
-                src={photo.url}
+                src={refDisplayUrl}
                 alt=""
                 draggable={false}
                 onPointerDown={onPhotoPointerDown}

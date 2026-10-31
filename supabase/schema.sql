@@ -163,11 +163,75 @@ create table if not exists order_items (
   design_id    uuid references designs(id) on delete set null,
   model_id     text,
   quantity     int not null default 1,
-  price_cents  int not null default 1990,
+  price_cents  int not null default 600,
   preview_url  text,
   print_url    text -- camera-free, full-bleed file for admin to feed the printer
 );
 alter table order_items add column if not exists print_url text;
+alter table order_items alter column price_cents set default 600;
+
+-- Every case is a flat $6.00 (600 cents) — enforced here, not trusted from
+-- the client. orders_insert/order_items_insert (below) are wide open with
+-- check(true) so guest checkout works without an account, which means
+-- anyone with the public anon key could otherwise insert an order with any
+-- price_cents/total_cents they like. These triggers silently overwrite
+-- whatever the client sends instead.
+create or replace function enforce_order_item_price() returns trigger
+language plpgsql as $$
+begin
+  new.quantity := greatest(new.quantity, 1);
+  new.price_cents := 600 * new.quantity;
+  return new;
+end;
+$$;
+drop trigger if exists order_items_enforce_price on order_items;
+create trigger order_items_enforce_price
+  before insert or update on order_items
+  for each row execute function enforce_order_item_price();
+
+-- Keeps orders.subtotal_cents/total_cents in sync with the sum of its
+-- (now server-priced) order_items — security definer because a guest
+-- customer's role has no UPDATE rights on orders otherwise (see
+-- orders_admin_update below), but this is the one, narrowly-scoped write
+-- a guest needs to make their own order's total correct.
+create or replace function recompute_order_totals() returns trigger
+language plpgsql security definer set search_path = public as $$
+declare
+  affected_order_id uuid := coalesce(new.order_id, old.order_id);
+  new_subtotal int;
+begin
+  select coalesce(sum(price_cents), 0) into new_subtotal
+  from order_items where order_id = affected_order_id;
+  update orders
+    set subtotal_cents = new_subtotal,
+        total_cents = new_subtotal + shipping_cents
+    where id = affected_order_id;
+  return null;
+end;
+$$;
+drop trigger if exists order_items_recompute_order_totals on order_items;
+create trigger order_items_recompute_order_totals
+  after insert or update or delete on order_items
+  for each row execute function recompute_order_totals();
+
+-- A freshly-inserted order has no items yet (the app inserts the order row,
+-- then a separate order_items row right after) — zero out whatever
+-- subtotal/shipping/total the client sent at that point so a forged value
+-- can't persist even in the brief window before order_items exists. The
+-- trigger above then fills in the real total once the item lands.
+create or replace function zero_new_order_totals() returns trigger
+language plpgsql as $$
+begin
+  new.subtotal_cents := 0;
+  new.shipping_cents := 0;
+  new.total_cents := 0;
+  return new;
+end;
+$$;
+drop trigger if exists orders_zero_new_totals on orders;
+create trigger orders_zero_new_totals
+  before insert on orders
+  for each row execute function zero_new_order_totals();
 
 -- ─────────────────────────────────────────────────────────────
 -- Admins (dashboard access)
@@ -300,8 +364,40 @@ drop policy if exists orders_admin_update on orders;
 create policy orders_admin_update on orders for update using (is_admin()) with check (is_admin());
 drop policy if exists orders_admin_delete on orders;
 create policy orders_admin_delete on orders for delete using (has_role('admin'));
+-- A policy can't query its own table directly (Postgres raises "infinite
+-- recursion detected in policy" — evaluating the INSERT's WITH CHECK would
+-- require re-evaluating order_items' own SELECT policy, which loops).
+-- Security definer bypasses RLS for just this narrow lookup, same reasoning
+-- as is_admin() above avoiding recursion through admins' own policy.
+create or replace function order_already_has_item(p_order_id uuid) returns boolean
+language sql security definer set search_path = public stable as $$
+  select exists (select 1 from order_items where order_id = p_order_id);
+$$;
+
+-- Same recursion-adjacent problem for the ownership check: orders_read_own
+-- hides guest rows (user_id is null) from anon, so a plain subquery against
+-- orders can't even see a guest order to confirm it's a guest order —
+-- security definer bypasses that for this one narrow lookup too.
+create or replace function order_belongs_to_caller(p_order_id uuid) returns boolean
+language sql security definer set search_path = public stable as $$
+  select exists (
+    select 1 from orders where id = p_order_id and (user_id = auth.uid() or user_id is null)
+  );
+$$;
+
+-- Previously `with check (true)` — wide open, so anyone with the anon key
+-- could attach an arbitrary row (including a forged print_url) to ANY
+-- order by guessing/leaking its id, not just their own. Now scoped the same
+-- way designs_insert is: the order must belong to the caller, or be a guest
+-- order (user_id is null) — and, since this app only ever creates exactly
+-- one order_item per order, a second insert against an order that already
+-- has one is rejected outright, closing off "add more items to an order
+-- that's already been placed" entirely rather than just narrowing it.
 drop policy if exists order_items_insert on order_items;
-create policy order_items_insert on order_items for insert with check (true);
+create policy order_items_insert on order_items for insert with check (
+  order_belongs_to_caller(order_id)
+  and not order_already_has_item(order_id)
+);
 drop policy if exists order_items_read on order_items;
 create policy order_items_read on order_items for select using (is_admin() or exists (select 1 from orders o where o.id = order_id and (o.user_id = auth.uid())));
 
@@ -349,11 +445,34 @@ create policy camera_specs_admin_delete on camera_specs for delete using (has_ro
 -- ─────────────────────────────────────────────────────────────
 -- Uploaded photos live here (public URLs stored in designs.layers) instead of
 -- base64 data URLs inside the jsonb, which bloats rows and page loads.
+-- webp dropped from allowed_mime_types: the upload-image edge function (the
+-- only writer now, see below) can't safely re-encode webp server-side, so it
+-- never produces one.
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
-values ('design-photos', 'design-photos', true, 10485760, array['image/png','image/jpeg','image/webp','image/gif'])
+values ('design-photos', 'design-photos', true, 10485760, array['image/png','image/jpeg','image/gif'])
+on conflict (id) do nothing;
+update storage.buckets set allowed_mime_types = array['image/png','image/jpeg','image/gif']
+where id = 'design-photos';
+
+-- Browsers can no longer write directly into storage — every upload is
+-- validated (real magic-byte sniff) and re-encoded from scratch by the
+-- upload-image edge function, which writes with the service-role key and so
+-- doesn't need (or go through) an RLS policy. Without this insert policy, a
+-- request with just the anon key can no longer push arbitrary bytes into the
+-- bucket from outside the app.
+drop policy if exists design_photos_insert on storage.objects;
+
+-- ─────────────────────────────────────────────────────────────
+-- Storage: admin-only assets (e.g. camera-module reference photos)
+-- ─────────────────────────────────────────────────────────────
+-- Private — never shown to customers. Only the upload-image edge function
+-- (service-role key) writes here; logged-in admins read via a signed URL
+-- generated from their own session, gated by the select policy below.
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('admin-assets', 'admin-assets', false, 10485760, array['image/png','image/jpeg'])
 on conflict (id) do nothing;
 
-drop policy if exists design_photos_insert on storage.objects;
-create policy design_photos_insert on storage.objects
-  for insert to anon, authenticated
-  with check (bucket_id = 'design-photos');
+drop policy if exists admin_assets_select on storage.objects;
+create policy admin_assets_select on storage.objects
+  for select to authenticated
+  using (bucket_id = 'admin-assets' and is_admin());

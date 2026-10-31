@@ -29,6 +29,28 @@ const field = (form: FormData, name: string) => {
   return typeof v === 'string' ? v.trim() : '';
 };
 
+// This endpoint relays whatever files it's handed straight to the Telegram
+// Bot API using our own bot token — without a check here, anyone who finds
+// the endpoint (it isn't otherwise authenticated) could use it to push
+// arbitrary files to that chat, or just abuse it as a free upload relay.
+// A real Casey design is always a PNG the app itself generated, so a cheap
+// magic-byte check is enough to reject anything that isn't one.
+const MAX_FILE_BYTES = 10 * 1024 * 1024;
+const MAX_TOTAL_BYTES = 40 * 1024 * 1024;
+
+// previewBlob/printBlob are always PNG (html-to-image's default); photo_N
+// layers are JPEG (loadAndResizeImage in App.tsx always re-encodes through a
+// canvas as JPEG) — accept either real signature regardless of which field.
+async function isImageFile(file: File): Promise<boolean> {
+  const head = new Uint8Array(await file.slice(0, 8).arrayBuffer());
+  const isPng =
+    head.length === 8 &&
+    head[0] === 0x89 && head[1] === 0x50 && head[2] === 0x4e && head[3] === 0x47 &&
+    head[4] === 0x0d && head[5] === 0x0a && head[6] === 0x1a && head[7] === 0x0a;
+  const isJpeg = head.length >= 3 && head[0] === 0xff && head[1] === 0xd8 && head[2] === 0xff;
+  return isPng || isJpeg;
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
@@ -38,11 +60,24 @@ export default {
       return json({ error: 'sending is not configured yet' }, 503);
     }
 
+    const contentLength = Number(request.headers.get('content-length') ?? '0');
+    if (contentLength && contentLength > MAX_TOTAL_BYTES) {
+      return json({ error: 'request too large' }, 413);
+    }
+
     let form: FormData;
     try {
       form = await request.formData();
     } catch {
       return json({ error: 'bad request' }, 400);
+    }
+
+    for (const [key, value] of form.entries()) {
+      if (!(value instanceof File) || value.size === 0) continue;
+      if (key !== 'preview' && key !== 'print' && !key.startsWith('photo_')) continue;
+      if (value.size > MAX_FILE_BYTES || !(await isImageFile(value))) {
+        return json({ error: `${key} is not a valid image` }, 400);
+      }
     }
 
     const name = field(form, 'name');

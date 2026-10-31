@@ -66,19 +66,22 @@ function loadAndResizeImage(file: File): Promise<{ uri: string; width: number; h
       img.onload = () => {
         const { naturalWidth: w, naturalHeight: h } = img;
         const scale = Math.min(1, MAX_UPLOAD_DIM / Math.max(w, h));
-        if (scale === 1) {
-          resolve({ uri: reader.result as string, width: w, height: h });
-          return;
-        }
         const cw = Math.round(w * scale), ch = Math.round(h * scale);
         const canvas = document.createElement('canvas');
         canvas.width = cw;
         canvas.height = ch;
         const ctx = canvas.getContext('2d');
         if (!ctx) {
+          // No canvas support to re-encode through — fall back to the
+          // original bytes rather than failing the upload outright; the
+          // upload-image edge function re-validates/re-encodes server-side
+          // regardless, so this isn't the only line of defense.
           resolve({ uri: reader.result as string, width: w, height: h });
           return;
         }
+        // Always draw through canvas (even when no resize is needed) so the
+        // in-app preview and the bytes eventually sent for upload are a
+        // decoded-and-re-encoded image, never the original file's raw bytes.
         ctx.drawImage(img, 0, 0, cw, ch);
         resolve({ uri: canvas.toDataURL('image/jpeg', 0.85), width: cw, height: ch });
       };
@@ -735,7 +738,7 @@ function Editor({ design, onBack, onSent, session }: { design: ReturnType<typeof
           <p className="editor-title">Casey Studio</p>
           <p className="editor-subtitle">{model.brand} {model.name}</p>
         </div>
-        <button className="send-btn" onClick={() => { select(null); setOrderModal(true); }}>Place Order →</button>
+        <button className="send-btn" onClick={() => { select(null); setOrderModal(true); }}>Place Order — ${(BASE_PRICE_CENTS / 100).toFixed(2)} →</button>
       </div>
 
       <button className="download-tag" onClick={downloadDesign} disabled={downloading}>
@@ -1077,15 +1080,18 @@ function ModelPicker({ modelId, onSetModel }: { modelId: string; onSetModel: (id
 
 /* ───────────────────────── Place Order ───────────────────────── */
 
-/** Upload a blob (or data URI) into Supabase Storage and return its public URL. */
+/** Upload a blob (or data URI) via the upload-image edge function, which
+ *  verifies the real file content and re-encodes it server-side before
+ *  writing to Storage — the browser is never trusted to self-report what a
+ *  file actually is. Returns its public URL. */
 async function uploadToStorage(input: Blob | string): Promise<string> {
   const blob = typeof input === 'string' ? await (await fetch(input)).blob() : input;
-  const ext = (blob.type.split('/')[1] || 'png').replace('jpeg', 'jpg');
-  const path = `${crypto.randomUUID()}.${ext}`;
-  const { error } = await supabase!.storage.from('design-photos').upload(path, blob, { contentType: blob.type });
+  const form = new FormData();
+  form.append('file', blob);
+  const { data, error } = await supabase!.functions.invoke('upload-image', { body: form });
   if (error) throw new Error(`photo upload — ${error.message}`);
-  const { data } = supabase!.storage.from('design-photos').getPublicUrl(path);
-  return data.publicUrl;
+  if (!data?.ok) throw new Error(`photo upload — ${data?.error || 'unknown error'}`);
+  return data.publicUrl as string;
 }
 
 /** Move any base64 photo layers into Supabase Storage and swap the data URL
@@ -1322,7 +1328,7 @@ function PlaceOrderModal({
         ) : (
           <>
             <h3 className="modal-title">Place your order ✨</h3>
-            <p className="modal-sub">No payment here — we'll follow up with you directly to sort out printing and delivery.</p>
+            <p className="modal-sub">${(BASE_PRICE_CENTS / 100).toFixed(2)} per case — no payment here, we'll follow up with you directly to sort out printing and delivery.</p>
             {sendError && (
               <div className="notice" style={{ margin: '0 0 10px', color: 'var(--danger)' }}>
                 ⚠️ Your order didn't go through ({sendError}). Please try again.

@@ -1,7 +1,7 @@
 import type { CaseBackground, StickerPack, Template } from './lib/types';
 import type { CameraSpec } from './components/CameraSVG';
 
-export const BASE_PRICE_CENTS = 1990;
+export const BASE_PRICE_CENTS = 600;
 
 // Placeholder used only if Supabase env vars are missing — admins design the
 // real camera specs visually in the admin dashboard's Cameras page.

@@ -1,0 +1,5 @@
+[functions.upload-image]
+# Guest checkout uploads design photos with no signed-in session, so the
+# platform-level JWT gate has to be off — the function does its own
+# admin check internally for privileged buckets/folders (see index.ts).
+verify_jwt = false
