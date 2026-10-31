@@ -74,7 +74,7 @@ export default function App() {
         <NavItem icon="📊" label="Overview" active={page === 'overview'} onClick={() => setPage('overview')} />
         <NavItem icon="🏠" label="Front Page" active={page === 'front'} onClick={() => setPage('front')} />
         <NavItem icon="🎨" label="Designs" active={page === 'designs'} onClick={() => setPage('designs')} />
-        <NavItem icon="✨" label="Gallery" active={page === 'gallery'} onClick={() => setPage('gallery')} />
+        <NavItem icon="✨" label="Already made" active={page === 'gallery'} onClick={() => setPage('gallery')} />
         <NavItem icon="🌈" label="Colors" active={page === 'backgrounds'} onClick={() => setPage('backgrounds')} />
         <NavItem icon="📦" label="Orders" active={page === 'orders'} onClick={() => setPage('orders')} />
         <NavItem icon="📷" label="Cameras" active={page === 'cameras'} onClick={() => setPage('cameras')} />
@@ -217,7 +217,7 @@ function FrontPageEditor() {
           <div>
             <label>Featured templates</label>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              {templates.length === 0 && <span className="page-sub" style={{ margin: 0 }}>No gallery styles yet — add some in the Gallery tab.</span>}
+              {templates.length === 0 && <span className="page-sub" style={{ margin: 0 }}>No styles yet — add some in the Already made tab.</span>}
               {templates.map((t) => {
                 const on = fp.featured_template_ids.includes(t.id);
                 return (
@@ -308,7 +308,7 @@ function Designs() {
                 {MODELS[d.model_id ?? '']?.name ?? d.model_id}<br />
                 {d.user_id ? '👤 member' : '👻 guest'} · {new Date(d.created_at).toLocaleDateString()}
               </div>
-              <button className="btn soft tpl-promote" onClick={() => promoteDesign(d)}>⭐ Add to Gallery</button>
+              <button className="btn soft tpl-promote" onClick={() => promoteDesign(d)}>⭐ Add to Already made</button>
             </div>
           ))}
         </div>
@@ -322,7 +322,7 @@ async function promoteDesign(d: DesignRow) {
     window.alert("This design has no background set — can't promote it.");
     return;
   }
-  const name = window.prompt('Gallery style name:', '');
+  const name = window.prompt('Already made style name:', '');
   if (!name || !name.trim()) return;
   const tag = window.prompt('Tag (optional — e.g. Trending, New):', '') ?? undefined;
   if (!supabase) {
