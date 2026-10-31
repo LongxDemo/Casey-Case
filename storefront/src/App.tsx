@@ -601,6 +601,23 @@ function Editor({ design, onBack, onSent, session }: { design: ReturnType<typeof
     uploadTarget.current = frameId ? { id: frameId, hole } : null;
     fileInputRef.current?.click();
   };
+  // A frame hole has a fixed shape, so its crop must match that aspect
+  // exactly — object-fit: cover would otherwise silently crop whatever the
+  // customer picked anyway, just without them seeing it happen. Replacing an
+  // existing image layer's photo locks to ITS current box for the same
+  // reason. A brand-new standalone photo has no box yet (addImage sizes one
+  // to fit the photo), so it crops free-form.
+  const aspectForTarget = (target: { id: string; hole: 1 | 2 } | null): number | null => {
+    if (!target) return null;
+    const targetLayer = d.layers.find((l) => l.id === target.id);
+    if (targetLayer?.kind === 'image') return targetLayer.width / targetLayer.height;
+    if (targetLayer?.kind === 'frame') {
+      const def = FRAME_DEFS[targetLayer.frameId];
+      const hole = target.hole === 2 ? def?.hole2 : def?.hole;
+      if (def && hole) return (hole.wPct * def.width) / (hole.hPct * def.height);
+    }
+    return null;
+  };
   const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     const target = uploadTarget.current;
@@ -608,25 +625,19 @@ function Editor({ design, onBack, onSent, session }: { design: ReturnType<typeof
     e.target.value = '';
     if (!file) return;
     loadAndResizeImage(file).then(({ uri }) => {
-      // A frame hole has a fixed shape, so its crop must match that aspect
-      // exactly — object-fit: cover would otherwise silently crop whatever
-      // the customer picked anyway, just without them seeing it happen.
-      // Replacing an existing image layer's photo locks to ITS current box
-      // for the same reason. A brand-new standalone photo has no box yet
-      // (addImage sizes one to fit the photo), so it crops free-form.
-      let aspect: number | null = null;
-      if (target) {
-        const targetLayer = d.layers.find((l) => l.id === target.id);
-        if (targetLayer?.kind === 'image') {
-          aspect = targetLayer.width / targetLayer.height;
-        } else if (targetLayer?.kind === 'frame') {
-          const def = FRAME_DEFS[targetLayer.frameId];
-          const hole = target.hole === 2 ? def?.hole2 : def?.hole;
-          if (def && hole) aspect = (hole.wPct * def.width) / (hole.hPct * def.height);
-        }
-      }
-      setCropState({ uri, aspect, target });
+      setCropState({ uri, aspect: aspectForTarget(target), target });
     });
+  };
+  // Re-crops whatever photo is already in a hole/layer — crops the current
+  // (possibly already-cropped) photo further rather than reaching back for
+  // the original upload, which is never kept around once placed.
+  const recropPhoto = (id: string, hole: 1 | 2 = 1) => {
+    const layer = d.layers.find((l) => l.id === id);
+    if (!layer) return;
+    const uri = layer.kind === 'image' ? layer.uri : layer.kind === 'frame' ? (hole === 2 ? layer.photo2Uri : layer.photoUri) : null;
+    if (!uri) return;
+    const target = { id, hole };
+    setCropState({ uri, aspect: aspectForTarget(target), target });
   };
 
   const cancelCrop = () => setCropState(null);
@@ -902,6 +913,7 @@ function Editor({ design, onBack, onSent, session }: { design: ReturnType<typeof
             <>
               <button className="action-btn" onClick={() => enterAdjustMode(selected.id)}>🎯 Adjust Face</button>
               <button className="action-btn" onClick={() => fitFramePhoto(selected.id)}>🖼️ Fit</button>
+              <button className="action-btn" onClick={() => recropPhoto(selected.id)}>✂️ Crop</button>
               <button className="action-btn" onClick={() => pickImage(selected.id)}>🔁 Replace Photo</button>
               <button className="action-btn" disabled={bgRemoving === selected.id} onClick={() => handleRemoveBackground(selected.id)}>
                 {bgRemoving === selected.id ? `⏳ ${bgProgress}%` : '✂️ Remove BG'}
@@ -916,6 +928,7 @@ function Editor({ design, onBack, onSent, session }: { design: ReturnType<typeof
                 <>
                   <button className="action-btn" onClick={() => enterAdjustMode(selected.id, 1)}>🎯 Adjust 1</button>
                   <button className="action-btn" onClick={() => fitFramePhoto(selected.id, 1)}>🖼️ Fit 1</button>
+                  <button className="action-btn" onClick={() => recropPhoto(selected.id, 1)}>✂️ Crop 1</button>
                   <button className="action-btn" onClick={() => pickImage(selected.id, 1)}>🔁 Replace 1</button>
                   <button className="action-btn" disabled={bgRemoving === selected.id} onClick={() => handleRemoveBackground(selected.id, 1)}>
                     {bgRemoving === selected.id ? `⏳ ${bgProgress}%` : '✂️ BG 1'}
@@ -928,6 +941,7 @@ function Editor({ design, onBack, onSent, session }: { design: ReturnType<typeof
                 <>
                   <button className="action-btn" onClick={() => enterAdjustMode(selected.id, 2)}>🎯 Adjust 2</button>
                   <button className="action-btn" onClick={() => fitFramePhoto(selected.id, 2)}>🖼️ Fit 2</button>
+                  <button className="action-btn" onClick={() => recropPhoto(selected.id, 2)}>✂️ Crop 2</button>
                   <button className="action-btn" onClick={() => pickImage(selected.id, 2)}>🔁 Replace 2</button>
                   <button className="action-btn" disabled={bgRemoving === selected.id} onClick={() => handleRemoveBackground(selected.id, 2)}>
                     {bgRemoving === selected.id ? `⏳ ${bgProgress}%` : '✂️ BG 2'}
@@ -943,6 +957,7 @@ function Editor({ design, onBack, onSent, session }: { design: ReturnType<typeof
                 <>
                   <button className="action-btn" onClick={() => enterAdjustMode(selected.id)}>🎯 Adjust Face</button>
                   <button className="action-btn" onClick={() => fitImagePhoto(selected.id)}>🖼️ Fit</button>
+                  <button className="action-btn" onClick={() => recropPhoto(selected.id)}>✂️ Crop</button>
                   <button className="action-btn" onClick={() => pickImage(selected.id)}>🔁 Replace Photo</button>
                 </>
               )}
