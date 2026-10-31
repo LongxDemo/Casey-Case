@@ -183,7 +183,11 @@ export default function App() {
     setView('editor');
   };
   const openTemplate = (t: Template) => {
-    design.startFromTemplate(t);
+    // Same model resolution the gallery card preview used (App.tsx's
+    // template-card render) — without this, the editor ignored it entirely
+    // and opened with whatever model happened to already be in state,
+    // showing a different phone than the card the customer just tapped.
+    design.startFromTemplate(t, t.preview_model_id ?? fallbackPreviewModelId(t.id));
     // Fire-and-forget popularity bump (drives the "tried" bars in the admin).
     supabase?.rpc('increment_template_uses', { p_template_id: t.id }).then(() => undefined);
     setView('editor');
